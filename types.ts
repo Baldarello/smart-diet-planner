@@ -1,7 +1,13 @@
+export interface MealItem {
+  ingredientName: string;
+  fullDescription: string;
+  used: boolean;
+}
+
 export interface Meal {
   name: string;
   title?: string;
-  items: string[];
+  items: MealItem[];
 }
 
 export interface DayPlan {
@@ -17,6 +23,12 @@ export interface ShoppingListItem {
 export interface ShoppingListCategory {
   category: string;
   items: ShoppingListItem[];
+}
+
+export interface PantryItem {
+  item: string;
+  quantity: string;
+  originalCategory: string;
 }
 
 export interface MealPlanData {

@@ -1,5 +1,5 @@
 import { makeAutoObservable, runInAction } from 'mobx';
-import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan } from '../types';
+import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, MealItem } from '../types';
 import { parsePdfToMealPlan } from '../services/geminiService';
 
 export enum AppStatus {
@@ -14,8 +14,9 @@ export class MealPlanStore {
   error: string | null = null;
   mealPlan: DayPlan[] = [];
   shoppingList: ShoppingListCategory[] = [];
+  pantry: PantryItem[] = [];
   archivedPlans: ArchivedPlan[] = [];
-  activeTab: 'plan' | 'list' | 'daily' | 'archive' = 'plan';
+  activeTab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' = 'plan';
   pdfParseProgress = 0;
   currentPlanName = 'My Diet Plan';
 
@@ -24,7 +25,7 @@ export class MealPlanStore {
     this.loadFromLocalStorage();
   }
 
-  setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive') => {
+  setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry') => {
     this.activeTab = tab;
   }
   
@@ -48,6 +49,7 @@ export class MealPlanStore {
         const data = JSON.parse(savedData);
         this.mealPlan = data.mealPlan || [];
         this.shoppingList = data.shoppingList || [];
+        this.pantry = data.pantry || [];
         this.archivedPlans = data.archivedPlans || [];
         this.currentPlanName = data.currentPlanName || 'My Diet Plan';
         if (this.mealPlan.length > 0) {
@@ -58,6 +60,7 @@ export class MealPlanStore {
       console.error("Failed to load data from localStorage", error);
       this.mealPlan = [];
       this.shoppingList = [];
+      this.pantry = [];
       this.archivedPlans = [];
       this.currentPlanName = 'My Diet Plan';
     }
@@ -68,6 +71,7 @@ export class MealPlanStore {
       const dataToSave = {
         mealPlan: this.mealPlan,
         shoppingList: this.shoppingList,
+        pantry: this.pantry,
         archivedPlans: this.archivedPlans,
         currentPlanName: this.currentPlanName,
       };
@@ -92,6 +96,7 @@ export class MealPlanStore {
         this.archivedPlans.push(newArchive);
         this.mealPlan = [];
         this.shoppingList = [];
+        this.pantry = [];
         this.status = AppStatus.INITIAL;
         this.activeTab = 'plan';
         this.pdfParseProgress = 0;
@@ -105,7 +110,6 @@ export class MealPlanStore {
     if (!planToRestore) return;
 
     runInAction(() => {
-        // First, archive the current plan if it exists
         if (this.mealPlan.length > 0) {
             const currentPlanArchive: ArchivedPlan = {
                 id: Date.now().toString(),
@@ -117,15 +121,13 @@ export class MealPlanStore {
             this.archivedPlans.push(currentPlanArchive);
         }
 
-        // Restore the selected plan
         this.mealPlan = planToRestore.plan;
         this.shoppingList = planToRestore.shoppingList;
         this.currentPlanName = planToRestore.name;
+        this.pantry = []; // Pantry is reset on restore
 
-        // Remove the restored plan from the archive
         this.archivedPlans = this.archivedPlans.filter(p => p.id !== planId);
 
-        // Update UI state
         this.status = AppStatus.SUCCESS;
         this.activeTab = 'daily';
         
@@ -133,15 +135,86 @@ export class MealPlanStore {
     });
   }
 
+  moveShoppingItemToPantry = (itemToMove: ShoppingListItem, categoryName: string) => {
+    // Add to pantry
+    const pantryItem: PantryItem = {
+      ...itemToMove,
+      originalCategory: categoryName
+    };
+    this.pantry.push(pantryItem);
+
+    // Remove from shopping list
+    const category = this.shoppingList.find(c => c.category === categoryName);
+    if (category) {
+      category.items = category.items.filter(i => i.item !== itemToMove.item);
+      // If category becomes empty, remove it
+      if (category.items.length === 0) {
+        this.shoppingList = this.shoppingList.filter(c => c.category !== categoryName);
+      }
+    }
+    this.saveToLocalStorage();
+  }
+
+  movePantryItemToShoppingList = (pantryItemToMove: PantryItem) => {
+    // Add back to shopping list
+    const { originalCategory, ...shoppingItem } = pantryItemToMove;
+    let category = this.shoppingList.find(c => c.category === originalCategory);
+    if (!category) {
+      category = { category: originalCategory, items: [] };
+      this.shoppingList.push(category);
+    }
+    category.items.push(shoppingItem);
+
+    // Remove from pantry
+    this.pantry = this.pantry.filter(p => p.item !== pantryItemToMove.item);
+    this.saveToLocalStorage();
+  }
+
+  updatePantryItemQuantity = (itemName: string, newQuantity: string) => {
+    const item = this.pantry.find(p => p.item === itemName);
+    if (item) {
+      item.quantity = newQuantity;
+      this.saveToLocalStorage();
+    }
+  }
+
+  toggleMealItem = (dayIndex: number, mealIndex: number, itemIndex: number) => {
+    const mealItem = this.mealPlan[dayIndex]?.meals[mealIndex]?.items[itemIndex];
+    if (!mealItem) return;
+
+    mealItem.used = !mealItem.used;
+
+    if (mealItem.used) {
+      // If item is used, try to move it from pantry to shopping list
+      const pantryItem = this.pantry.find(p => p.item.toLowerCase() === mealItem.ingredientName.toLowerCase());
+      if (pantryItem) {
+        this.movePantryItemToShoppingList(pantryItem);
+      }
+    } else {
+      // If item is unused, try to move it back from shopping list to pantry
+      let itemToMove: ShoppingListItem | null = null;
+      let categoryName: string | null = null;
+
+      for (const category of this.shoppingList) {
+        const foundItem = category.items.find(i => i.item.toLowerCase() === mealItem.ingredientName.toLowerCase());
+        if (foundItem) {
+          itemToMove = foundItem;
+          categoryName = category.category;
+          break;
+        }
+      }
+
+      if (itemToMove && categoryName) {
+        this.moveShoppingItemToPantry(itemToMove, categoryName);
+      }
+    }
+    this.saveToLocalStorage();
+  }
+
   get dailyPlan(): DayPlan | undefined {
     const dayMap: { [key: number]: string } = {
-      0: 'DOMENICA',
-      1: 'LUNEDI',
-      2: 'MARTEDI',
-      3: 'MERCOLEDI',
-      4: 'GIOVEDI',
-      5: 'VENERDI',
-      6: 'SABATO',
+      0: 'DOMENICA', 1: 'LUNEDI', 2: 'MARTEDI', 3: 'MERCOLEDI',
+      4: 'GIOVEDI', 5: 'VENERDI', 6: 'SABATO',
     };
     const todayIndex = new Date().getDay();
     const todayName = dayMap[todayIndex];
@@ -177,9 +250,7 @@ export class MealPlanStore {
             const pageText = textContent.items.map((s: any) => s.str).join('\n');
             
             const progress = Math.round((i / pdf.numPages) * 100);
-             runInAction(() => {
-                this.pdfParseProgress = progress;
-            });
+             runInAction(() => this.pdfParseProgress = progress);
 
             fullText += pageText + '\n\n';
           }
@@ -188,8 +259,18 @@ export class MealPlanStore {
           
           runInAction(() => {
             if(result && result.weeklyPlan && result.shoppingList) {
-              this.mealPlan = result.weeklyPlan;
+              // Add 'used: false' to every meal item
+              const planWithUsedFlag = result.weeklyPlan.map(day => ({
+                ...day,
+                meals: day.meals.map(meal => ({
+                  ...meal,
+                  items: (meal.items as any[]).map(item => ({ ...item, used: false }))
+                }))
+              }));
+
+              this.mealPlan = planWithUsedFlag;
               this.shoppingList = result.shoppingList;
+              this.pantry = []; // Reset pantry
               this.status = AppStatus.SUCCESS;
               this.activeTab = 'daily';
               this.currentPlanName = `Diet Plan - ${new Date().toLocaleDateString('it-IT')}`;
