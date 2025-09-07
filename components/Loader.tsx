@@ -1,34 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
-
-const readingMessages = ["Warming up the AI chef...","Scanning for breakfast recipes...","Decoding your lunch options...","Unpacking dinner ingredients...","Slicing and dicing the data...","Extracting nutritional notes...",];
-const analyzingMessages = ["Consulting with digital nutritionists...","Organizing your week's meals...","Calibrating the calorie counter...","Generating your shopping list...","Categorizing ingredients for you...",];
+import { t, t_dynamic } from '../i18n';
 
 const Loader: React.FC = observer(() => {
     const { pdfParseProgress } = mealPlanStore;
     const isReadingPdf = pdfParseProgress < 100;
-    const [message, setMessage] = useState(readingMessages[0]);
+    
+    const [messages, setMessages] = useState(t_dynamic(isReadingPdf ? 'readingMessages' : 'analyzingMessages'));
+    const [message, setMessage] = useState(messages[0]);
 
     useEffect(() => {
-        const messages = isReadingPdf ? readingMessages : analyzingMessages;
+        const currentMessages = t_dynamic(isReadingPdf ? 'readingMessages' : 'analyzingMessages');
+        setMessages(currentMessages);
+        setMessage(currentMessages[0]);
+    }, [mealPlanStore.locale, isReadingPdf]);
+
+    useEffect(() => {
         let messageIndex = 0;
         const interval = setInterval(() => {
             messageIndex = (messageIndex + 1) % messages.length;
             setMessage(messages[messageIndex]);
         }, 2000);
         return () => clearInterval(interval);
-    }, [isReadingPdf]);
+    }, [messages]);
 
     return (
         <div className="flex flex-col items-center justify-center text-center p-8 max-w-md mx-auto">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-violet-600 mb-4"></div>
-            <h2 className="text-xl font-semibold text-gray-700">{isReadingPdf ? 'Reading Your PDF...' : 'Analyzing Your Plan'}</h2>
-            <p className="text-gray-500 mb-4 h-10 flex items-center justify-center">{message}</p>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div className="bg-violet-600 h-2.5 rounded-full transition-all duration-300 ease-in-out" style={{ width: `${pdfParseProgress}%` }}></div>
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-violet-600 dark:border-violet-500 mb-4"></div>
+            <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300">{isReadingPdf ? t('readingPdf') : t('analyzingPlan')}</h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-4 h-10 flex items-center justify-center">{message}</p>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                <div className="bg-violet-600 dark:bg-violet-500 h-2.5 rounded-full transition-all duration-300 ease-in-out" style={{ width: `${pdfParseProgress}%` }}></div>
             </div>
-            <p className="text-sm text-gray-500 mt-2">{Math.round(pdfParseProgress)}% Complete</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{Math.round(pdfParseProgress)}{t('progressComplete')}</p>
         </div>
     );
 });

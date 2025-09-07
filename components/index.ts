@@ -9,4 +9,5 @@ export { default as ArchiveView } from './ArchiveView';
 export { default as ArchivedPlanItem } from './ArchivedPlanItem';
 export { default as ActivePlanNameEditor } from './ActivePlanNameEditor';
 export { default as MealItemChecklist } from './MealItemChecklist';
+export { default as ExamplePdf } from './ExamplePdf';
 export * from './Icons';

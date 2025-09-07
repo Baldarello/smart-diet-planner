@@ -3,6 +3,7 @@ import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { ShoppingListItem } from '../types';
 import { PantryIcon } from './Icons';
+import { t } from '../i18n';
 
 const ShoppingListView: React.FC = observer(() => {
     const [checkedItems, setCheckedItems] = useState<Map<string, { item: ShoppingListItem, category: string }>>(new Map());
@@ -26,33 +27,33 @@ const ShoppingListView: React.FC = observer(() => {
     };
 
     return (
-        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-4xl mx-auto">
-            <div className="flex justify-between items-center border-b pb-4 mb-6">
-                <h2 className="text-3xl font-bold text-gray-800">Shopping List</h2>
+        <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-4xl mx-auto">
+            <div className="flex justify-between items-center border-b dark:border-gray-700 pb-4 mb-6">
+                <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{t('shoppingListTitle')}</h2>
                 {checkedItems.size > 0 && (
                     <button onClick={handleMoveToPantry} className="bg-violet-600 text-white font-semibold px-4 py-2 rounded-full hover:bg-violet-700 transition-colors shadow-md flex items-center">
-                        <PantryIcon /> Move to Pantry
+                        <PantryIcon /> {t('moveToPantry')}
                     </button>
                 )}
             </div>
             {mealPlanStore.shoppingList.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">Your shopping list is empty. Good job!</p>
+                <p className="text-gray-500 dark:text-gray-400 text-center py-8">{t('shoppingListEmpty')}</p>
             ) : (
                 <div className="space-y-6">
                     {mealPlanStore.shoppingList.map((category, catIndex) => (
                         <details key={catIndex} className="group" open>
-                            <summary className="font-bold text-xl text-violet-700 cursor-pointer list-none flex items-center">
-                                 <span className="transform transition-transform duration-200 group-open:rotate-90">&#9656;</span>
+                            <summary className="font-bold text-xl text-violet-700 dark:text-violet-400 cursor-pointer list-none flex items-center">
+                                 <span className="transform transition-transform duration-200 group-open:rotate-90 text-violet-400 dark:text-violet-500">&#9656;</span>
                                  <span className="ml-2">{category.category}</span>
                             </summary>
-                            <ul className="mt-4 pl-6 border-l-2 border-violet-100 space-y-3">
+                            <ul className="mt-4 pl-6 border-l-2 border-violet-100 dark:border-gray-700 space-y-3">
                                 {category.items.map((item, itemIndex) => {
                                     const key = `${category.category}-${item.item}`;
                                     return (
                                         <li key={itemIndex} className="flex items-center">
-                                            <input type="checkbox" id={`item-${catIndex}-${itemIndex}`} className="h-5 w-5 rounded border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer" onChange={() => handleCheck(item, category.category)} checked={checkedItems.has(key)} aria-labelledby={`label-item-${catIndex}-${itemIndex}`} />
-                                            <label id={`label-item-${catIndex}-${itemIndex}`} htmlFor={`item-${catIndex}-${itemIndex}`} className={`ml-3 flex-grow cursor-pointer ${checkedItems.has(key) ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                                                <span className="font-medium">{item.item}</span>: <span className="text-gray-600">{item.quantity}</span>
+                                            <input type="checkbox" id={`item-${catIndex}-${itemIndex}`} className="h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500 cursor-pointer bg-transparent dark:bg-gray-600" onChange={() => handleCheck(item, category.category)} checked={checkedItems.has(key)} aria-labelledby={`label-item-${catIndex}-${itemIndex}`} />
+                                            <label id={`label-item-${catIndex}-${itemIndex}`} htmlFor={`item-${catIndex}-${itemIndex}`} className={`ml-3 flex-grow cursor-pointer ${checkedItems.has(key) ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                                                <span className="font-medium">{item.item}</span>: <span className="text-gray-600 dark:text-gray-400">{item.quantity}</span>
                                             </label>
                                         </li>
                                     );

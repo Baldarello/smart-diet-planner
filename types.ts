@@ -43,3 +43,6 @@ export interface ArchivedPlan {
   plan: DayPlan[];
   shoppingList: ShoppingListCategory[];
 }
+
+export type Theme = 'light' | 'dark';
+export type Locale = 'it' | 'en';

@@ -1,5 +1,5 @@
 import { makeAutoObservable, runInAction } from 'mobx';
-import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, MealItem } from '../types';
+import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale } from '../types';
 import { parsePdfToMealPlan } from '../services/geminiService';
 
 export enum AppStatus {
@@ -19,10 +19,22 @@ export class MealPlanStore {
   activeTab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' = 'plan';
   pdfParseProgress = 0;
   currentPlanName = 'My Diet Plan';
+  theme: Theme = 'light';
+  locale: Locale = 'it';
 
   constructor() {
     makeAutoObservable(this);
     this.loadFromLocalStorage();
+  }
+
+  setTheme = (theme: Theme) => {
+    this.theme = theme;
+    this.saveToLocalStorage();
+  }
+
+  setLocale = (locale: Locale) => {
+    this.locale = locale;
+    this.saveToLocalStorage();
   }
 
   setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry') => {
@@ -52,6 +64,8 @@ export class MealPlanStore {
         this.pantry = data.pantry || [];
         this.archivedPlans = data.archivedPlans || [];
         this.currentPlanName = data.currentPlanName || 'My Diet Plan';
+        this.theme = data.theme || 'light';
+        this.locale = data.locale || 'it';
         if (this.mealPlan.length > 0) {
           this.status = AppStatus.SUCCESS;
         }
@@ -74,6 +88,8 @@ export class MealPlanStore {
         pantry: this.pantry,
         archivedPlans: this.archivedPlans,
         currentPlanName: this.currentPlanName,
+        theme: this.theme,
+        locale: this.locale,
       };
       localStorage.setItem('dietPlanData', JSON.stringify(dataToSave));
     } catch (error) {
