@@ -1,0 +1,5 @@
+{
+  "name": "Diet Plan Organizer",
+  "description": "An intelligent meal plan assistant that reads a diet PDF, organizes it into a weekly calendar, and automatically generates a complete, aggregated shopping list.",
+  "requestFramePermissions": []
+}

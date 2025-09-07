@@ -1,0 +1,336 @@
+import React, { useState } from 'react';
+import { observer } from 'mobx-react-lite';
+import { mealPlanStore, AppStatus } from './stores/MealPlanStore';
+import { DayPlan, ShoppingListItem, ArchivedPlan } from './types';
+
+// --- ICONS (as components) ---
+const CalendarIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+  </svg>
+);
+
+const ListIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+  </svg>
+);
+
+const UploadIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+    </svg>
+);
+
+const TodayIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+);
+
+const ArchiveIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+    </svg>
+);
+
+const ChangeDietIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17 9V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2v-4l4-4z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 3h4v4" />
+    </svg>
+);
+
+
+// --- UI COMPONENTS ---
+
+const FileUpload: React.FC = observer(() => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      mealPlanStore.processPdf(file);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-2xl mx-auto">
+        <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-lg border-2 border-dashed border-gray-300 flex flex-col justify-center items-center h-48 p-6 hover:border-violet-400 transition-colors duration-300">
+            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <UploadIcon />
+                <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                <p className="text-xs text-gray-500">PDF file of your diet plan</p>
+            </div>
+            <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} accept=".pdf" />
+        </label>
+    </div>
+  );
+});
+
+const Loader: React.FC = observer(() => {
+    const { pdfParseProgress } = mealPlanStore;
+    const isReadingPdf = pdfParseProgress < 100;
+
+    return (
+        <div className="flex flex-col items-center justify-center text-center p-8 max-w-md mx-auto">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-violet-600 mb-4"></div>
+            <h2 className="text-xl font-semibold text-gray-700">
+                {isReadingPdf ? 'Reading Your PDF...' : 'Analyzing Your Plan'}
+            </h2>
+            <p className="text-gray-500 mb-4">
+                {isReadingPdf ? 'Extracting text from the document.' : 'Our AI is structuring your diet... this may take a moment.'}
+            </p>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div
+                    className="bg-violet-600 h-2.5 rounded-full transition-all duration-300 ease-in-out"
+                    style={{ width: `${pdfParseProgress}%` }}
+                ></div>
+            </div>
+            <p className="text-sm text-gray-500 mt-2">{Math.round(pdfParseProgress)}% Complete</p>
+        </div>
+    );
+});
+
+const ErrorMessage: React.FC<{ message: string }> = ({ message }) => (
+    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md shadow-md max-w-2xl mx-auto" role="alert">
+        <p className="font-bold">An Error Occurred</p>
+        <p>{message}</p>
+    </div>
+);
+
+const ShoppingListView: React.FC<{ items: ShoppingListItem[] }> = ({ items }) => {
+    const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+
+    const handleCheck = (item: string) => {
+        const newCheckedItems = new Set(checkedItems);
+        if (newCheckedItems.has(item)) {
+            newCheckedItems.delete(item);
+        } else {
+            newCheckedItems.add(item);
+        }
+        setCheckedItems(newCheckedItems);
+    };
+
+    return (
+        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-4xl mx-auto">
+            <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-4">Shopping List</h2>
+            <ul className="space-y-4 column-count-1 sm:column-count-2 md:column-count-3 gap-x-8">
+                {items.map((item, index) => (
+                    <li key={index} className="flex items-center p-2 rounded-lg hover:bg-violet-50 transition-colors duration-200 break-inside-avoid">
+                        <input
+                            type="checkbox"
+                            id={`item-${index}`}
+                            className="h-5 w-5 rounded border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                            onChange={() => handleCheck(item.item)}
+                            checked={checkedItems.has(item.item)}
+                            aria-labelledby={`label-item-${index}`}
+                        />
+                        <label id={`label-item-${index}`} htmlFor={`item-${index}`} className={`ml-3 flex-grow cursor-pointer ${checkedItems.has(item.item) ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                            <span className="font-medium">{item.item}</span>: <span className="text-gray-600">{item.quantity}</span>
+                        </label>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+};
+
+const MealPlanView: React.FC<{ plan: DayPlan[] }> = ({ plan }) => (
+    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        {plan.map((day, index) => (
+            <div key={index} className="bg-white rounded-2xl shadow-lg p-6 flex flex-col hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                <h3 className="text-2xl font-bold text-violet-700 mb-4 capitalize">{day.day.toLowerCase()}</h3>
+                <div className="space-y-4 flex-grow">
+                    {day.meals.map((meal, mealIndex) => (
+                        <div key={mealIndex} className="border-t border-gray-100 pt-3">
+                            <h4 className="font-semibold text-gray-800">{meal.name}</h4>
+                            {meal.title && <p className="text-sm font-medium text-violet-600">{meal.title}</p>}
+                            <ul className="list-disc list-inside text-gray-600 text-sm mt-1 space-y-1">
+                                {meal.items.map((item, itemIndex) => (
+                                    <li key={itemIndex}>{item}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        ))}
+    </div>
+);
+
+const DailyPlanView: React.FC = observer(() => {
+    const { dailyPlan } = mealPlanStore;
+    if (!dailyPlan) {
+        return (
+            <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-2xl mx-auto">
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">No Plan for Today</h2>
+                <p className="text-gray-500">There's no meal scheduled for today in your current plan.</p>
+            </div>
+        );
+    }
+    return (
+        <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-xl transition-all duration-300 max-w-4xl mx-auto">
+            <h3 className="text-3xl font-bold text-violet-700 mb-6 capitalize border-b pb-4">Today's Plan: {dailyPlan.day.toLowerCase()}</h3>
+            <div className="space-y-5">
+                {dailyPlan.meals.map((meal, mealIndex) => (
+                    <div key={mealIndex} className="bg-slate-50 p-4 rounded-lg">
+                        <h4 className="text-xl font-semibold text-gray-800">{meal.name}</h4>
+                        {meal.title && <p className="text-md font-medium text-violet-600 mt-1">{meal.title}</p>}
+                        <ul className="list-disc list-inside text-gray-600 text-sm mt-2 space-y-1">
+                            {meal.items.map((item, itemIndex) => (
+                                <li key={itemIndex}>{item}</li>
+                            ))}
+                        </ul>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+});
+
+const ArchiveView: React.FC = observer(() => {
+    const { archivedPlans } = mealPlanStore;
+
+    if (archivedPlans.length === 0) {
+        return (
+            <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-2xl mx-auto">
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Archive is Empty</h2>
+                <p className="text-gray-500">When you use the 'Change Diet' button, your old plan will be saved here.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-6xl mx-auto">
+            <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-4">Archived Diet Plans</h2>
+            <div className="space-y-4">
+                {archivedPlans.slice().reverse().map((archive) => (
+                    <details key={archive.id} className="group bg-gray-50 p-4 rounded-lg transition-colors duration-200 hover:bg-violet-50">
+                        <summary className="font-semibold text-lg text-gray-700 cursor-pointer list-none flex justify-between items-center group-open:text-violet-600">
+                            <span>Diet from {archive.date}</span>
+                            <span className="text-violet-500 transform transition-transform duration-200 group-open:rotate-90">&#9656;</span>
+                        </summary>
+                        <div className="mt-4 border-t pt-4">
+                            <MealPlanView plan={archive.plan} />
+                        </div>
+                    </details>
+                ))}
+            </div>
+        </div>
+    );
+});
+
+
+const App: React.FC = observer(() => {
+    const store = mealPlanStore;
+    const hasActivePlan = store.mealPlan.length > 0;
+
+    const renderMainContent = () => {
+        if (store.status === AppStatus.LOADING) return <Loader />;
+
+        if (store.status === AppStatus.ERROR) {
+            return (
+                <div className="text-center">
+                    <ErrorMessage message={store.error!} />
+                    <div className="mt-8">
+                        <h2 className="text-2xl font-bold text-gray-800 mb-4">Please try uploading a new file</h2>
+                        <FileUpload />
+                    </div>
+                </div>
+            );
+        }
+
+        if (hasActivePlan) {
+            const tabs = [
+                { id: 'daily', icon: <TodayIcon />, label: 'Daily Plan' },
+                { id: 'plan', icon: <CalendarIcon />, label: 'Weekly Plan' },
+                { id: 'list', icon: <ListIcon />, label: 'Shopping List' },
+                { id: 'archive', icon: <ArchiveIcon />, label: 'Archive' },
+            ];
+            return (
+                <>
+                    <div className="mb-8 flex justify-center flex-wrap gap-2 bg-white p-2 rounded-full shadow-md max-w-md mx-auto">
+                        {tabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => store.setActiveTab(tab.id as any)}
+                                className={`flex items-center justify-center flex-grow px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${store.activeTab === tab.id ? 'bg-violet-600 text-white shadow-md' : 'bg-transparent text-gray-600 hover:bg-violet-100'}`}
+                            >
+                                {tab.icon} {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                    {store.activeTab === 'daily' && <DailyPlanView />}
+                    {store.activeTab === 'plan' && <MealPlanView plan={store.mealPlan} />}
+                    {store.activeTab === 'list' && <ShoppingListView items={store.shoppingList} />}
+                    {store.activeTab === 'archive' && <ArchiveView />}
+                </>
+            );
+        }
+
+        // Initial View (no active plan)
+        if (store.activeTab === 'archive') {
+             return (
+                <div>
+                    <ArchiveView />
+                    <div className="text-center mt-8">
+                        <button onClick={() => store.setActiveTab('plan')} className="bg-violet-600 text-white font-semibold px-6 py-3 rounded-full hover:bg-violet-700 transition-colors shadow-lg">
+                            Upload a New Diet Plan
+                        </button>
+                    </div>
+                </div>
+             );
+        }
+        
+        return (
+            <div className="text-center">
+                <h2 className="text-3xl font-bold text-gray-800 mb-2">Welcome to your Diet Plan Organizer</h2>
+                <p className="text-gray-500 mb-8 max-w-xl mx-auto">Upload your weekly meal plan in PDF format, and our AI will automatically create a daily schedule and a complete shopping list for you.</p>
+                <FileUpload />
+                {store.archivedPlans.length > 0 && (
+                    <div className="mt-12">
+                        <p className="text-gray-600">or</p>
+                        <button 
+                            onClick={() => store.setActiveTab('archive')}
+                            className="mt-2 text-violet-600 font-semibold hover:underline"
+                        >
+                           View Archived Plans
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    return (
+        <div className="min-h-screen bg-slate-50 text-gray-800 p-4 sm:p-6 lg:p-8">
+            <header className="text-center mb-10">
+                <div className="max-w-4xl mx-auto relative">
+                    <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600">
+                        Smart Diet Planner
+                    </h1>
+                    <p className="mt-2 text-lg text-gray-600">Your intelligent meal planning assistant.</p>
+                    {hasActivePlan && (
+                        <div className="absolute top-0 right-0 -mt-2 sm:mt-0">
+                             <button 
+                                onClick={() => store.archiveCurrentPlan()}
+                                className="bg-white text-violet-700 font-semibold px-4 py-2 rounded-full shadow-md hover:bg-violet-100 transition-colors flex items-center"
+                                title="Archive current plan and start a new one"
+                             >
+                                <ChangeDietIcon/>
+                                <span className="hidden sm:inline ml-2">Change Diet</span>
+                             </button>
+                        </div>
+                    )}
+                </div>
+            </header>
+            <main>
+                {renderMainContent()}
+            </main>
+            <footer className="text-center mt-12 text-sm text-gray-400">
+                <p>Powered by Gemini AI. Created with React & MobX.</p>
+            </footer>
+        </div>
+    );
+});
+
+export default App;
