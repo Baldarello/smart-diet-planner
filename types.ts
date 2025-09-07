@@ -14,13 +14,20 @@ export interface ShoppingListItem {
   quantity: string;
 }
 
+export interface ShoppingListCategory {
+  category: string;
+  items: ShoppingListItem[];
+}
+
 export interface MealPlanData {
   weeklyPlan: DayPlan[];
-  shoppingList: ShoppingListItem[];
+  shoppingList: ShoppingListCategory[];
 }
 
 export interface ArchivedPlan {
   id: string;
+  name: string;
   date: string;
   plan: DayPlan[];
+  shoppingList: ShoppingListCategory[];
 }

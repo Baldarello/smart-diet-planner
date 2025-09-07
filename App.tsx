@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore, AppStatus } from './stores/MealPlanStore';
-import { DayPlan, ShoppingListItem, ArchivedPlan } from './types';
+import { DayPlan, ShoppingListCategory } from './types';
 
 // --- ICONS (as components) ---
 const CalendarIcon = () => (
@@ -41,6 +41,19 @@ const ChangeDietIcon = () => (
     </svg>
 );
 
+const RestoreIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 12a8 8 0 018-8h8M20 12a8 8 0 01-8 8H4" />
+    </svg>
+);
+
+const EditIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" />
+    </svg>
+);
+
 
 // --- UI COMPONENTS ---
 
@@ -66,9 +79,39 @@ const FileUpload: React.FC = observer(() => {
   );
 });
 
+const readingMessages = [
+    "Warming up the AI chef...",
+    "Scanning for breakfast recipes...",
+    "Decoding your lunch options...",
+    "Unpacking dinner ingredients...",
+    "Slicing and dicing the data...",
+    "Extracting nutritional notes...",
+];
+
+const analyzingMessages = [
+    "Consulting with digital nutritionists...",
+    "Organizing your week's meals...",
+    "Calibrating the calorie counter...",
+    "Generating your shopping list...",
+    "Categorizing ingredients for you...",
+];
+
 const Loader: React.FC = observer(() => {
     const { pdfParseProgress } = mealPlanStore;
     const isReadingPdf = pdfParseProgress < 100;
+    const [message, setMessage] = useState(readingMessages[0]);
+
+    useEffect(() => {
+        const messages = isReadingPdf ? readingMessages : analyzingMessages;
+        let messageIndex = 0;
+        const interval = setInterval(() => {
+            messageIndex = (messageIndex + 1) % messages.length;
+            setMessage(messages[messageIndex]);
+        }, 2000);
+
+        return () => clearInterval(interval);
+    }, [isReadingPdf]);
+
 
     return (
         <div className="flex flex-col items-center justify-center text-center p-8 max-w-md mx-auto">
@@ -76,8 +119,8 @@ const Loader: React.FC = observer(() => {
             <h2 className="text-xl font-semibold text-gray-700">
                 {isReadingPdf ? 'Reading Your PDF...' : 'Analyzing Your Plan'}
             </h2>
-            <p className="text-gray-500 mb-4">
-                {isReadingPdf ? 'Extracting text from the document.' : 'Our AI is structuring your diet... this may take a moment.'}
+            <p className="text-gray-500 mb-4 h-10 flex items-center justify-center">
+                {message}
             </p>
             <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div
@@ -97,7 +140,7 @@ const ErrorMessage: React.FC<{ message: string }> = ({ message }) => (
     </div>
 );
 
-const ShoppingListView: React.FC<{ items: ShoppingListItem[] }> = ({ items }) => {
+const ShoppingListView: React.FC<{ categories: ShoppingListCategory[] }> = ({ categories }) => {
     const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
 
     const handleCheck = (item: string) => {
@@ -113,23 +156,33 @@ const ShoppingListView: React.FC<{ items: ShoppingListItem[] }> = ({ items }) =>
     return (
         <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-4xl mx-auto">
             <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-4">Shopping List</h2>
-            <ul className="space-y-4 column-count-1 sm:column-count-2 md:column-count-3 gap-x-8">
-                {items.map((item, index) => (
-                    <li key={index} className="flex items-center p-2 rounded-lg hover:bg-violet-50 transition-colors duration-200 break-inside-avoid">
-                        <input
-                            type="checkbox"
-                            id={`item-${index}`}
-                            className="h-5 w-5 rounded border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
-                            onChange={() => handleCheck(item.item)}
-                            checked={checkedItems.has(item.item)}
-                            aria-labelledby={`label-item-${index}`}
-                        />
-                        <label id={`label-item-${index}`} htmlFor={`item-${index}`} className={`ml-3 flex-grow cursor-pointer ${checkedItems.has(item.item) ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                            <span className="font-medium">{item.item}</span>: <span className="text-gray-600">{item.quantity}</span>
-                        </label>
-                    </li>
+            <div className="space-y-6">
+                {categories.map((category, catIndex) => (
+                    <details key={catIndex} className="group" open>
+                        <summary className="font-bold text-xl text-violet-700 cursor-pointer list-none flex items-center">
+                             <span className="transform transition-transform duration-200 group-open:rotate-90">&#9656;</span>
+                             <span className="ml-2">{category.category}</span>
+                        </summary>
+                        <ul className="mt-4 pl-6 border-l-2 border-violet-100 space-y-3">
+                            {category.items.map((item, itemIndex) => (
+                                <li key={itemIndex} className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id={`item-${catIndex}-${itemIndex}`}
+                                        className="h-5 w-5 rounded border-gray-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                                        onChange={() => handleCheck(item.item)}
+                                        checked={checkedItems.has(item.item)}
+                                        aria-labelledby={`label-item-${catIndex}-${itemIndex}`}
+                                    />
+                                    <label id={`label-item-${catIndex}-${itemIndex}`} htmlFor={`item-${catIndex}-${itemIndex}`} className={`ml-3 flex-grow cursor-pointer ${checkedItems.has(item.item) ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                                        <span className="font-medium">{item.item}</span>: <span className="text-gray-600">{item.quantity}</span>
+                                    </label>
+                                </li>
+                             ))}
+                        </ul>
+                    </details>
                 ))}
-            </ul>
+            </div>
         </div>
     );
 };
@@ -187,6 +240,63 @@ const DailyPlanView: React.FC = observer(() => {
     );
 });
 
+const ArchivedPlanItem: React.FC<{ archive: any }> = observer(({ archive }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [name, setName] = useState(archive.name);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const handleSave = () => {
+        mealPlanStore.updateArchivedPlanName(archive.id, name);
+        setIsEditing(false);
+    };
+
+    useEffect(() => {
+        if (isEditing) {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+        }
+    }, [isEditing]);
+    
+    return (
+         <details key={archive.id} className="group bg-gray-50 p-4 rounded-lg transition-colors duration-200 hover:bg-violet-50">
+            <summary className="font-semibold text-lg text-gray-700 cursor-pointer list-none flex justify-between items-center group-open:text-violet-600">
+                <div className="flex items-center gap-2 flex-grow">
+                    <span className="text-violet-500 transform transition-transform duration-200 group-open:rotate-90">&#9656;</span>
+                     {isEditing ? (
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            onBlur={handleSave}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                            className="text-lg font-semibold bg-white border border-violet-300 rounded px-2 py-1"
+                        />
+                    ) : (
+                        <span className="font-bold">{archive.name}</span>
+                    )}
+                    <button onClick={() => setIsEditing(!isEditing)} className="text-gray-400 hover:text-violet-600"><EditIcon /></button>
+                    <span className="text-sm text-gray-500 font-normal ml-2">({archive.date})</span>
+                </div>
+                <button
+                    onClick={(e) => {
+                        e.preventDefault(); 
+                        mealPlanStore.restorePlanFromArchive(archive.id);
+                    }}
+                    className="bg-violet-100 text-violet-700 font-semibold px-3 py-1 rounded-full hover:bg-violet-200 transition-colors text-sm flex items-center flex-shrink-0"
+                    title="Restore this plan"
+                >
+                    <RestoreIcon/>
+                    <span className="ml-2 hidden sm:inline">Restore</span>
+                </button>
+            </summary>
+            <div className="mt-4 border-t pt-4">
+                <MealPlanView plan={archive.plan} />
+            </div>
+        </details>
+    );
+});
+
 const ArchiveView: React.FC = observer(() => {
     const { archivedPlans } = mealPlanStore;
 
@@ -204,19 +314,26 @@ const ArchiveView: React.FC = observer(() => {
             <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-4">Archived Diet Plans</h2>
             <div className="space-y-4">
                 {archivedPlans.slice().reverse().map((archive) => (
-                    <details key={archive.id} className="group bg-gray-50 p-4 rounded-lg transition-colors duration-200 hover:bg-violet-50">
-                        <summary className="font-semibold text-lg text-gray-700 cursor-pointer list-none flex justify-between items-center group-open:text-violet-600">
-                            <span>Diet from {archive.date}</span>
-                            <span className="text-violet-500 transform transition-transform duration-200 group-open:rotate-90">&#9656;</span>
-                        </summary>
-                        <div className="mt-4 border-t pt-4">
-                            <MealPlanView plan={archive.plan} />
-                        </div>
-                    </details>
+                    <ArchivedPlanItem key={archive.id} archive={archive}/>
                 ))}
             </div>
         </div>
     );
+});
+
+const ActivePlanNameEditor: React.FC = observer(() => {
+    const { currentPlanName, setCurrentPlanName } = mealPlanStore;
+    return (
+        <div className="mb-8 text-center">
+            <input 
+                type="text"
+                value={currentPlanName}
+                onChange={(e) => setCurrentPlanName(e.target.value)}
+                className="text-2xl font-bold text-gray-700 text-center bg-transparent border-b-2 border-transparent focus:border-violet-400 outline-none transition-colors duration-300 p-1"
+                aria-label="Edit diet plan name"
+            />
+        </div>
+    )
 });
 
 
@@ -248,6 +365,7 @@ const App: React.FC = observer(() => {
             ];
             return (
                 <>
+                    <ActivePlanNameEditor />
                     <div className="mb-8 flex justify-center flex-wrap gap-2 bg-white p-2 rounded-full shadow-md max-w-md mx-auto">
                         {tabs.map(tab => (
                             <button
@@ -261,7 +379,7 @@ const App: React.FC = observer(() => {
                     </div>
                     {store.activeTab === 'daily' && <DailyPlanView />}
                     {store.activeTab === 'plan' && <MealPlanView plan={store.mealPlan} />}
-                    {store.activeTab === 'list' && <ShoppingListView items={store.shoppingList} />}
+                    {store.activeTab === 'list' && <ShoppingListView categories={store.shoppingList} />}
                     {store.activeTab === 'archive' && <ArchiveView />}
                 </>
             );

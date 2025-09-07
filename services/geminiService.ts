@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { MealPlanData } from '../types';
 
@@ -48,6 +47,19 @@ const shoppingItemSchema = {
   required: ['item', 'quantity']
 };
 
+const shoppingCategorySchema = {
+  type: Type.OBJECT,
+  properties: {
+    category: { type: Type.STRING, description: "Il nome della categoria di cibo (es. 'Frutta', 'Verdura e Ortaggi')." },
+    items: {
+      type: Type.ARRAY,
+      items: shoppingItemSchema,
+      description: "L'elenco degli ingredienti per questa categoria."
+    }
+  },
+  required: ['category', 'items']
+};
+
 const finalSchema = {
   type: Type.OBJECT,
   properties: {
@@ -58,8 +70,8 @@ const finalSchema = {
     },
     shoppingList: {
       type: Type.ARRAY,
-      items: shoppingItemSchema,
-      description: "La lista della spesa completa e aggregata per tutti gli ingredienti della settimana."
+      items: shoppingCategorySchema,
+      description: "La lista della spesa completa, con gli ingredienti raggruppati per categoria."
     }
   },
   required: ['weeklyPlan', 'shoppingList']
@@ -67,11 +79,11 @@ const finalSchema = {
 
 export async function parsePdfToMealPlan(text: string): Promise<MealPlanData | null> {
   const prompt = `
-Sei un assistente nutrizionale altamente specializzato. Il tuo compito è analizzare il testo di un piano alimentare settimanale fornito in lingua italiana ed estrarre due set di informazioni: un piano giornaliero dettagliato e una lista della spesa aggregata.
+Sei un assistente nutrizionale altamente specializzato. Il tuo compito è analizzare il testo di un piano alimentare settimanale fornito in lingua italiana ed estrarre due set di informazioni: un piano giornaliero dettagliato e una lista della spesa aggregata e categorizzata.
 
 1.  **Piano Settimanale**: Analizza il testo per ogni giorno, da LUNEDI a DOMENICA. Per ogni giorno, identifica tutti i pasti previsti: COLAZIONE, SPUNTINO, PRANZO, MERENDA, e CENA. Estrai il titolo del piatto (se specificato) e l'elenco completo degli ingredienti con le loro quantità.
 
-2.  **Lista della Spesa**: Dopo aver analizzato l'intera settimana, crea una lista della spesa completa. Identifica ogni singolo ingrediente, somma le quantità totali necessarie per la settimana e raggruppa gli ingredienti identici in un'unica voce. Sii molto preciso nel riportare le quantità e le unità di misura (es. '150g di riso', '3 cucchiai di olio', '2 banane').
+2.  **Lista della Spesa Categorizzata**: Dopo aver analizzato l'intera settimana, crea una lista della spesa completa. Identifica ogni singolo ingrediente e somma le quantità totali necessarie per la settimana. Poi, raggruppa gli ingredienti in categorie logiche. Usa le seguenti categorie se pertinenti: 'Frutta', 'Verdura e Ortaggi', 'Cereali e Derivati', 'Legumi', 'Proteine (Tofu, Seitan, etc.)', 'Latticini e Alternative', 'Frutta Secca e Semi', 'Condimenti, Spezie e Oli', 'Altro'. Sii molto preciso nel riportare le quantità e le unità di misura (es. '150g di riso', '3 cucchiai di olio', '2 banane').
 
 Fornisci l'output **esclusivamente** in formato JSON, seguendo lo schema specificato. Non includere alcun testo, spiegazione, o markdown (come \`\`\`json) al di fuori dell'oggetto JSON.
 

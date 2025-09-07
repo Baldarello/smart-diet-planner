@@ -1,5 +1,5 @@
 import { makeAutoObservable, runInAction } from 'mobx';
-import { MealPlanData, DayPlan, ShoppingListItem, ArchivedPlan } from '../types';
+import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan } from '../types';
 import { parsePdfToMealPlan } from '../services/geminiService';
 
 export enum AppStatus {
@@ -13,21 +13,35 @@ export class MealPlanStore {
   status: AppStatus = AppStatus.INITIAL;
   error: string | null = null;
   mealPlan: DayPlan[] = [];
-  shoppingList: ShoppingListItem[] = [];
+  shoppingList: ShoppingListCategory[] = [];
   archivedPlans: ArchivedPlan[] = [];
   activeTab: 'plan' | 'list' | 'daily' | 'archive' = 'plan';
   pdfParseProgress = 0;
+  currentPlanName = 'My Diet Plan';
 
   constructor() {
     makeAutoObservable(this);
     this.loadFromLocalStorage();
   }
 
-  setActiveTab(tab: 'plan' | 'list' | 'daily' | 'archive') {
+  setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive') => {
     this.activeTab = tab;
   }
+  
+  setCurrentPlanName = (name: string) => {
+    this.currentPlanName = name;
+    this.saveToLocalStorage();
+  }
+  
+  updateArchivedPlanName = (planId: string, newName: string) => {
+    const planIndex = this.archivedPlans.findIndex(p => p.id === planId);
+    if (planIndex > -1) {
+      this.archivedPlans[planIndex].name = newName;
+      this.saveToLocalStorage();
+    }
+  }
 
-  loadFromLocalStorage() {
+  loadFromLocalStorage = () => {
     try {
       const savedData = localStorage.getItem('dietPlanData');
       if (savedData) {
@@ -35,6 +49,7 @@ export class MealPlanStore {
         this.mealPlan = data.mealPlan || [];
         this.shoppingList = data.shoppingList || [];
         this.archivedPlans = data.archivedPlans || [];
+        this.currentPlanName = data.currentPlanName || 'My Diet Plan';
         if (this.mealPlan.length > 0) {
           this.status = AppStatus.SUCCESS;
         }
@@ -44,15 +59,17 @@ export class MealPlanStore {
       this.mealPlan = [];
       this.shoppingList = [];
       this.archivedPlans = [];
+      this.currentPlanName = 'My Diet Plan';
     }
   }
 
-  saveToLocalStorage() {
+  saveToLocalStorage = () => {
     try {
       const dataToSave = {
         mealPlan: this.mealPlan,
         shoppingList: this.shoppingList,
         archivedPlans: this.archivedPlans,
+        currentPlanName: this.currentPlanName,
       };
       localStorage.setItem('dietPlanData', JSON.stringify(dataToSave));
     } catch (error) {
@@ -60,13 +77,15 @@ export class MealPlanStore {
     }
   }
 
-  archiveCurrentPlan() {
+  archiveCurrentPlan = () => {
     if (this.mealPlan.length === 0) return;
 
     const newArchive: ArchivedPlan = {
       id: Date.now().toString(),
+      name: this.currentPlanName,
       date: new Date().toLocaleDateString('it-IT'),
       plan: this.mealPlan,
+      shoppingList: this.shoppingList,
     };
 
     runInAction(() => {
@@ -76,6 +95,40 @@ export class MealPlanStore {
         this.status = AppStatus.INITIAL;
         this.activeTab = 'plan';
         this.pdfParseProgress = 0;
+        this.currentPlanName = 'My Diet Plan';
+        this.saveToLocalStorage();
+    });
+  }
+  
+  restorePlanFromArchive = (planId: string) => {
+    const planToRestore = this.archivedPlans.find(p => p.id === planId);
+    if (!planToRestore) return;
+
+    runInAction(() => {
+        // First, archive the current plan if it exists
+        if (this.mealPlan.length > 0) {
+            const currentPlanArchive: ArchivedPlan = {
+                id: Date.now().toString(),
+                name: this.currentPlanName,
+                date: new Date().toLocaleDateString('it-IT'),
+                plan: this.mealPlan,
+                shoppingList: this.shoppingList,
+            };
+            this.archivedPlans.push(currentPlanArchive);
+        }
+
+        // Restore the selected plan
+        this.mealPlan = planToRestore.plan;
+        this.shoppingList = planToRestore.shoppingList;
+        this.currentPlanName = planToRestore.name;
+
+        // Remove the restored plan from the archive
+        this.archivedPlans = this.archivedPlans.filter(p => p.id !== planId);
+
+        // Update UI state
+        this.status = AppStatus.SUCCESS;
+        this.activeTab = 'daily';
+        
         this.saveToLocalStorage();
     });
   }
@@ -95,7 +148,7 @@ export class MealPlanStore {
     return this.mealPlan.find(d => d.day.toUpperCase() === todayName);
   }
 
-  async processPdf(file: File) {
+  processPdf = async (file: File) => {
     this.status = AppStatus.LOADING;
     this.error = null;
     this.pdfParseProgress = 0;
@@ -139,6 +192,7 @@ export class MealPlanStore {
               this.shoppingList = result.shoppingList;
               this.status = AppStatus.SUCCESS;
               this.activeTab = 'daily';
+              this.currentPlanName = `Diet Plan - ${new Date().toLocaleDateString('it-IT')}`;
               this.saveToLocalStorage();
             } else {
               throw new Error("Failed to parse meal plan. The AI couldn't structure the data correctly. Please try a different PDF.");
