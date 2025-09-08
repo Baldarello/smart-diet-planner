@@ -5,7 +5,7 @@ import { SendToShoppingListIcon } from './Icons';
 import { t } from '../i18n';
 
 const PantryView: React.FC = observer(() => {
-    const { pantry, updatePantryItemQuantity, movePantryItemToShoppingList, hasUnsavedChanges, recalculateShoppingList, recalculating } = mealPlanStore;
+    const { pantry, updatePantryItemQuantity, movePantryItemToShoppingList, hasUnsavedChanges, recalculateShoppingList, recalculating, onlineMode } = mealPlanStore;
 
     const handleQuantityChange = (itemName: string, newQuantity: string) => {
         updatePantryItemQuantity(itemName, newQuantity);
@@ -13,7 +13,7 @@ const PantryView: React.FC = observer(() => {
 
     return (
         <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-4xl mx-auto">
-            {hasUnsavedChanges && (
+            {hasUnsavedChanges && onlineMode && (
                 <div className="bg-yellow-100 dark:bg-yellow-900/30 border-l-4 border-yellow-500 text-yellow-800 dark:text-yellow-200 p-4 rounded-md mb-6 flex justify-between items-center">
                     <div>
                         <p className="font-bold">{t('shoppingListStaleTitle')}</p>

@@ -57,53 +57,73 @@ function categorizeIngredient(name: string): string {
 }
 
 /**
+ * A simple heuristic function to convert common Italian plural nouns to singular.
+ * This helps in aggregating ingredients like "mela" and "mele".
+ * @param word The word to singularize.
+ * @returns The singular form of the word.
+ */
+function singularize(word: string): string {
+    const s = word.toLowerCase().trim();
+
+    if (['g', 'kg', 'ml', 'l'].includes(s)) {
+        return s;
+    }
+    
+    const exceptions: { [key: string]: string } = {
+        'uova': 'uovo',
+        'cucchiai': 'cucchiaio',
+        'bicchieri': 'bicchiere',
+        'vasetti': 'vasetto',
+        'fette': 'fetta',
+        'gallette': 'galletta',
+        'biscottate': 'biscottata',
+        'polpette': 'polpetta',
+        'ceci': 'ceci',
+        'kiwi': 'kiwi',
+    };
+    if (exceptions[s]) {
+        return exceptions[s];
+    }
+    
+    const singularEWords = ['pesce', 'carne', 'latte', 'pane', 'the', 'zenzero'];
+    if (singularEWords.includes(s)) {
+        return s;
+    }
+
+    if (s.endsWith('i') && s.length > 3) {
+        return s.slice(0, -1) + 'o'; // e.g., pomodori -> pomodoro
+    }
+    if (s.endsWith('e') && s.length > 3) {
+        return s.slice(0, -1) + 'a'; // e.g., mele -> mela
+    }
+    
+    return s;
+}
+
+
+/**
  * Generates a categorized shopping list by aggregating all ingredients from a weekly plan.
+ * Instead of summing quantities, it now concatenates the original full descriptions to avoid parsing errors
+ * and show the user the exact text from their plan.
  * @param plan The weekly meal plan.
  * @returns A categorized shopping list.
  */
 export function generateShoppingList(plan: DayPlan[]): ShoppingListCategory[] {
-    const aggregatedMap: Map<string, { quantity: ParsedQuantity, category: string }> = new Map();
+    const aggregatedMap: Map<string, { descriptions: string[], category: string, originalItemName: string }> = new Map();
 
     plan.forEach(day => {
         day.meals.forEach(meal => {
             meal.items.forEach(item => {
-                const quantity = parseQuantity(item.fullDescription);
-                const ingredientName = item.ingredientName;
-                const existing = aggregatedMap.get(ingredientName);
+                const singularName = singularize(item.ingredientName);
+                const existing = aggregatedMap.get(singularName);
 
-                // If quantity is not parsable (e.g., a range "1-2" or text "q.b."), treat it as a string.
-                if (!quantity) {
-                    if (existing) {
-                        const existingDesc = existing.quantity.value === 0 ? existing.quantity.unit : formatQuantity(existing.quantity);
-                        existing.quantity = { value: 0, unit: `${existingDesc}, ${item.fullDescription}` };
-                    } else {
-                        aggregatedMap.set(ingredientName, {
-                            quantity: { value: 0, unit: item.fullDescription },
-                            category: categorizeIngredient(ingredientName)
-                        });
-                    }
-                    return; // Continue to next item
-                }
-
-                // If quantity is zero, ignore it.
-                if (quantity.value <= 0) return;
-
-                // Standard logic for numeric quantities
                 if (existing) {
-                    // If the existing entry is numeric and units match, sum the values.
-                    if (existing.quantity.value !== 0 && existing.quantity.unit === quantity.unit) {
-                        existing.quantity.value += quantity.value;
-                    } else {
-                        // Otherwise, concatenate as a string.
-                        const existingDesc = existing.quantity.value === 0 ? existing.quantity.unit : formatQuantity(existing.quantity);
-                        const newDesc = `${existingDesc}, ${formatQuantity(quantity)}`;
-                        existing.quantity = { value: 0, unit: newDesc };
-                    }
+                    existing.descriptions.push(item.fullDescription);
                 } else {
-                    // Add the new numeric item.
-                    aggregatedMap.set(ingredientName, {
-                        quantity: quantity,
-                        category: categorizeIngredient(ingredientName)
+                    aggregatedMap.set(singularName, {
+                        descriptions: [item.fullDescription],
+                        category: categorizeIngredient(item.ingredientName),
+                        originalItemName: item.ingredientName
                     });
                 }
             });
@@ -111,13 +131,16 @@ export function generateShoppingList(plan: DayPlan[]): ShoppingListCategory[] {
     });
 
     const categoryMap: Map<string, ShoppingListItem[]> = new Map();
-    aggregatedMap.forEach((value, key) => {
+    aggregatedMap.forEach((value) => {
         if (!categoryMap.has(value.category)) {
             categoryMap.set(value.category, []);
         }
+        
+        const quantityStr = value.descriptions.join(', ');
+
         categoryMap.get(value.category)!.push({
-            item: key,
-            quantity: value.quantity.value === 0 ? value.quantity.unit : formatQuantity(value.quantity)
+            item: value.originalItemName.charAt(0).toUpperCase() + value.originalItemName.slice(1),
+            quantity: quantityStr
         });
     });
 

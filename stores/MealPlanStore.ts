@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo, HydrationSnackbarInfo } from '../types';
-import { parsePdfText, generateShoppingList, extractIngredientInfo } from '../services/offlineParser';
+import { parsePdfText, generateShoppingList as generateShoppingListOffline, extractIngredientInfo } from '../services/offlineParser';
 import { parseMealStructure, getNutritionForMeal, generateShoppingListFromPlan, updatePlanDetails, isQuotaError } from '../services/geminiService';
 import { parseQuantity, formatQuantity } from '../utils/quantityParser';
 
@@ -136,62 +136,53 @@ export class MealPlanStore {
           item.fullDescription = newDescription;
           const { ingredientName } = extractIngredientInfo(newDescription);
           item.ingredientName = ingredientName;
-          this.hasUnsavedChanges = true;
+          
+          // Online mode offers an AI-powered recalculation, which is now optional.
+          // Offline, changes are handled by `toggleMealItem` directly.
+          if (this.onlineMode) {
+            this.hasUnsavedChanges = true;
+          }
+
           this.saveToLocalStorage();
       }
   }
 
   recalculateShoppingList = async () => {
-    if (!this.hasUnsavedChanges) return;
+    if (!this.hasUnsavedChanges || !this.onlineMode) return;
 
     runInAction(() => { this.recalculating = true; });
 
     try {
-        if (this.onlineMode) {
-            try {
-                // Step 1: Update plan details (nutrition, corrected ingredient names, times)
-                const updatedPlan = await updatePlanDetails(this.mealPlan);
-                if (!updatedPlan) throw new Error("Failed to get updated plan from Gemini.");
+        // Step 1: Update plan details (nutrition, corrected ingredient names, times)
+        const updatedPlan = await updatePlanDetails(this.mealPlan);
+        if (!updatedPlan) throw new Error("Failed to get updated plan from Gemini.");
 
-                // Step 2: Generate a new shopping list from the updated plan
-                const newShoppingList = await generateShoppingListFromPlan(updatedPlan);
-                if (!newShoppingList) throw new Error("Failed to generate shopping list from updated plan.");
+        // Step 2: Generate a new shopping list from the updated plan
+        const newShoppingList = await generateShoppingListFromPlan(updatedPlan);
+        if (!newShoppingList) throw new Error("Failed to generate shopping list from updated plan.");
 
-                runInAction(() => {
-                    this.mealPlan = updatedPlan.map((day: DayPlan) => ({
-                        ...day,
-                        meals: day.meals.map((meal: Meal) => ({
-                            ...meal,
-                            done: false,
-                            items: meal.items.map(item => ({ ...item, used: false }))
-                        }))
-                    }));
-                    this.shoppingList = newShoppingList;
-                    this.pantry = [];
-                });
-            } catch (error) {
-                if (isQuotaError(error)) {
-                    console.warn("Gemini quota exceeded during recalculation. Falling back to offline mode.");
-                    runInAction(() => { this.onlineMode = false; });
-                    this.saveSessionState();
-                    // Perform offline recalculation as fallback
-                    const newShoppingList = generateShoppingList(this.mealPlan);
-                    runInAction(() => { this.shoppingList = newShoppingList; this.pantry = []; });
-                } else {
-                    throw error; // Rethrow other errors
-                }
-            }
-        } else {
-            // Offline mode calculation
-            const newShoppingList = generateShoppingList(this.mealPlan);
-            runInAction(() => {
-                this.shoppingList = newShoppingList;
-                this.pantry = [];
-            });
-        }
+        runInAction(() => {
+            this.mealPlan = updatedPlan.map((day: DayPlan) => ({
+                ...day,
+                meals: day.meals.map((meal: Meal) => ({
+                    ...meal,
+                    done: false,
+                    items: meal.items.map(item => ({ ...item, used: false }))
+                }))
+            }));
+            this.shoppingList = newShoppingList;
+            this.pantry = []; // Reset pantry as the list is brand new
+        });
+
     } catch (error: any) {
-        console.error("Failed to recalculate shopping list:", error);
-        runInAction(() => { this.error = error.message; });
+        if (isQuotaError(error)) {
+            console.warn("Gemini quota exceeded during recalculation. Switching to offline mode.");
+            runInAction(() => { this.onlineMode = false; });
+            this.saveSessionState();
+        } else {
+             console.error("Failed to recalculate shopping list:", error);
+            runInAction(() => { this.error = error.message; });
+        }
     } finally {
         runInAction(() => {
             this.hasUnsavedChanges = false;
@@ -400,20 +391,19 @@ export class MealPlanStore {
         const mealItem = this.mealPlan[dayIndex]?.meals[mealIndex]?.items[itemIndex];
         if (!mealItem) return;
 
-        const itemQuantityToToggle = parseQuantity(mealItem.fullDescription);
-        if (!itemQuantityToToggle || itemQuantityToToggle.value <= 0) {
-            mealItem.used = !mealItem.used;
-            this.saveToLocalStorage();
-            return;
-        }
-
-        const ingredientName = mealItem.ingredientName;
         mealItem.used = !mealItem.used;
 
+        const itemQuantityToToggle = parseQuantity(mealItem.fullDescription);
+        if (!itemQuantityToToggle || itemQuantityToToggle.value <= 0) {
+            this.saveToLocalStorage();
+            return; // It's a non-quantifiable item, just toggle its state
+        }
+        
+        const ingredientName = mealItem.ingredientName;
         const pantryItem = this.pantry.find(p => p.item.toLowerCase() === ingredientName.toLowerCase());
-        const originalCategory = pantryItem?.originalCategory || 'Altro';
 
         if (mealItem.used) {
+            // Item is being marked as "used" or "consumed" -> DECREASE from pantry
             if (pantryItem) {
                 const pantryQuantity = parseQuantity(pantryItem.quantity);
                 if (pantryQuantity && pantryQuantity.unit === itemQuantityToToggle.unit) {
@@ -421,61 +411,39 @@ export class MealPlanStore {
                     if (pantryQuantity.value > 0.01) {
                         pantryItem.quantity = formatQuantity(pantryQuantity);
                     } else {
+                        // Remove from pantry if quantity is zero or less
                         this.pantry = this.pantry.filter(p => p.item.toLowerCase() !== ingredientName.toLowerCase());
                     }
                 }
             }
-
-            let targetCategory = this.shoppingList.find(c => c.category === originalCategory);
-            if (!targetCategory) {
-                targetCategory = { category: originalCategory, items: [] };
-                this.shoppingList.push(targetCategory);
-            }
-
-            const shoppingItem = targetCategory.items.find(i => i.item.toLowerCase() === ingredientName.toLowerCase());
-            if (shoppingItem) {
-                const shoppingQuantity = parseQuantity(shoppingItem.quantity);
-                if (shoppingQuantity && shoppingQuantity.unit === itemQuantityToToggle.unit) {
-                    shoppingQuantity.value += itemQuantityToToggle.value;
-                    shoppingItem.quantity = formatQuantity(shoppingQuantity);
-                } else {
-                    shoppingItem.quantity += `, ${formatQuantity(itemQuantityToToggle)}`;
+        } else {
+            // Item is being marked as "not used" -> INCREASE in pantry
+            if (pantryItem) {
+                const pantryQuantity = parseQuantity(pantryItem.quantity);
+                if (pantryQuantity && pantryQuantity.unit === itemQuantityToToggle.unit) {
+                    pantryQuantity.value += itemQuantityToToggle.value;
+                    pantryItem.quantity = formatQuantity(pantryQuantity);
                 }
             } else {
-                targetCategory.items.push({ item: ingredientName, quantity: formatQuantity(itemQuantityToToggle) });
-            }
-        } else {
-            let categoryRef = this.shoppingList.find(c => c.items.some(i => i.item.toLowerCase() === ingredientName.toLowerCase()));
-            const shoppingItem = categoryRef?.items.find(i => i.item.toLowerCase() === ingredientName.toLowerCase());
-
-            if (shoppingItem && categoryRef) {
-                const shoppingQuantity = parseQuantity(shoppingItem.quantity);
-                if (shoppingQuantity && shoppingQuantity.unit === itemQuantityToToggle.unit) {
-                    shoppingQuantity.value -= itemQuantityToToggle.value;
-                    if (shoppingQuantity.value > 0.01) {
-                        shoppingItem.quantity = formatQuantity(shoppingQuantity);
-                    } else {
-                        categoryRef.items = categoryRef.items.filter(i => i.item.toLowerCase() !== ingredientName.toLowerCase());
-                        if (categoryRef.items.length === 0) {
-                            this.shoppingList = this.shoppingList.filter(c => c.category !== categoryRef!.category);
-                        }
+                // If it wasn't in the pantry, add it back.
+                // We need to find its original category from the shopping list if possible.
+                let originalCategory = 'Altro';
+                for (const cat of this.shoppingList) {
+                    if (cat.items.some(i => i.item.toLowerCase() === ingredientName.toLowerCase())) {
+                        originalCategory = cat.category;
+                        break;
                     }
                 }
-
-                if (pantryItem) {
-                    const pantryQuantity = parseQuantity(pantryItem.quantity);
-                    if (pantryQuantity && pantryQuantity.unit === itemQuantityToToggle.unit) {
-                        pantryQuantity.value += itemQuantityToToggle.value;
-                        pantryItem.quantity = formatQuantity(pantryQuantity);
-                    }
-                } else {
-                    this.pantry.push({ item: ingredientName, quantity: formatQuantity(itemQuantityToToggle), originalCategory: categoryRef.category });
-                }
+                this.pantry.push({
+                    item: ingredientName,
+                    quantity: formatQuantity(itemQuantityToToggle),
+                    originalCategory: originalCategory
+                });
             }
         }
         this.saveToLocalStorage();
     });
-  }
+}
 
   toggleMealDone = (dayIndex: number, mealIndex: number) => {
     const meal = this.mealPlan[dayIndex]?.meals[mealIndex];
@@ -618,6 +586,8 @@ export class MealPlanStore {
             runInAction(() => this.pdfParseProgress = 31);
 
             let mealStructure: DayPlan[] | null = null;
+            let shoppingList: ShoppingListCategory[] = [];
+
             if (this.onlineMode) {
                  try {
                      mealStructure = await parseMealStructure(fullText);
@@ -626,11 +596,15 @@ export class MealPlanStore {
                         console.warn("Gemini quota exceeded during parsing. Falling back to offline parser.");
                         runInAction(() => { this.onlineMode = false; });
                         this.saveSessionState();
-                        mealStructure = parsePdfText(pageTexts).weeklyPlan;
+                        const offlineData = parsePdfText(pageTexts);
+                        mealStructure = offlineData.weeklyPlan;
+                        shoppingList = offlineData.shoppingList;
                      } else { throw error; }
                  }
             } else {
-                mealStructure = parsePdfText(pageTexts).weeklyPlan;
+                const offlineData = parsePdfText(pageTexts);
+                mealStructure = offlineData.weeklyPlan;
+                shoppingList = offlineData.shoppingList;
             }
 
             if (!mealStructure || mealStructure.length === 0) {
@@ -640,16 +614,24 @@ export class MealPlanStore {
             runInAction(() => {
                 this.pdfParseProgress = 50;
                 this.mealPlan = mealStructure;
+                this.shoppingList = shoppingList; // Set the shopping list if generated offline
                 this.status = AppStatus.SUCCESS;
                 this.activeTab = 'daily';
                 this.hasUnsavedChanges = false;
                 this.sentNotifications.clear();
                 this.lastActiveDate = new Date().toLocaleDateString();
                 this.waterIntakeMl = 0;
+                this.pantry = []; // Reset pantry
                 this.currentPlanName = `Diet Plan - ${new Date().toLocaleDateString('it-IT')}`;
             });
-
-            this._enrichPlanDataInBackground();
+            
+            // If we are online, the shopping list wasn't generated yet.
+            // _enrichPlanDataInBackground will handle it.
+            if(this.onlineMode) {
+                this._enrichPlanDataInBackground();
+            } else {
+                this.saveToLocalStorage(); // Save offline-generated data
+            }
 
         } catch (err: any) {
             runInAction(() => {
