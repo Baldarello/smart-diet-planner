@@ -25,6 +25,11 @@ export class MealPlanStore {
   hasUnsavedChanges = false;
   isRecalculating = false;
 
+  // Hydration and Notification State
+  hydrationGoalLiters = 3;
+  sentNotifications = new Map<string, boolean>();
+  lastActiveDate: string = new Date().toLocaleDateString();
+
   constructor() {
     makeAutoObservable(this);
     this.loadFromLocalStorage();
@@ -38,6 +43,34 @@ export class MealPlanStore {
   setLocale = (locale: Locale) => {
     this.locale = locale;
     this.saveToLocalStorage();
+  }
+
+  setHydrationGoal = (liters: number) => {
+    if (liters > 0 && liters <= 10) {
+      this.hydrationGoalLiters = liters;
+      this.saveToLocalStorage();
+    }
+  }
+
+  updateMealTime = (dayIndex: number, mealIndex: number, newTime: string) => {
+    const meal = this.mealPlan[dayIndex]?.meals[mealIndex];
+    if (meal) {
+      meal.time = newTime;
+      this.saveToLocalStorage();
+    }
+  }
+
+  markNotificationSent = (key: string) => {
+    this.sentNotifications.set(key, true);
+  }
+
+  resetSentNotificationsIfNeeded = () => {
+    const today = new Date().toLocaleDateString();
+    if (this.lastActiveDate !== today) {
+      this.sentNotifications.clear();
+      this.lastActiveDate = today;
+      this.saveToLocalStorage();
+    }
   }
 
   setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry') => {
@@ -72,12 +105,12 @@ export class MealPlanStore {
     this.isRecalculating = true;
     this.error = null;
 
-    const mealProgress = new Map<string, boolean>(); // key: `${dayIndex}-${mealIndex}` -> done
-    const itemProgress = new Map<string, boolean>(); // key: `${dayIndex}-${mealIndex}-${itemIndex}` -> used
+    const mealProgress = new Map<string, { done: boolean, time?: string }>();
+    const itemProgress = new Map<string, boolean>(); 
 
     this.mealPlan.forEach((day, dayIndex) => {
         day.meals.forEach((meal, mealIndex) => {
-            mealProgress.set(`${dayIndex}-${mealIndex}`, meal.done);
+            mealProgress.set(`${dayIndex}-${mealIndex}`, { done: meal.done, time: meal.time });
             meal.items.forEach((item, itemIndex) => {
                 itemProgress.set(`${dayIndex}-${mealIndex}-${itemIndex}`, item.used);
             });
@@ -92,14 +125,18 @@ export class MealPlanStore {
 
         const finalPlan = newData.weeklyPlan.map((day, dayIndex) => ({
             ...day,
-            meals: day.meals.map((meal, mealIndex) => ({
-                ...meal,
-                done: mealProgress.get(`${dayIndex}-${mealIndex}`) ?? false,
-                items: meal.items.map((item, itemIndex) => ({
-                    ...item,
-                    used: itemProgress.get(`${dayIndex}-${mealIndex}-${itemIndex}`) ?? false,
-                })),
-            })),
+            meals: day.meals.map((meal, mealIndex) => {
+                const progress = mealProgress.get(`${dayIndex}-${mealIndex}`);
+                return {
+                    ...meal,
+                    done: progress?.done ?? false,
+                    time: meal.time || progress?.time, // Keep AI time, but fall back to old time
+                    items: meal.items.map((item, itemIndex) => ({
+                        ...item,
+                        used: itemProgress.get(`${dayIndex}-${mealIndex}-${itemIndex}`) ?? false,
+                    })),
+                };
+            }),
         }));
 
         runInAction(() => {
@@ -144,6 +181,11 @@ export class MealPlanStore {
         this.theme = data.theme || 'light';
         this.locale = data.locale || 'it';
         this.hasUnsavedChanges = data.hasUnsavedChanges || false;
+        this.hydrationGoalLiters = data.hydrationGoalLiters || 3;
+        this.lastActiveDate = data.lastActiveDate || new Date().toLocaleDateString();
+        // MobX maps are not directly serializable, so we don't save `sentNotifications`. It resets daily.
+        
+        this.resetSentNotificationsIfNeeded();
 
         if (this.mealPlan.length > 0) {
           this.status = AppStatus.SUCCESS;
@@ -151,12 +193,8 @@ export class MealPlanStore {
       }
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
-      this.mealPlan = [];
-      this.shoppingList = [];
-      this.pantry = [];
-      this.archivedPlans = [];
-      this.currentPlanName = 'My Diet Plan';
-      this.hasUnsavedChanges = false;
+      // Reset to defaults on failure
+      Object.assign(this, new MealPlanStore());
     }
   }
 
@@ -171,6 +209,8 @@ export class MealPlanStore {
         theme: this.theme,
         locale: this.locale,
         hasUnsavedChanges: this.hasUnsavedChanges,
+        hydrationGoalLiters: this.hydrationGoalLiters,
+        lastActiveDate: this.lastActiveDate,
       };
       localStorage.setItem('dietPlanData', JSON.stringify(dataToSave));
     } catch (error) {
@@ -199,6 +239,7 @@ export class MealPlanStore {
         this.pdfParseProgress = 0;
         this.currentPlanName = 'My Diet Plan';
         this.hasUnsavedChanges = false;
+        this.sentNotifications.clear();
         this.saveToLocalStorage();
     });
   }
@@ -232,6 +273,7 @@ export class MealPlanStore {
         this.shoppingList = planToRestore.shoppingList;
         this.currentPlanName = planToRestore.name;
         this.pantry = []; // Pantry is reset on restore
+        this.sentNotifications.clear();
 
         this.archivedPlans = this.archivedPlans.filter(p => p.id !== planId);
         
@@ -323,10 +365,10 @@ export class MealPlanStore {
         const ingredientName = mealItem.ingredientName;
         mealItem.used = !mealItem.used;
 
-        if (mealItem.used) {
-            const pantryItem = this.pantry.find(p => p.item.toLowerCase() === ingredientName.toLowerCase());
-            const originalCategory = pantryItem?.originalCategory || 'Altro';
+        const pantryItem = this.pantry.find(p => p.item.toLowerCase() === ingredientName.toLowerCase());
+        const originalCategory = pantryItem?.originalCategory || 'Altro';
 
+        if (mealItem.used) {
             if (pantryItem) {
                 const pantryQuantity = parseQuantity(pantryItem.quantity);
                 if (pantryQuantity && pantryQuantity.unit === itemQuantityToToggle.unit) {
@@ -336,8 +378,6 @@ export class MealPlanStore {
                     } else {
                         this.pantry = this.pantry.filter(p => p.item.toLowerCase() !== ingredientName.toLowerCase());
                     }
-                } else {
-                    this.pantry = this.pantry.filter(p => p.item.toLowerCase() !== ingredientName.toLowerCase());
                 }
             }
 
@@ -357,68 +397,40 @@ export class MealPlanStore {
                     shoppingItem.quantity += `, ${formatQuantity(itemQuantityToToggle)}`;
                 }
             } else {
-                targetCategory.items.push({
-                    item: ingredientName,
-                    quantity: formatQuantity(itemQuantityToToggle),
-                });
+                targetCategory.items.push({ item: ingredientName, quantity: formatQuantity(itemQuantityToToggle) });
             }
         } else {
-            let categoryName = 'Altro';
-            let itemWasInShoppingList = false;
-            let categoryRef: ShoppingListCategory | undefined;
+            let categoryRef = this.shoppingList.find(c => c.items.some(i => i.item.toLowerCase() === ingredientName.toLowerCase()));
+            const shoppingItem = categoryRef?.items.find(i => i.item.toLowerCase() === ingredientName.toLowerCase());
 
-            for(const cat of this.shoppingList) {
-                const item = cat.items.find(it => it.item.toLowerCase() === ingredientName.toLowerCase());
-                if (item) {
-                    categoryRef = cat;
-                    break;
-                }
-            }
-            if (categoryRef) categoryName = categoryRef.category;
-
-            const shoppingItem = categoryRef?.items.find(it => it.item.toLowerCase() === ingredientName.toLowerCase());
-
-            if (shoppingItem) {
-                itemWasInShoppingList = true;
+            if (shoppingItem && categoryRef) {
                 const shoppingQuantity = parseQuantity(shoppingItem.quantity);
-
                 if (shoppingQuantity && shoppingQuantity.unit === itemQuantityToToggle.unit) {
                     shoppingQuantity.value -= itemQuantityToToggle.value;
                     if (shoppingQuantity.value > 0.01) {
                         shoppingItem.quantity = formatQuantity(shoppingQuantity);
                     } else {
-                        categoryRef!.items = categoryRef!.items.filter(it => it.item.toLowerCase() !== ingredientName.toLowerCase());
-                        if (categoryRef!.items.length === 0) {
+                        categoryRef.items = categoryRef.items.filter(i => i.item.toLowerCase() !== ingredientName.toLowerCase());
+                        if (categoryRef.items.length === 0) {
                             this.shoppingList = this.shoppingList.filter(c => c.category !== categoryRef!.category);
                         }
                     }
                 }
-            }
 
-
-            if (itemWasInShoppingList) {
-                const pantryItem = this.pantry.find(p => p.item.toLowerCase() === ingredientName.toLowerCase());
                 if (pantryItem) {
                     const pantryQuantity = parseQuantity(pantryItem.quantity);
                     if (pantryQuantity && pantryQuantity.unit === itemQuantityToToggle.unit) {
                         pantryQuantity.value += itemQuantityToToggle.value;
                         pantryItem.quantity = formatQuantity(pantryQuantity);
-                    } else {
-                        pantryItem.quantity += `, ${formatQuantity(itemQuantityToToggle)}`;
                     }
                 } else {
-                    this.pantry.push({
-                        item: ingredientName,
-                        quantity: formatQuantity(itemQuantityToToggle),
-                        originalCategory: categoryName,
-                    });
+                    this.pantry.push({ item: ingredientName, quantity: formatQuantity(itemQuantityToToggle), originalCategory: categoryRef.category });
                 }
             }
         }
         this.saveToLocalStorage();
     });
   }
-
 
   toggleMealDone = (dayIndex: number, mealIndex: number) => {
     const meal = this.mealPlan[dayIndex]?.meals[mealIndex];
@@ -429,10 +441,7 @@ export class MealPlanStore {
   }
 
   get dailyPlan(): DayPlan | undefined {
-    const dayMap: { [key: number]: string } = {
-      0: 'DOMENICA', 1: 'LUNEDI', 2: 'MARTEDI', 3: 'MERCOLEDI',
-      4: 'GIOVEDI', 5: 'VENERDI', 6: 'SABATO',
-    };
+    const dayMap: { [key: number]: string } = { 0: 'DOMENICA', 1: 'LUNEDI', 2: 'MARTEDI', 3: 'MERCOLEDI', 4: 'GIOVEDI', 5: 'VENERDI', 6: 'SABATO' };
     const todayIndex = new Date().getDay();
     const todayName = dayMap[todayIndex];
     return this.mealPlan.find(d => d.day.toUpperCase() === todayName);
@@ -469,16 +478,11 @@ export class MealPlanStore {
           }
 
           const fragments = await Promise.all(
-            // FIX: The spread operator `...text` cannot be used on a string within an object literal.
-            // The raw text from the PDF page is now correctly wrapped in a valid DayPlan structure
-            // to be sent to the AI for parsing. The text is placed in `fullDescription` as the
-            // existing prompt for `regeneratePlanData` is geared towards processing that field.
             pageTexts.map(text => regeneratePlanData([{ day: 'Unknown', meals: [{ name: 'PDF Page Content', title: 'Content to parse', items: [{ ingredientName: 'Raw text', fullDescription: text, used: false }], done: false }] }]))
           );
           
           runInAction(() => this.pdfParseProgress = 75);
 
-          // This logic is simplified; a more robust merge would be needed for complex cases.
           const combinedPlan: DayPlan[] = []; 
           fragments.forEach(frag => {
             if (frag?.weeklyPlan) combinedPlan.push(...frag.weeklyPlan);
@@ -504,6 +508,8 @@ export class MealPlanStore {
               this.status = AppStatus.SUCCESS;
               this.activeTab = 'daily';
               this.hasUnsavedChanges = false;
+              this.sentNotifications.clear();
+              this.lastActiveDate = new Date().toLocaleDateString();
               this.currentPlanName = `Diet Plan - ${new Date().toLocaleDateString('it-IT')}`;
               this.saveToLocalStorage();
             } else {

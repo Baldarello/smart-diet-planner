@@ -17,6 +17,7 @@ export interface Meal {
   items: MealItem[];
   done: boolean;
   nutrition?: NutritionInfo;
+  time?: string; // e.g., "08:30"
 }
 
 export interface DayPlan {

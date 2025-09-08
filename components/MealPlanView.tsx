@@ -6,6 +6,7 @@ import { CheckCircleIcon, UndoIcon } from './Icons';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
 import NutritionInfoDisplay from './NutritionInfoDisplay';
+import MealTimeEditor from './MealTimeEditor';
 
 const MealPlanView: React.FC<{ plan: DayPlan[] }> = observer(({ plan }) => (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -21,7 +22,10 @@ const MealPlanView: React.FC<{ plan: DayPlan[] }> = observer(({ plan }) => (
                             <div key={meal.originalIndex} className={`border-t border-gray-100 dark:border-gray-700 pt-3 transition-opacity ${meal.done ? 'opacity-60' : ''}`}>
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <h4 className={`font-semibold text-gray-800 dark:text-gray-200 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.name}</h4>
+                                        <div className="flex items-center gap-x-2">
+                                            <h4 className={`font-semibold text-gray-800 dark:text-gray-200 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.name}</h4>
+                                            <MealTimeEditor dayIndex={dayIndex} mealIndex={meal.originalIndex} />
+                                        </div>
                                         {meal.title && <p className={`text-sm font-medium text-violet-600 dark:text-violet-400 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.title}</p>}
                                     </div>
                                     <button

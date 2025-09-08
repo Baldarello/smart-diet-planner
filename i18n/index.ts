@@ -28,21 +28,8 @@ const translations = {
     readingPdf: "Lettura del PDF in corso...",
     analyzingPlan: "Analisi del tuo piano...",
     progressComplete: "% Completo",
-    readingMessages: [
-        "Riscaldando lo chef IA...",
-        "Scansionando le ricette della colazione...",
-        "Decodificando le opzioni per il pranzo...",
-        "Analizzando gli ingredienti della cena...",
-        "Affettando e sminuzzando i dati...",
-        "Estraendo le note nutrizionali...",
-    ],
-    analyzingMessages: [
-        "Consultando i nutrizionisti digitali...",
-        "Organizzando i pasti della tua settimana...",
-        "Calibrando il contatore di calorie...",
-        "Generando la tua lista della spesa...",
-        "Categorizzando gli ingredienti per te...",
-    ],
+    readingMessages: [ "Riscaldando lo chef IA...", "Scansionando le ricette della colazione...", "Decodificando le opzioni per il pranzo...", "Analizzando gli ingredienti della cena...", "Affettando e sminuzzando i dati...", "Estraendo le note nutrizionali...", ],
+    analyzingMessages: [ "Consultando i nutrizionisti digitali...", "Organizzando i pasti della tua settimana...", "Calibrando il contatore di calorie...", "Generando la tua lista della spesa...", "Categorizzando gli ingredienti per te...", ],
 
     // ErrorMessage.tsx
     errorOccurred: "Si è verificato un errore",
@@ -101,6 +88,16 @@ const translations = {
     nutritionCalories: "Calorie",
     nutritionUnitG: "g",
     nutritionUnitKcal: "kcal",
+    
+    // Hydration & Alarms
+    hydrationTrackerTitle: "Tracciamento Idratazione",
+    hydrationGoal: "Obiettivo giornaliero:",
+    hydrationUnit: "Litri",
+    mealTime: "Orario pasto",
+    notificationMealTitle: "È ora di {mealName}!",
+    notificationMealBody: "È il momento di mangiare: {mealTitle}",
+    notificationHydrationTitle: "Promemoria Idratazione!",
+    notificationHydrationBody: "È ora di bere un po' d'acqua. Bevi circa {amount}ml per rimanere in linea con il tuo obiettivo.",
   },
   en: {
     // App.tsx
@@ -129,21 +126,8 @@ const translations = {
     readingPdf: "Reading Your PDF...",
     analyzingPlan: "Analyzing Your Plan",
     progressComplete: "% Complete",
-    readingMessages: [
-      "Warming up the AI chef...",
-      "Scanning for breakfast recipes...",
-      "Decoding your lunch options...",
-      "Unpacking dinner ingredients...",
-      "Slicing and dicing the data...",
-      "Extracting nutritional notes...",
-    ],
-    analyzingMessages: [
-      "Consulting with digital nutritionists...",
-      "Organizing your week's meals...",
-      "Calibrating the calorie counter...",
-      "Generating your shopping list...",
-      "Categorizing ingredients for you...",
-    ],
+    readingMessages: [ "Warming up the AI chef...", "Scanning for breakfast recipes...", "Decoding your lunch options...", "Unpacking dinner ingredients...", "Slicing and dicing the data...", "Extracting nutritional notes...", ],
+    analyzingMessages: [ "Consulting with digital nutritionists...", "Organizing your week's meals...", "Calibrating the calorie counter...", "Generating your shopping list...", "Categorizing ingredients for you...", ],
 
     // ErrorMessage.tsx
     errorOccurred: "An Error Occurred",
@@ -202,16 +186,30 @@ const translations = {
     nutritionCalories: "Calories",
     nutritionUnitG: "g",
     nutritionUnitKcal: "kcal",
+
+    // Hydration & Alarms
+    hydrationTrackerTitle: "Hydration Tracking",
+    hydrationGoal: "Daily Goal:",
+    hydrationUnit: "Liters",
+    mealTime: "Meal time",
+    notificationMealTitle: "Time for {mealName}!",
+    notificationMealBody: "It's time to eat: {mealTitle}",
+    notificationHydrationTitle: "Hydration Reminder!",
+    notificationHydrationBody: "Time for some water. Drink about {amount}ml to stay on track.",
   }
 };
 
-// FIX: Create a type for translation keys that ensures the value is a string, not a string array.
-// This prevents type errors when using `t()` for attributes that expect a string, like `title` or `aria-label`.
 type EnglishTranslations = typeof translations.en;
 type StringTranslationKey = { [K in keyof EnglishTranslations]: EnglishTranslations[K] extends string ? K : never }[keyof EnglishTranslations];
 
-export const t = (key: StringTranslationKey) => {
-    return translations[mealPlanStore.locale][key] || translations.en[key];
+export const t = (key: StringTranslationKey, replacements?: { [key: string]: string }) => {
+    let translation = translations[mealPlanStore.locale][key] || translations.en[key];
+    if (replacements) {
+        Object.keys(replacements).forEach(rKey => {
+            translation = translation.replace(`{${rKey}}`, replacements[rKey]);
+        });
+    }
+    return translation;
 };
 
 export const t_dynamic = (key: 'readingMessages' | 'analyzingMessages') => {

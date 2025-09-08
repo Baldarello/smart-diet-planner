@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore, AppStatus } from './stores/MealPlanStore';
 import { t } from './i18n';
@@ -17,16 +17,63 @@ import {
 } from './components';
 import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon } from './components/Icons';
 
-
 const App: React.FC = observer(() => {
     const store = mealPlanStore;
     const hasActivePlan = store.mealPlan.length > 0;
+    const notificationPermission = useRef(Notification.permission);
 
     useEffect(() => {
         const root = window.document.documentElement;
         root.classList.remove(store.theme === 'light' ? 'dark' : 'light');
         root.classList.add(store.theme);
     }, [store.theme]);
+
+    useEffect(() => {
+        if (hasActivePlan && notificationPermission.current === 'default') {
+            Notification.requestPermission().then(permission => {
+                notificationPermission.current = permission;
+            });
+        }
+
+        const timer = setInterval(() => {
+            if (!hasActivePlan || notificationPermission.current !== 'granted') return;
+
+            const now = new Date();
+            const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            const currentHour = now.getHours();
+
+            store.resetSentNotificationsIfNeeded();
+            
+            // Meal notifications
+            store.dailyPlan?.meals.forEach((meal, mealIndex) => {
+                if (meal.time === currentTime) {
+                    const dayIndex = store.mealPlan.findIndex(d => d.day === store.dailyPlan?.day);
+                    const key = `meal-${dayIndex}-${mealIndex}`;
+                    if (!store.sentNotifications.has(key)) {
+                        new Notification(t('notificationMealTitle', { mealName: meal.name }), {
+                            body: t('notificationMealBody', { mealTitle: meal.title || meal.name }),
+                        });
+                        store.markNotificationSent(key);
+                    }
+                }
+            });
+
+            // Hydration notifications
+            if (currentHour >= 9 && currentHour <= 19 && now.getMinutes() === 0) {
+                 const key = `hydration-${currentHour}`;
+                 if (!store.sentNotifications.has(key)) {
+                    const amountToDrink = Math.round((store.hydrationGoalLiters * 1000) / 10);
+                    new Notification(t('notificationHydrationTitle'), {
+                        body: t('notificationHydrationBody', { amount: amountToDrink.toString() })
+                    });
+                    store.markNotificationSent(key);
+                 }
+            }
+        }, 60 * 1000); // Check every minute
+
+        return () => clearInterval(timer);
+    }, [hasActivePlan, store]);
+
 
     const renderMainContent = () => {
         if (store.status === AppStatus.LOADING) return <Loader />;
@@ -70,7 +117,7 @@ const App: React.FC = observer(() => {
                 <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('welcomeTitle')}</h2>
                 <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-xl mx-auto">{t('welcomeSubtitle')}</p>
                 <FileUpload />
-                <ExamplePdf />
+                { store.archivedPlans.length === 0 && <ExamplePdf /> }
                 {store.archivedPlans.length > 0 && (
                     <div className="mt-12">
                         <p className="text-gray-600 dark:text-gray-400">or</p>

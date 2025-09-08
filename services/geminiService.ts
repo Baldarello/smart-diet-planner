@@ -34,6 +34,7 @@ const mealSchema = {
   properties: {
     name: { type: Type.STRING, description: "Il nome del pasto (COLAZIONE, SPUNTINO, PRANZO, MERENDA, CENA)." },
     title: { type: Type.STRING, description: "Il titolo o nome specifico del piatto, se presente (es. 'Riso venere con ceci, carote e fagiolini')." },
+    time: { type: Type.STRING, description: "Un orario suggerito per il pasto in formato HH:MM (es. '08:00', '13:00'). Scegli un orario logico in base al nome del pasto." },
     items: {
       type: Type.ARRAY,
       items: mealItemSchema,
@@ -44,7 +45,7 @@ const mealSchema = {
         description: "Stima nutrizionale del pasto (carboidrati, proteine, grassi in grammi e calorie totali in kcal)."
     }
   },
-  required: ['name', 'items']
+  required: ['name', 'items', 'time']
 };
 
 const daySchema = {
@@ -104,13 +105,14 @@ export async function regeneratePlanData(plan: DayPlan[]): Promise<MealPlanData 
 Sei un assistente nutrizionale specializzato. Ti viene fornito un oggetto JSON che rappresenta un piano alimentare settimanale. Le descrizioni degli ingredienti ('fullDescription') potrebbero essere state modificate dall'utente.
 
 I TUOI COMPITI SONO:
-1.  **RIPULIRE E STANDARDIZZARE**: Analizza l'intero piano. Per ogni ingrediente, assicurati che il campo \`ingredientName\` sia il nome pulito e base dell'ingrediente, derivato dal campo \`fullDescription\`. Lo stesso ingrediente deve avere lo stesso \`ingredientName\` ovunque.
-2.  **ANALISI NUTRIZIONALE**: Per OGNI pasto nel piano, analizza i suoi ingredienti e le quantità. Fornisci una **stima** del contenuto nutrizionale, calcolando carboidrati (carbs), proteine (protein), grassi (fat) in grammi, e le calorie totali (calories) in kcal. Inserisci questi dati nell'oggetto 'nutrition' del pasto.
-3.  **RIGENERARE LA LISTA DELLA SPESA**: Basandoti sul piano settimanale (potenzialmente modificato), crea una NUOVA lista della spesa. Aggrega le quantità totali per ogni \`ingredientName\` e raggruppa gli articoli nelle categorie corrette.
+1.  **RIPULIRE E STANDARDIZZARE**: Analizza l'intero piano. Per ogni ingrediente, assicurati che il campo \`ingredientName\` sia il nome pulito e base dell'ingrediente. Lo stesso ingrediente deve avere lo stesso \`ingredientName\` ovunque.
+2.  **ASSEGNARE ORARI**: Per OGNI pasto, assegna un orario logico e appropriato nel campo \`time\` in formato HH:MM (es. COLAZIONE -> "08:00", PRANZO -> "13:00"). Se un orario è già presente, mantienilo a meno che non sia palesemente illogico per il tipo di pasto.
+3.  **ANALISI NUTRIZIONALE**: Per OGNI pasto, analizza i suoi ingredienti e fornisci una **stima** del contenuto nutrizionale (carbs, protein, fat, calories).
+4.  **RIGENERARE LA LISTA DELLA SPESA**: Basandoti sul piano settimanale (potenzialmente modificato), crea una NUOVA lista della spesa aggregata.
 
 **REGOLE IMPORTANTI:**
 *   Il campo \`"item"\` nella nuova lista della spesa DEVE corrispondere esattamente all'\`"ingredientName"\` che hai standardizzato.
-*   Mantieni la struttura del piano settimanale esattamente come ti è stata data, popolando il campo \`nutrition\` e modificando \`ingredientName\` se necessario per coerenza.
+*   Mantieni la struttura del piano settimanale, popolando i campi \`time\`, \`nutrition\` e modificando \`ingredientName\` se necessario.
 *   Fornisci l'output **esclusivamente** in formato JSON, seguendo lo schema specificato, con sia \`weeklyPlan\` che \`shoppingList\`.
 
 JSON del piano alimentare da elaborare:
