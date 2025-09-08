@@ -120,19 +120,24 @@ export function parsePdfText(text: string): MealPlanData {
     let currentDay: DayPlan | null = null;
     let currentMeal: Meal | null = null;
 
+    // Regex to detect lines starting with list markers (bullets, numbers)
+    const ingredientStartRegex = /^(\s*[*•]|\d+)/;
+    // Regex to strip bullet points. It's safe to run on non-bullet lines.
+    const bulletStripRegex = /^(\s*[*•]|\d+[.)])\s+/;
+
     lines.forEach(line => {
         const upperLine = line.toUpperCase();
         
+        // State change: New Day
         if (DAY_KEYWORDS.includes(upperLine)) {
-            // Found a new day
             currentDay = { day: line, meals: [] };
             weeklyPlan.push(currentDay);
-            currentMeal = null; // Reset meal when a new day starts
+            currentMeal = null;
             return;
         }
         
+        // State change: New Meal
         if (currentDay && MEAL_KEYWORDS.includes(upperLine)) {
-            // Found a new meal within the current day
             currentMeal = {
                 name: line,
                 items: [],
@@ -142,20 +147,43 @@ export function parsePdfText(text: string): MealPlanData {
             currentDay.meals.push(currentMeal);
             return;
         }
-
+        
         // Ignore separator lines
         if (IGNORED_LINES.includes(upperLine)) {
             return;
         }
 
+        // Process line within a meal context
         if (currentMeal) {
-            // Assume this line is a meal item
-            const { ingredientName } = extractIngredientInfo(line);
-            currentMeal.items.push({
-                fullDescription: line,
-                ingredientName: ingredientName || line, // Fallback to full line if name extraction fails
-                used: false
-            });
+            const isIngredient = ingredientStartRegex.test(line);
+
+            if (isIngredient) {
+                // This line is an ingredient. Clean the bullet point if it exists.
+                const description = line.replace(bulletStripRegex, '').trim();
+                // Fallback to original line if stripping results in an empty string
+                const contentLine = description || line; 
+                
+                // Split by ';' or '•' to handle multiple ingredients on the same line.
+                const ingredients = contentLine.split(/[;•]/);
+                
+                ingredients.forEach(ingredientText => {
+                    const trimmedText = ingredientText.trim();
+                    if (trimmedText) { // Avoid adding empty items
+                        const { ingredientName } = extractIngredientInfo(trimmedText);
+                        currentMeal.items.push({
+                            fullDescription: trimmedText,
+                            ingredientName: ingredientName || trimmedText,
+                            used: false
+                        });
+                    }
+                });
+
+            } else if (!currentMeal.title && currentMeal.items.length === 0) {
+                // This line is not an ingredient and we don't have a title or any items yet.
+                // It's likely the title of the dish (e.g., "Polpette di ricotta veg").
+                currentMeal.title = line;
+            }
+            // Otherwise, ignore the line (it could be a note, instruction, etc.)
         }
     });
 
