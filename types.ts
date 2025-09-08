@@ -1,9 +1,4 @@
-export interface MealItem {
-  ingredientName: string;
-  fullDescription: string;
-  used: boolean;
-}
-
+// Fix: Add NutritionInfo interface
 export interface NutritionInfo {
   carbs: number;
   protein: number;
@@ -11,13 +6,19 @@ export interface NutritionInfo {
   calories: number;
 }
 
+export interface MealItem {
+  ingredientName: string;
+  fullDescription: string;
+  used: boolean;
+}
+
 export interface Meal {
   name: string;
   title?: string;
   items: MealItem[];
   done: boolean;
-  nutrition?: NutritionInfo;
   time?: string; // e.g., "08:30"
+  nutrition?: NutritionInfo; // Fix: Add optional nutrition property
 }
 
 export interface DayPlan {

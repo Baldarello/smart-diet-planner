@@ -5,7 +5,6 @@ import MealItemChecklist from './MealItemChecklist';
 import { CheckCircleIcon, UndoIcon } from './Icons';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
-import NutritionInfoDisplay from './NutritionInfoDisplay';
 import MealTimeEditor from './MealTimeEditor';
 
 const MealPlanView: React.FC<{ plan: DayPlan[] }> = observer(({ plan }) => (
@@ -38,7 +37,6 @@ const MealPlanView: React.FC<{ plan: DayPlan[] }> = observer(({ plan }) => (
                                     </button>
                                 </div>
                                 <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} />
-                                {meal.nutrition && <NutritionInfoDisplay nutrition={meal.nutrition} />}
                             </div>
                         ))}
                     </div>

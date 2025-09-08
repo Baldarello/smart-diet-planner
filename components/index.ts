@@ -10,8 +10,6 @@ export { default as ArchivedPlanItem } from './ArchivedPlanItem';
 export { default as ActivePlanNameEditor } from './ActivePlanNameEditor';
 export { default as MealItemChecklist } from './MealItemChecklist';
 export { default as ExamplePdf } from './ExamplePdf';
-export { default as NutritionInfoDisplay } from './NutritionInfoDisplay';
-export { default as DailyNutritionSummary } from './DailyNutritionSummary';
 export { default as HydrationTracker } from './HydrationTracker';
 export { default as MealTimeEditor } from './MealTimeEditor';
 export * from './Icons';

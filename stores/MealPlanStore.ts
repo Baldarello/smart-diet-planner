@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
-import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo } from '../types';
-import { regeneratePlanData } from '../services/geminiService';
+import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal } from '../types';
+import { parsePdfText, generateShoppingList, extractIngredientInfo } from '../services/offlineParser';
 import { parseQuantity, formatQuantity } from '../utils/quantityParser';
 
 export enum AppStatus {
@@ -23,7 +23,6 @@ export class MealPlanStore {
   theme: Theme = 'light';
   locale: Locale = 'it';
   hasUnsavedChanges = false;
-  isRecalculating = false;
 
   // Hydration and Notification State
   hydrationGoalLiters = 3;
@@ -94,68 +93,23 @@ export class MealPlanStore {
       const item = this.mealPlan[dayIndex]?.meals[mealIndex]?.items[itemIndex];
       if (item && item.fullDescription !== newDescription) {
           item.fullDescription = newDescription;
+          const { ingredientName } = extractIngredientInfo(newDescription);
+          item.ingredientName = ingredientName;
           this.hasUnsavedChanges = true;
           this.saveToLocalStorage();
       }
   }
 
-  recalculateShoppingListAndPlan = async () => {
+  recalculateShoppingList = () => {
     if (!this.hasUnsavedChanges) return;
-
-    this.isRecalculating = true;
-    this.error = null;
-
-    const mealProgress = new Map<string, { done: boolean, time?: string }>();
-    const itemProgress = new Map<string, boolean>(); 
-
-    this.mealPlan.forEach((day, dayIndex) => {
-        day.meals.forEach((meal, mealIndex) => {
-            mealProgress.set(`${dayIndex}-${mealIndex}`, { done: meal.done, time: meal.time });
-            meal.items.forEach((item, itemIndex) => {
-                itemProgress.set(`${dayIndex}-${mealIndex}-${itemIndex}`, item.used);
-            });
-        });
+    
+    runInAction(() => {
+        const newShoppingList = generateShoppingList(this.mealPlan);
+        this.shoppingList = newShoppingList;
+        this.pantry = []; // Recalculating invalidates the pantry
+        this.hasUnsavedChanges = false;
+        this.saveToLocalStorage();
     });
-
-    try {
-        const newData = await regeneratePlanData(this.mealPlan);
-        if (!newData || !newData.weeklyPlan || !newData.shoppingList) {
-            throw new Error("AI failed to regenerate the plan. Please check your edits for clarity.");
-        }
-
-        const finalPlan = newData.weeklyPlan.map((day, dayIndex) => ({
-            ...day,
-            meals: day.meals.map((meal, mealIndex) => {
-                const progress = mealProgress.get(`${dayIndex}-${mealIndex}`);
-                return {
-                    ...meal,
-                    done: progress?.done ?? false,
-                    time: meal.time || progress?.time, // Keep AI time, but fall back to old time
-                    items: meal.items.map((item, itemIndex) => ({
-                        ...item,
-                        used: itemProgress.get(`${dayIndex}-${mealIndex}-${itemIndex}`) ?? false,
-                    })),
-                };
-            }),
-        }));
-
-        runInAction(() => {
-            this.mealPlan = finalPlan;
-            this.shoppingList = newData.shoppingList;
-            this.pantry = [];
-            this.hasUnsavedChanges = false;
-            this.saveToLocalStorage();
-        });
-
-    } catch (err: any) {
-        runInAction(() => {
-            this.error = err.message || "An unknown error occurred during recalculation.";
-        });
-    } finally {
-        runInAction(() => {
-            this.isRecalculating = false;
-        });
-    }
   }
 
   loadFromLocalStorage = () => {
@@ -447,27 +401,6 @@ export class MealPlanStore {
     return this.mealPlan.find(d => d.day.toUpperCase() === todayName);
   }
 
-  get dailyNutritionSummary(): NutritionInfo | null {
-    if (!this.dailyPlan) return null;
-
-    const summary: NutritionInfo = {
-        carbs: 0,
-        protein: 0,
-        fat: 0,
-        calories: 0
-    };
-
-    return this.dailyPlan.meals.reduce((totals, meal) => {
-        if (meal.nutrition) {
-            totals.carbs += meal.nutrition.carbs;
-            totals.protein += meal.nutrition.protein;
-            totals.fat += meal.nutrition.fat;
-            totals.calories += meal.nutrition.calories;
-        }
-        return totals;
-    }, summary);
-  }
-
   processPdf = async (file: File) => {
     this.status = AppStatus.LOADING;
     this.error = null;
@@ -497,33 +430,14 @@ export class MealPlanStore {
               pageTexts.push(textContent.items.map((s: any) => s.str).join('\n'));
               runInAction(() => this.pdfParseProgress = Math.round((i / pdf.numPages) * 50));
           }
-
-          const fragments = await Promise.all(
-            pageTexts.map(text => regeneratePlanData([{ day: 'Unknown', meals: [{ name: 'PDF Page Content', title: 'Content to parse', items: [{ ingredientName: 'Raw text', fullDescription: text, used: false }], done: false }] }]))
-          );
           
-          runInAction(() => this.pdfParseProgress = 75);
-
-          const combinedPlan: DayPlan[] = []; 
-          fragments.forEach(frag => {
-            if (frag?.weeklyPlan) combinedPlan.push(...frag.weeklyPlan);
-          });
-
-          const finalResult = await regeneratePlanData(combinedPlan);
+          const fullText = pageTexts.join('\n\n');
+          const finalResult = parsePdfText(fullText);
           runInAction(() => this.pdfParseProgress = 100);
 
           runInAction(() => {
-            if(finalResult && finalResult.weeklyPlan && finalResult.shoppingList) {
-              const planWithFlags = finalResult.weeklyPlan.map(day => ({
-                ...day,
-                meals: day.meals.map(meal => ({
-                  ...meal,
-                  done: false,
-                  items: (meal.items as any[]).map(item => ({ ...item, used: false }))
-                }))
-              }));
-
-              this.mealPlan = planWithFlags;
+            if(finalResult && finalResult.weeklyPlan.length > 0) {
+              this.mealPlan = finalResult.weeklyPlan;
               this.shoppingList = finalResult.shoppingList;
               this.pantry = [];
               this.status = AppStatus.SUCCESS;
@@ -534,7 +448,7 @@ export class MealPlanStore {
               this.currentPlanName = `Diet Plan - ${new Date().toLocaleDateString('it-IT')}`;
               this.saveToLocalStorage();
             } else {
-              throw new Error("Failed to parse meal plan. The AI couldn't structure the data correctly. Please try a different PDF.");
+              throw new Error("Failed to parse meal plan. The offline parser couldn't structure the data. Please check the PDF format.");
             }
           });
         }

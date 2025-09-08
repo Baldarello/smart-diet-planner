@@ -5,7 +5,7 @@ import { SendToShoppingListIcon } from './Icons';
 import { t } from '../i18n';
 
 const PantryView: React.FC = observer(() => {
-    const { pantry, updatePantryItemQuantity, movePantryItemToShoppingList, hasUnsavedChanges, isRecalculating, recalculateShoppingListAndPlan } = mealPlanStore;
+    const { pantry, updatePantryItemQuantity, movePantryItemToShoppingList, hasUnsavedChanges, recalculateShoppingList } = mealPlanStore;
 
     const handleQuantityChange = (itemName: string, newQuantity: string) => {
         updatePantryItemQuantity(itemName, newQuantity);
@@ -20,11 +20,10 @@ const PantryView: React.FC = observer(() => {
                         <p>{t('shoppingListStaleMessage')}</p>
                     </div>
                     <button 
-                        onClick={recalculateShoppingListAndPlan}
-                        disabled={isRecalculating}
-                        className="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                        onClick={recalculateShoppingList}
+                        className="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors flex-shrink-0"
                     >
-                        {isRecalculating ? t('recalculating') : t('recalculateList')}
+                        {t('recalculateList')}
                     </button>
                 </div>
             )}

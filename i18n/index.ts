@@ -16,7 +16,7 @@ const translations = {
     welcomeSubtitle: "Carica il tuo piano alimentare settimanale in formato PDF e la nostra IA creerà automaticamente un programma giornaliero e una lista della spesa completa per te.",
     viewArchived: "Vedi Piani Archiviati",
     uploadNew: "Carica un Nuovo Piano Dietetico",
-    footer: "Realizzato con Gemini AI. Creato con React & MobX.",
+    footer: "Realizzato con React & MobX. Parsing offline.",
     errorAndUpload: "Per favore, prova a caricare un nuovo file",
     
     // FileUpload.tsx
@@ -28,8 +28,8 @@ const translations = {
     readingPdf: "Lettura del PDF in corso...",
     analyzingPlan: "Analisi del tuo piano...",
     progressComplete: "% Completo",
-    readingMessages: [ "Riscaldando lo chef IA...", "Scansionando le ricette della colazione...", "Decodificando le opzioni per il pranzo...", "Analizzando gli ingredienti della cena...", "Affettando e sminuzzando i dati...", "Estraendo le note nutrizionali...", ],
-    analyzingMessages: [ "Consultando i nutrizionisti digitali...", "Organizzando i pasti della tua settimana...", "Calibrando il contatore di calorie...", "Generando la tua lista della spesa...", "Categorizzando gli ingredienti per te...", ],
+    readingMessages: [ "Scansionando le pagine...", "Estraendo il testo...", "Riconoscendo i giorni...", "Identificando i pasti...", "Elaborando gli ingredienti...", ],
+    analyzingMessages: [ "Organizzando i pasti della tua settimana...", "Aggregando gli ingredienti...", "Generando la tua lista della spesa...", "Categorizzando gli ingredienti...", "Quasi pronto...", ],
 
     // ErrorMessage.tsx
     errorOccurred: "Si è verificato un errore",
@@ -80,15 +80,6 @@ const translations = {
     exampleMealDinner: "CENA",
     exampleItem5: "Polpette di ricotta veg",
     exampleItem6: "100g di melanzane grigliate",
-
-    // Nutrition Info
-    nutritionCarbs: "Carboidrati",
-    nutritionProtein: "Proteine",
-    nutritionFat: "Grassi",
-    nutritionCalories: "Calorie",
-    nutritionUnitG: "g",
-    nutritionUnitKcal: "kcal",
-    dailySummaryTitle: "Riepilogo Nutrizionale Giornaliero",
     
     // Hydration & Alarms
     hydrationTrackerTitle: "Tracciamento Idratazione",
@@ -99,6 +90,14 @@ const translations = {
     notificationMealBody: "È il momento di mangiare: {mealTitle}",
     notificationHydrationTitle: "Promemoria Idratazione!",
     notificationHydrationBody: "È ora di bere un po' d'acqua. Bevi circa {amount}ml per rimanere in linea con il tuo obiettivo.",
+    // Fix: Add nutrition translation keys
+    dailySummaryTitle: "Riepilogo Nutrizionale Giornaliero",
+    nutritionCarbs: "Carboidrati",
+    nutritionProtein: "Proteine",
+    nutritionFat: "Grassi",
+    nutritionCalories: "Calorie",
+    nutritionUnitG: "g",
+    nutritionUnitKcal: "kcal",
   },
   en: {
     // App.tsx
@@ -115,7 +114,7 @@ const translations = {
     welcomeSubtitle: "Upload your weekly meal plan in PDF format, and our AI will automatically create a daily schedule and a complete shopping list for you.",
     viewArchived: "View Archived Plans",
     uploadNew: "Upload a New Diet Plan",
-    footer: "Powered by Gemini AI. Created with React & MobX.",
+    footer: "Powered by React & MobX. Offline parsing.",
     errorAndUpload: "Please try uploading a new file",
 
     // FileUpload.tsx
@@ -127,8 +126,8 @@ const translations = {
     readingPdf: "Reading Your PDF...",
     analyzingPlan: "Analyzing Your Plan",
     progressComplete: "% Complete",
-    readingMessages: [ "Warming up the AI chef...", "Scanning for breakfast recipes...", "Decoding your lunch options...", "Unpacking dinner ingredients...", "Slicing and dicing the data...", "Extracting nutritional notes...", ],
-    analyzingMessages: [ "Consulting with digital nutritionists...", "Organizing your week's meals...", "Calibrating the calorie counter...", "Generating your shopping list...", "Categorizing ingredients for you...", ],
+    readingMessages: [ "Scanning pages...", "Extracting text...", "Recognizing days...", "Identifying meals...", "Processing ingredients...", ],
+    analyzingMessages: [ "Organizing your week's meals...", "Aggregating ingredients...", "Generating your shopping list...", "Categorizing items...", "Almost ready...", ],
 
     // ErrorMessage.tsx
     errorOccurred: "An Error Occurred",
@@ -180,15 +179,6 @@ const translations = {
     exampleItem5: "Veggie ricotta meatballs",
     exampleItem6: "100g of grilled eggplant",
     
-    // Nutrition Info
-    nutritionCarbs: "Carbs",
-    nutritionProtein: "Protein",
-    nutritionFat: "Fat",
-    nutritionCalories: "Calories",
-    nutritionUnitG: "g",
-    nutritionUnitKcal: "kcal",
-    dailySummaryTitle: "Daily Nutrition Summary",
-
     // Hydration & Alarms
     hydrationTrackerTitle: "Hydration Tracking",
     hydrationGoal: "Daily Goal:",
@@ -198,6 +188,14 @@ const translations = {
     notificationMealBody: "It's time to eat: {mealTitle}",
     notificationHydrationTitle: "Hydration Reminder!",
     notificationHydrationBody: "Time for some water. Drink about {amount}ml to stay on track.",
+    // Fix: Add nutrition translation keys
+    dailySummaryTitle: "Daily Nutrition Summary",
+    nutritionCarbs: "Carbs",
+    nutritionProtein: "Protein",
+    nutritionFat: "Fat",
+    nutritionCalories: "Calories",
+    nutritionUnitG: "g",
+    nutritionUnitKcal: "kcal",
   }
 };
 
