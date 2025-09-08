@@ -4,11 +4,19 @@ export interface MealItem {
   used: boolean;
 }
 
+export interface NutritionInfo {
+  carbs: number;
+  protein: number;
+  fat: number;
+  calories: number;
+}
+
 export interface Meal {
   name: string;
   title?: string;
   items: MealItem[];
   done: boolean;
+  nutrition?: NutritionInfo;
 }
 
 export interface DayPlan {

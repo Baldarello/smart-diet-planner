@@ -10,4 +10,5 @@ export { default as ArchivedPlanItem } from './ArchivedPlanItem';
 export { default as ActivePlanNameEditor } from './ActivePlanNameEditor';
 export { default as MealItemChecklist } from './MealItemChecklist';
 export { default as ExamplePdf } from './ExamplePdf';
+export { default as NutritionInfoDisplay } from './NutritionInfoDisplay';
 export * from './Icons';

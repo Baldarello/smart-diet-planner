@@ -4,6 +4,7 @@ import { mealPlanStore } from '../stores/MealPlanStore';
 import MealItemChecklist from './MealItemChecklist';
 import { t } from '../i18n';
 import { CheckCircleIcon, UndoIcon } from './Icons';
+import NutritionInfoDisplay from './NutritionInfoDisplay';
 
 const DailyPlanView: React.FC = observer(() => {
     const { dailyPlan, mealPlan, toggleMealDone } = mealPlanStore;
@@ -39,6 +40,7 @@ const DailyPlanView: React.FC = observer(() => {
                         </div>
 
                         <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} />
+                        {meal.nutrition && <NutritionInfoDisplay nutrition={meal.nutrition} />}
                     </div>
                 ))}
             </div>

@@ -6,6 +6,7 @@ import { PantryIcon } from './Icons';
 import { t } from '../i18n';
 
 const ShoppingListView: React.FC = observer(() => {
+    const { shoppingList, hasUnsavedChanges, isRecalculating, recalculateShoppingListAndPlan } = mealPlanStore;
     const [checkedItems, setCheckedItems] = useState<Map<string, { item: ShoppingListItem, category: string }>>(new Map());
 
     const handleCheck = (item: ShoppingListItem, category: string) => {
@@ -28,6 +29,21 @@ const ShoppingListView: React.FC = observer(() => {
 
     return (
         <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-4xl mx-auto">
+            {hasUnsavedChanges && (
+                <div className="bg-yellow-100 dark:bg-yellow-900/30 border-l-4 border-yellow-500 text-yellow-800 dark:text-yellow-200 p-4 rounded-md mb-6 flex justify-between items-center">
+                    <div>
+                        <p className="font-bold">{t('shoppingListStaleTitle')}</p>
+                        <p>{t('shoppingListStaleMessage')}</p>
+                    </div>
+                    <button 
+                        onClick={recalculateShoppingListAndPlan}
+                        disabled={isRecalculating}
+                        className="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    >
+                        {isRecalculating ? t('recalculating') : t('recalculateList')}
+                    </button>
+                </div>
+            )}
             <div className="flex justify-between items-center border-b dark:border-gray-700 pb-4 mb-6">
                 <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{t('shoppingListTitle')}</h2>
                 {checkedItems.size > 0 && (
@@ -36,11 +52,11 @@ const ShoppingListView: React.FC = observer(() => {
                     </button>
                 )}
             </div>
-            {mealPlanStore.shoppingList.length === 0 ? (
+            {shoppingList.length === 0 ? (
                 <p className="text-gray-500 dark:text-gray-400 text-center py-8">{t('shoppingListEmpty')}</p>
             ) : (
                 <div className="space-y-6">
-                    {mealPlanStore.shoppingList.map((category, catIndex) => (
+                    {shoppingList.map((category, catIndex) => (
                         <details key={catIndex} className="group" open>
                             <summary className="font-bold text-xl text-violet-700 dark:text-violet-400 cursor-pointer list-none flex items-center">
                                  <span className="transform transition-transform duration-200 group-open:rotate-90 text-violet-400 dark:text-violet-500">&#9656;</span>

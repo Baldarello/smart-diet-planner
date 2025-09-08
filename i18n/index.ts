@@ -61,6 +61,10 @@ const translations = {
     shoppingListTitle: "Lista della Spesa",
     moveToPantry: "Sposta in Dispensa",
     shoppingListEmpty: "La tua lista della spesa è vuota. Ottimo lavoro!",
+    shoppingListStaleTitle: "Modifiche Rilevate!",
+    shoppingListStaleMessage: "Il tuo piano alimentare è cambiato. La lista e la dispensa potrebbero non essere accurate.",
+    recalculateList: "Ricalcola Lista",
+    recalculating: "Ricalcolando...",
 
     // PantryView.tsx
     pantryTitle: "La Mia Dispensa",
@@ -89,6 +93,14 @@ const translations = {
     exampleMealDinner: "CENA",
     exampleItem5: "Polpette di ricotta veg",
     exampleItem6: "100g di melanzane grigliate",
+
+    // Nutrition Info
+    nutritionCarbs: "Carboidrati",
+    nutritionProtein: "Proteine",
+    nutritionFat: "Grassi",
+    nutritionCalories: "Calorie",
+    nutritionUnitG: "g",
+    nutritionUnitKcal: "kcal",
   },
   en: {
     // App.tsx
@@ -150,6 +162,10 @@ const translations = {
     shoppingListTitle: "Shopping List",
     moveToPantry: "Move to Pantry",
     shoppingListEmpty: "Your shopping list is empty. Good job!",
+    shoppingListStaleTitle: "Changes Detected!",
+    shoppingListStaleMessage: "Your meal plan has changed. The list and pantry may be inaccurate.",
+    recalculateList: "Recalculate List",
+    recalculating: "Recalculating...",
 
     // PantryView.tsx
     pantryTitle: "My Pantry",
@@ -178,6 +194,14 @@ const translations = {
     exampleMealDinner: "DINNER",
     exampleItem5: "Veggie ricotta meatballs",
     exampleItem6: "100g of grilled eggplant",
+    
+    // Nutrition Info
+    nutritionCarbs: "Carbs",
+    nutritionProtein: "Protein",
+    nutritionFat: "Fat",
+    nutritionCalories: "Calories",
+    nutritionUnitG: "g",
+    nutritionUnitKcal: "kcal",
   }
 };
 

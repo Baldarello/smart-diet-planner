@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { MealPlanData } from '../types';
+import { MealPlanData, DayPlan } from '../types';
 
 if (!process.env.API_KEY) {
   const errorMsg = "API_KEY environment variable not set.";
@@ -18,6 +18,17 @@ const mealItemSchema = {
   required: ['ingredientName', 'fullDescription']
 };
 
+const nutritionSchema = {
+    type: Type.OBJECT,
+    properties: {
+        carbs: { type: Type.NUMBER, description: "Estimated carbohydrates in grams." },
+        protein: { type: Type.NUMBER, description: "Estimated protein in grams." },
+        fat: { type: Type.NUMBER, description: "Estimated fat in grams." },
+        calories: { type: Type.NUMBER, description: "Estimated total calories (kcal)." }
+    },
+    required: ['carbs', 'protein', 'fat', 'calories']
+};
+
 const mealSchema = {
   type: Type.OBJECT,
   properties: {
@@ -27,6 +38,10 @@ const mealSchema = {
       type: Type.ARRAY,
       items: mealItemSchema,
       description: "L'elenco degli alimenti e ingredienti. Ogni elemento deve essere un oggetto strutturato con 'ingredientName' e 'fullDescription'."
+    },
+    nutrition: {
+        ...nutritionSchema,
+        description: "Stima nutrizionale del pasto (carboidrati, proteine, grassi in grammi e calorie totali in kcal)."
     }
   },
   required: ['name', 'items']
@@ -84,45 +99,38 @@ const finalSchema = {
   required: ['weeklyPlan', 'shoppingList']
 };
 
-export async function parsePdfToMealPlan(text: string): Promise<MealPlanData | null> {
-  const prompt = `
-Sei un assistente nutrizionale altamente specializzato. Il tuo compito è analizzare il testo di un piano alimentare settimanale fornito in lingua italiana ed estrarre due set di informazioni: un piano giornaliero dettagliato e una lista della spesa aggregata e categorizzata.
+export async function regeneratePlanData(plan: DayPlan[]): Promise<MealPlanData | null> {
+    const prompt = `
+Sei un assistente nutrizionale specializzato. Ti viene fornito un oggetto JSON che rappresenta un piano alimentare settimanale. Le descrizioni degli ingredienti ('fullDescription') potrebbero essere state modificate dall'utente.
+
+I TUOI COMPITI SONO:
+1.  **RIPULIRE E STANDARDIZZARE**: Analizza l'intero piano. Per ogni ingrediente, assicurati che il campo \`ingredientName\` sia il nome pulito e base dell'ingrediente, derivato dal campo \`fullDescription\`. Lo stesso ingrediente deve avere lo stesso \`ingredientName\` ovunque.
+2.  **ANALISI NUTRIZIONALE**: Per OGNI pasto nel piano, analizza i suoi ingredienti e le quantità. Fornisci una **stima** del contenuto nutrizionale, calcolando carboidrati (carbs), proteine (protein), grassi (fat) in grammi, e le calorie totali (calories) in kcal. Inserisci questi dati nell'oggetto 'nutrition' del pasto.
+3.  **RIGENERARE LA LISTA DELLA SPESA**: Basandoti sul piano settimanale (potenzialmente modificato), crea una NUOVA lista della spesa. Aggrega le quantità totali per ogni \`ingredientName\` e raggruppa gli articoli nelle categorie corrette.
 
 **REGOLE IMPORTANTI:**
-1.  **Piano Settimanale Dettagliato**: Analizza il testo per ogni giorno, da LUNEDI a DOMENICA. Per ogni giorno, identifica tutti i pasti (COLAZIONE, SPUNTINO, PRANZO, MERENDA, CENA).
-    *   Per ogni pasto, estrai un elenco di \`items\`. Ogni \`item\` DEVE essere un oggetto JSON con due campi:
-        *   \`"ingredientName"\`: Il nome pulito e generico dell'ingrediente (es. "Yogurt di soia", "Mela", "Pane integrale"). Questo nome deve essere **identico** per lo stesso ingrediente in tutto il piano.
-        *   \`"fullDescription"\`: Il testo originale completo dell'ingrediente, inclusa la quantità (es. "1 vasetto di yogurt di soia bianco (da 125g)", "1 mela", "3 fettine (60g) di pane integrale").
-2.  **Lista della Spesa Aggregata**: Dopo aver analizzato l'intera settimana, crea una lista della spesa. Somma le quantità totali per ogni ingrediente.
-    *   Il campo \`"item"\` nella lista della spesa DEVE corrispondere esattamente all'\`"ingredientName"\` usato nel piano settimanale.
-    *   Raggruppa gli ingredienti in categorie logiche: 'Frutta', 'Verdura e Ortaggi', 'Cereali e Derivati', 'Legumi', 'Proteine (Tofu, Seitan, etc.)', 'Latticini e Alternative', 'Frutta Secca e Semi', 'Condimenti, Spezie e Oli', 'Altro'.
+*   Il campo \`"item"\` nella nuova lista della spesa DEVE corrispondere esattamente all'\`"ingredientName"\` che hai standardizzato.
+*   Mantieni la struttura del piano settimanale esattamente come ti è stata data, popolando il campo \`nutrition\` e modificando \`ingredientName\` se necessario per coerenza.
+*   Fornisci l'output **esclusivamente** in formato JSON, seguendo lo schema specificato, con sia \`weeklyPlan\` che \`shoppingList\`.
 
-Fornisci l'output **esclusivamente** in formato JSON, seguendo lo schema specificato. Non includere alcun testo, spiegazione, o markdown (come \`\`\`json) al di fuori dell'oggetto JSON.
-
-Testo del piano alimentare da analizzare:
+JSON del piano alimentare da elaborare:
 ---
-${text}
+${JSON.stringify(plan)}
 ---
 `;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: finalSchema,
-      },
-    });
-
-    // FIX: Access the 'text' property directly from the response.
-    // As per Gemini API guidelines, 'text' is a property, not a method.
-    const jsonString = response.text.trim();
-    const parsedData: MealPlanData = JSON.parse(jsonString);
-    return parsedData;
-
-  } catch (error) {
-    console.error("Error calling Gemini API:", error);
-    throw new Error("Failed to get a valid response from the AI. The meal plan might be in an unsupported format or the API call failed.");
-  }
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: finalSchema,
+            },
+        });
+        const jsonString = response.text.trim();
+        return JSON.parse(jsonString) as MealPlanData;
+    } catch (error) {
+        console.error("Error calling Gemini API for recalculation:", error);
+        throw new Error("Failed to get a valid response from the AI during recalculation.");
+    }
 }

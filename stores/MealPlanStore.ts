@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal } from '../types';
-import { parsePdfToMealPlan } from '../services/geminiService';
+import { regeneratePlanData } from '../services/geminiService';
 import { parseQuantity, formatQuantity } from '../utils/quantityParser';
 
 export enum AppStatus {
@@ -22,6 +22,8 @@ export class MealPlanStore {
   currentPlanName = 'My Diet Plan';
   theme: Theme = 'light';
   locale: Locale = 'it';
+  hasUnsavedChanges = false;
+  isRecalculating = false;
 
   constructor() {
     makeAutoObservable(this);
@@ -54,6 +56,70 @@ export class MealPlanStore {
       this.saveToLocalStorage();
     }
   }
+  
+  updateItemDescription = (dayIndex: number, mealIndex: number, itemIndex: number, newDescription: string) => {
+      const item = this.mealPlan[dayIndex]?.meals[mealIndex]?.items[itemIndex];
+      if (item && item.fullDescription !== newDescription) {
+          item.fullDescription = newDescription;
+          this.hasUnsavedChanges = true;
+          this.saveToLocalStorage();
+      }
+  }
+
+  recalculateShoppingListAndPlan = async () => {
+    if (!this.hasUnsavedChanges) return;
+
+    this.isRecalculating = true;
+    this.error = null;
+
+    const mealProgress = new Map<string, boolean>(); // key: `${dayIndex}-${mealIndex}` -> done
+    const itemProgress = new Map<string, boolean>(); // key: `${dayIndex}-${mealIndex}-${itemIndex}` -> used
+
+    this.mealPlan.forEach((day, dayIndex) => {
+        day.meals.forEach((meal, mealIndex) => {
+            mealProgress.set(`${dayIndex}-${mealIndex}`, meal.done);
+            meal.items.forEach((item, itemIndex) => {
+                itemProgress.set(`${dayIndex}-${mealIndex}-${itemIndex}`, item.used);
+            });
+        });
+    });
+
+    try {
+        const newData = await regeneratePlanData(this.mealPlan);
+        if (!newData || !newData.weeklyPlan || !newData.shoppingList) {
+            throw new Error("AI failed to regenerate the plan. Please check your edits for clarity.");
+        }
+
+        const finalPlan = newData.weeklyPlan.map((day, dayIndex) => ({
+            ...day,
+            meals: day.meals.map((meal, mealIndex) => ({
+                ...meal,
+                done: mealProgress.get(`${dayIndex}-${mealIndex}`) ?? false,
+                items: meal.items.map((item, itemIndex) => ({
+                    ...item,
+                    used: itemProgress.get(`${dayIndex}-${mealIndex}-${itemIndex}`) ?? false,
+                })),
+            })),
+        }));
+
+        runInAction(() => {
+            this.mealPlan = finalPlan;
+            this.shoppingList = newData.shoppingList;
+            this.pantry = [];
+            this.hasUnsavedChanges = false;
+            this.saveToLocalStorage();
+        });
+
+    } catch (err: any) {
+        runInAction(() => {
+            this.error = err.message || "An unknown error occurred during recalculation.";
+        });
+    } finally {
+        runInAction(() => {
+            this.isRecalculating = false;
+        });
+    }
+  }
 
   loadFromLocalStorage = () => {
     try {
@@ -66,7 +132,7 @@ export class MealPlanStore {
             ...day,
             meals: day.meals.map((meal: Meal) => ({
                 ...meal,
-                done: meal.done ?? false, // Ensure backward compatibility
+                done: meal.done ?? false,
                 items: meal.items.map(item => ({ ...item, used: item.used ?? false }))
             }))
         }));
@@ -77,6 +143,8 @@ export class MealPlanStore {
         this.currentPlanName = data.currentPlanName || 'My Diet Plan';
         this.theme = data.theme || 'light';
         this.locale = data.locale || 'it';
+        this.hasUnsavedChanges = data.hasUnsavedChanges || false;
+
         if (this.mealPlan.length > 0) {
           this.status = AppStatus.SUCCESS;
         }
@@ -88,6 +156,7 @@ export class MealPlanStore {
       this.pantry = [];
       this.archivedPlans = [];
       this.currentPlanName = 'My Diet Plan';
+      this.hasUnsavedChanges = false;
     }
   }
 
@@ -101,6 +170,7 @@ export class MealPlanStore {
         currentPlanName: this.currentPlanName,
         theme: this.theme,
         locale: this.locale,
+        hasUnsavedChanges: this.hasUnsavedChanges,
       };
       localStorage.setItem('dietPlanData', JSON.stringify(dataToSave));
     } catch (error) {
@@ -128,6 +198,7 @@ export class MealPlanStore {
         this.activeTab = 'plan';
         this.pdfParseProgress = 0;
         this.currentPlanName = 'My Diet Plan';
+        this.hasUnsavedChanges = false;
         this.saveToLocalStorage();
     });
   }
@@ -153,7 +224,7 @@ export class MealPlanStore {
           meals: day.meals.map(meal => ({
               ...meal,
               done: false, // Reset progress on restore
-              items: meal.items.map(item => ({...item, used: item.used ?? false}))
+              items: meal.items.map(item => ({...item, used: false})) // Reset progress on restore
           }))
         }));
 
@@ -163,7 +234,8 @@ export class MealPlanStore {
         this.pantry = []; // Pantry is reset on restore
 
         this.archivedPlans = this.archivedPlans.filter(p => p.id !== planId);
-
+        
+        this.hasUnsavedChanges = false;
         this.status = AppStatus.SUCCESS;
         this.activeTab = 'daily';
         
@@ -251,7 +323,7 @@ export class MealPlanStore {
         const ingredientName = mealItem.ingredientName;
         mealItem.used = !mealItem.used;
 
-        if (mealItem.used) { // ---> ITEM IS CHECKED (USED) <---
+        if (mealItem.used) {
             const pantryItem = this.pantry.find(p => p.item.toLowerCase() === ingredientName.toLowerCase());
             const originalCategory = pantryItem?.originalCategory || 'Altro';
 
@@ -290,34 +362,39 @@ export class MealPlanStore {
                     quantity: formatQuantity(itemQuantityToToggle),
                 });
             }
-        } else { // ---> ITEM IS UNCHECKED (NOT USED) <---
+        } else {
             let categoryName = 'Altro';
             let itemWasInShoppingList = false;
+            let categoryRef: ShoppingListCategory | undefined;
 
-            for (let i = this.shoppingList.length - 1; i >= 0; i--) {
-                const category = this.shoppingList[i];
-                const itemIdx = category.items.findIndex(it => it.item.toLowerCase() === ingredientName.toLowerCase());
-                
-                if (itemIdx > -1) {
-                    categoryName = category.category;
-                    itemWasInShoppingList = true;
-                    const sItem = category.items[itemIdx];
-                    const shoppingQuantity = parseQuantity(sItem.quantity);
-
-                    if (shoppingQuantity && shoppingQuantity.unit === itemQuantityToToggle.unit) {
-                        shoppingQuantity.value -= itemQuantityToToggle.value;
-                        if (shoppingQuantity.value > 0.01) {
-                            sItem.quantity = formatQuantity(shoppingQuantity);
-                        } else {
-                            category.items.splice(itemIdx, 1);
-                            if (category.items.length === 0) {
-                                this.shoppingList.splice(i, 1);
-                            }
-                        }
-                    }
-                    break; 
+            for(const cat of this.shoppingList) {
+                const item = cat.items.find(it => it.item.toLowerCase() === ingredientName.toLowerCase());
+                if (item) {
+                    categoryRef = cat;
+                    break;
                 }
             }
+            if (categoryRef) categoryName = categoryRef.category;
+
+            const shoppingItem = categoryRef?.items.find(it => it.item.toLowerCase() === ingredientName.toLowerCase());
+
+            if (shoppingItem) {
+                itemWasInShoppingList = true;
+                const shoppingQuantity = parseQuantity(shoppingItem.quantity);
+
+                if (shoppingQuantity && shoppingQuantity.unit === itemQuantityToToggle.unit) {
+                    shoppingQuantity.value -= itemQuantityToToggle.value;
+                    if (shoppingQuantity.value > 0.01) {
+                        shoppingItem.quantity = formatQuantity(shoppingQuantity);
+                    } else {
+                        categoryRef!.items = categoryRef!.items.filter(it => it.item.toLowerCase() !== ingredientName.toLowerCase());
+                        if (categoryRef!.items.length === 0) {
+                            this.shoppingList = this.shoppingList.filter(c => c.category !== categoryRef!.category);
+                        }
+                    }
+                }
+            }
+
 
             if (itemWasInShoppingList) {
                 const pantryItem = this.pantry.find(p => p.item.toLowerCase() === ingredientName.toLowerCase());
@@ -341,6 +418,7 @@ export class MealPlanStore {
         this.saveToLocalStorage();
     });
   }
+
 
   toggleMealDone = (dayIndex: number, mealIndex: number) => {
     const meal = this.mealPlan[dayIndex]?.meals[mealIndex];
@@ -382,36 +460,50 @@ export class MealPlanStore {
           const typedarray = new Uint8Array(event.target.result as ArrayBuffer);
           // @ts-ignore
           const pdf = await window.pdfjsLib.getDocument(typedarray).promise;
-          let fullText = '';
+          const pageTexts: string[] = [];
           for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items.map((s: any) => s.str).join('\n');
-            
-            const progress = Math.round((i / pdf.numPages) * 100);
-             runInAction(() => this.pdfParseProgress = progress);
-
-            fullText += pageText + '\n\n';
+              const page = await pdf.getPage(i);
+              const textContent = await page.getTextContent();
+              pageTexts.push(textContent.items.map((s: any) => s.str).join('\n'));
+              runInAction(() => this.pdfParseProgress = Math.round((i / pdf.numPages) * 50));
           }
 
-          const result = await parsePdfToMealPlan(fullText);
+          const fragments = await Promise.all(
+            // FIX: The spread operator `...text` cannot be used on a string within an object literal.
+            // The raw text from the PDF page is now correctly wrapped in a valid DayPlan structure
+            // to be sent to the AI for parsing. The text is placed in `fullDescription` as the
+            // existing prompt for `regeneratePlanData` is geared towards processing that field.
+            pageTexts.map(text => regeneratePlanData([{ day: 'Unknown', meals: [{ name: 'PDF Page Content', title: 'Content to parse', items: [{ ingredientName: 'Raw text', fullDescription: text, used: false }], done: false }] }]))
+          );
           
+          runInAction(() => this.pdfParseProgress = 75);
+
+          // This logic is simplified; a more robust merge would be needed for complex cases.
+          const combinedPlan: DayPlan[] = []; 
+          fragments.forEach(frag => {
+            if (frag?.weeklyPlan) combinedPlan.push(...frag.weeklyPlan);
+          });
+
+          const finalResult = await regeneratePlanData(combinedPlan);
+          runInAction(() => this.pdfParseProgress = 100);
+
           runInAction(() => {
-            if(result && result.weeklyPlan && result.shoppingList) {
-              const planWithFlags = result.weeklyPlan.map(day => ({
+            if(finalResult && finalResult.weeklyPlan && finalResult.shoppingList) {
+              const planWithFlags = finalResult.weeklyPlan.map(day => ({
                 ...day,
                 meals: day.meals.map(meal => ({
                   ...meal,
-                  done: false, // Initialize done status
+                  done: false,
                   items: (meal.items as any[]).map(item => ({ ...item, used: false }))
                 }))
               }));
 
               this.mealPlan = planWithFlags;
-              this.shoppingList = result.shoppingList;
-              this.pantry = []; // Reset pantry
+              this.shoppingList = finalResult.shoppingList;
+              this.pantry = [];
               this.status = AppStatus.SUCCESS;
               this.activeTab = 'daily';
+              this.hasUnsavedChanges = false;
               this.currentPlanName = `Diet Plan - ${new Date().toLocaleDateString('it-IT')}`;
               this.saveToLocalStorage();
             } else {
