@@ -54,6 +54,8 @@ const translations = {
     noPlanToday: "Nessun Piano per Oggi",
     noPlanTodaySubtitle: "Nessun pasto è programmato per oggi nel tuo piano attuale.",
     todaysPlan: "Piano di Oggi:",
+    markAsDone: "Segna come completato",
+    markAsToDo: "Segna come da fare",
 
     // ShoppingListView.tsx
     shoppingListTitle: "Lista della Spesa",
@@ -141,6 +143,8 @@ const translations = {
     noPlanToday: "No Plan for Today",
     noPlanTodaySubtitle: "There's no meal scheduled for today in your current plan.",
     todaysPlan: "Today's Plan:",
+    markAsDone: "Mark as Done",
+    markAsToDo: "Mark as To Do",
 
     // ShoppingListView.tsx
     shoppingListTitle: "Shopping List",

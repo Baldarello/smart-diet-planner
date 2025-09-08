@@ -1,6 +1,7 @@
 import { makeAutoObservable, runInAction } from 'mobx';
-import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale } from '../types';
+import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal } from '../types';
 import { parsePdfToMealPlan } from '../services/geminiService';
+import { parseQuantity, formatQuantity } from '../utils/quantityParser';
 
 export enum AppStatus {
   INITIAL,
@@ -59,7 +60,17 @@ export class MealPlanStore {
       const savedData = localStorage.getItem('dietPlanData');
       if (savedData) {
         const data = JSON.parse(savedData);
-        this.mealPlan = data.mealPlan || [];
+        
+        const loadedPlan = data.mealPlan || [];
+        this.mealPlan = loadedPlan.map((day: DayPlan) => ({
+            ...day,
+            meals: day.meals.map((meal: Meal) => ({
+                ...meal,
+                done: meal.done ?? false, // Ensure backward compatibility
+                items: meal.items.map(item => ({ ...item, used: item.used ?? false }))
+            }))
+        }));
+
         this.shoppingList = data.shoppingList || [];
         this.pantry = data.pantry || [];
         this.archivedPlans = data.archivedPlans || [];
@@ -137,7 +148,16 @@ export class MealPlanStore {
             this.archivedPlans.push(currentPlanArchive);
         }
 
-        this.mealPlan = planToRestore.plan;
+        const planToRestoreWithFlags = planToRestore.plan.map(day => ({
+          ...day,
+          meals: day.meals.map(meal => ({
+              ...meal,
+              done: false, // Reset progress on restore
+              items: meal.items.map(item => ({...item, used: item.used ?? false}))
+          }))
+        }));
+
+        this.mealPlan = planToRestoreWithFlags;
         this.shoppingList = planToRestore.shoppingList;
         this.currentPlanName = planToRestore.name;
         this.pantry = []; // Pantry is reset on restore
@@ -195,36 +215,141 @@ export class MealPlanStore {
   }
 
   toggleMealItem = (dayIndex: number, mealIndex: number, itemIndex: number) => {
-    const mealItem = this.mealPlan[dayIndex]?.meals[mealIndex]?.items[itemIndex];
-    if (!mealItem) return;
+    runInAction(() => { // Wrap in runInAction for multiple state changes
+        const mealItem = this.mealPlan[dayIndex]?.meals[mealIndex]?.items[itemIndex];
+        if (!mealItem) return;
 
-    mealItem.used = !mealItem.used;
+        const itemQuantityToToggle = parseQuantity(mealItem.fullDescription);
 
-    if (mealItem.used) {
-      // If item is used, try to move it from pantry to shopping list
-      const pantryItem = this.pantry.find(p => p.item.toLowerCase() === mealItem.ingredientName.toLowerCase());
-      if (pantryItem) {
-        this.movePantryItemToShoppingList(pantryItem);
-      }
-    } else {
-      // If item is unused, try to move it back from shopping list to pantry
-      let itemToMove: ShoppingListItem | null = null;
-      let categoryName: string | null = null;
-
-      for (const category of this.shoppingList) {
-        const foundItem = category.items.find(i => i.item.toLowerCase() === mealItem.ingredientName.toLowerCase());
-        if (foundItem) {
-          itemToMove = foundItem;
-          categoryName = category.category;
-          break;
+        // Just toggle the state and save, do not affect pantry/shopping list if quantity is not parsable
+        if (!itemQuantityToToggle || itemQuantityToToggle.value <= 0) {
+            mealItem.used = !mealItem.used;
+            this.saveToLocalStorage();
+            return;
         }
-      }
 
-      if (itemToMove && categoryName) {
-        this.moveShoppingItemToPantry(itemToMove, categoryName);
-      }
+        const ingredientName = mealItem.ingredientName;
+        mealItem.used = !mealItem.used; // Toggle the state first
+
+        if (mealItem.used) {
+            // ---> ITEM IS CHECKED (USED) <---
+            // 1. Subtract from Pantry
+            const pantryItemIndex = this.pantry.findIndex(p => p.item.toLowerCase() === ingredientName.toLowerCase());
+            if (pantryItemIndex > -1) {
+                const pItem = this.pantry[pantryItemIndex];
+                const pantryQuantity = parseQuantity(pItem.quantity);
+                if (pantryQuantity && pantryQuantity.unit === itemQuantityToToggle.unit) {
+                    pantryQuantity.value -= itemQuantityToToggle.value;
+                    if (pantryQuantity.value > 0.01) { // Epsilon for float
+                        pItem.quantity = formatQuantity(pantryQuantity);
+                    } else {
+                        this.pantry.splice(pantryItemIndex, 1);
+                    }
+                } else {
+                    // Cannot perform math on different/unparsed units. Fallback: remove from pantry.
+                    this.pantry.splice(pantryItemIndex, 1);
+                }
+            }
+            
+            // 2. Add to Shopping List
+            let category: ShoppingListCategory | undefined;
+            let shoppingItem: ShoppingListItem | undefined;
+            // Find existing item in shopping list
+            for (const cat of this.shoppingList) {
+                const item = cat.items.find(i => i.item.toLowerCase() === ingredientName.toLowerCase());
+                if(item) {
+                    shoppingItem = item;
+                    category = cat;
+                    break;
+                }
+            }
+
+            if (shoppingItem && category) {
+                const shoppingQuantity = parseQuantity(shoppingItem.quantity);
+                if (shoppingQuantity && shoppingQuantity.unit === itemQuantityToToggle.unit) {
+                    shoppingQuantity.value += itemQuantityToToggle.value;
+                    shoppingItem.quantity = formatQuantity(shoppingQuantity);
+                } else {
+                    // Mismatched units, append to string
+                    shoppingItem.quantity = `${shoppingItem.quantity}, ${formatQuantity(itemQuantityToToggle)}`;
+                }
+            } else {
+                // Item not in shopping list, add it. Find its original category from a pantry item if it exists.
+                const pantrySourceItem = this.pantry.find(p => p.item.toLowerCase() === ingredientName.toLowerCase());
+                const originalCategory = pantrySourceItem?.originalCategory || 'Altro';
+                
+                let targetCategory = this.shoppingList.find(c => c.category === originalCategory);
+                if (!targetCategory) {
+                    targetCategory = { category: originalCategory, items: [] };
+                    this.shoppingList.push(targetCategory);
+                }
+                targetCategory.items.push({
+                    item: ingredientName,
+                    quantity: formatQuantity(itemQuantityToToggle),
+                });
+            }
+
+        } else {
+            // ---> ITEM IS UNCHECKED (NOT USED) <---
+            // 1. Subtract from Shopping List & Get Category
+            let originalCategory = 'Altro'; // Default category
+            
+            for (let i = this.shoppingList.length - 1; i >= 0; i--) {
+                const category = this.shoppingList[i];
+                const itemIdx = category.items.findIndex(it => it.item.toLowerCase() === ingredientName.toLowerCase());
+                
+                if (itemIdx > -1) {
+                    originalCategory = category.category; // Got the category!
+                    const sItem = category.items[itemIdx];
+                    const shoppingQuantity = parseQuantity(sItem.quantity);
+
+                    if (shoppingQuantity && shoppingQuantity.unit === itemQuantityToToggle.unit) {
+                        shoppingQuantity.value -= itemQuantityToToggle.value;
+                        if (shoppingQuantity.value > 0.01) {
+                            sItem.quantity = formatQuantity(shoppingQuantity);
+                        } else {
+                            category.items.splice(itemIdx, 1);
+                            if (category.items.length === 0) {
+                                this.shoppingList.splice(i, 1);
+                            }
+                        }
+                    }
+                    // If units mismatch, do nothing to the shopping list quantity.
+                    break; 
+                }
+            }
+
+            // 2. Add back to Pantry
+            const pantryItem = this.pantry.find(p => p.item.toLowerCase() === ingredientName.toLowerCase());
+            if (pantryItem) {
+                const pantryQuantity = parseQuantity(pantryItem.quantity);
+                if (pantryQuantity && pantryQuantity.unit === itemQuantityToToggle.unit) {
+                    pantryQuantity.value += itemQuantityToToggle.value;
+                    pantryItem.quantity = formatQuantity(pantryQuantity);
+                } else {
+                     pantryItem.quantity = `${pantryItem.quantity}, ${formatQuantity(itemQuantityToToggle)}`;
+                }
+            } else {
+                // Item not in pantry, add it back using the category we found
+                this.pantry.push({
+                    item: ingredientName,
+                    quantity: formatQuantity(itemQuantityToToggle),
+                    originalCategory: originalCategory,
+                });
+            }
+        }
+
+        this.saveToLocalStorage();
+    });
+  }
+
+
+  toggleMealDone = (dayIndex: number, mealIndex: number) => {
+    const meal = this.mealPlan[dayIndex]?.meals[mealIndex];
+    if (meal) {
+        meal.done = !meal.done;
+        this.saveToLocalStorage();
     }
-    this.saveToLocalStorage();
   }
 
   get dailyPlan(): DayPlan | undefined {
@@ -275,16 +400,16 @@ export class MealPlanStore {
           
           runInAction(() => {
             if(result && result.weeklyPlan && result.shoppingList) {
-              // Add 'used: false' to every meal item
-              const planWithUsedFlag = result.weeklyPlan.map(day => ({
+              const planWithFlags = result.weeklyPlan.map(day => ({
                 ...day,
                 meals: day.meals.map(meal => ({
                   ...meal,
+                  done: false, // Initialize done status
                   items: (meal.items as any[]).map(item => ({ ...item, used: false }))
                 }))
               }));
 
-              this.mealPlan = planWithUsedFlag;
+              this.mealPlan = planWithFlags;
               this.shoppingList = result.shoppingList;
               this.pantry = []; // Reset pantry
               this.status = AppStatus.SUCCESS;

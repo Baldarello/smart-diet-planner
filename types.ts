@@ -8,6 +8,7 @@ export interface Meal {
   name: string;
   title?: string;
   items: MealItem[];
+  done: boolean;
 }
 
 export interface DayPlan {
