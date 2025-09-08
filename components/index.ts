@@ -12,4 +12,6 @@ export { default as MealItemChecklist } from './MealItemChecklist';
 export { default as ExamplePdf } from './ExamplePdf';
 export { default as HydrationTracker } from './HydrationTracker';
 export { default as MealTimeEditor } from './MealTimeEditor';
+export { default as DailyNutritionSummary } from './DailyNutritionSummary';
+export { default as NutritionInfoDisplay } from './NutritionInfoDisplay';
 export * from './Icons';

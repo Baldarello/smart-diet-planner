@@ -6,7 +6,7 @@ import { PantryIcon } from './Icons';
 import { t } from '../i18n';
 
 const ShoppingListView: React.FC = observer(() => {
-    const { shoppingList, hasUnsavedChanges, recalculateShoppingList } = mealPlanStore;
+    const { shoppingList, hasUnsavedChanges, recalculateShoppingList, recalculating } = mealPlanStore;
     const [checkedItems, setCheckedItems] = useState<Map<string, { item: ShoppingListItem, category: string }>>(new Map());
 
     const handleCheck = (item: ShoppingListItem, category: string) => {
@@ -36,10 +36,11 @@ const ShoppingListView: React.FC = observer(() => {
                         <p>{t('shoppingListStaleMessage')}</p>
                     </div>
                     <button 
-                        onClick={recalculateShoppingList}
-                        className="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors flex-shrink-0"
+                        onClick={() => recalculateShoppingList()}
+                        disabled={recalculating}
+                        className="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors flex-shrink-0 disabled:bg-yellow-400 disabled:cursor-not-allowed"
                     >
-                        {t('recalculateList')}
+                        {recalculating ? t('recalculating') : t('recalculateList')}
                     </button>
                 </div>
             )}

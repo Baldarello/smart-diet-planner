@@ -18,6 +18,8 @@ const translations = {
     uploadNew: "Carica un Nuovo Piano Dietetico",
     footer: "Realizzato con React & MobX. Parsing offline.",
     errorAndUpload: "Per favore, prova a caricare un nuovo file",
+    onlineModeTitle: "Modalità Online: Analisi AI e nutrizione attive.",
+    offlineModeTitle: "Modalità Offline: Quota API superata. Funzionalità di base attive.",
     
     // FileUpload.tsx
     clickToUpload: "Clicca per caricare",
@@ -116,6 +118,8 @@ const translations = {
     uploadNew: "Upload a New Diet Plan",
     footer: "Powered by React & MobX. Offline parsing.",
     errorAndUpload: "Please try uploading a new file",
+    onlineModeTitle: "Online Mode: AI analysis & nutrition facts are active.",
+    offlineModeTitle: "Offline Mode: API quota exceeded. Basic features are active.",
 
     // FileUpload.tsx
     clickToUpload: "Click to upload",

@@ -164,7 +164,8 @@ export function parsePdfText(text: string): MealPlanData {
                 const contentLine = description || line; 
                 
                 // Split by ';' or '•' to handle multiple ingredients on the same line.
-                const ingredients = contentLine.split(/[;•]/);
+                // Fix: Replace `replaceAll` with `replace` using a global regex for wider compatibility.
+                const ingredients = contentLine.replace(/•/g,"").split(/[;]/);
                 
                 ingredients.forEach(ingredientText => {
                     const trimmedText = ingredientText.trim();

@@ -100,6 +100,56 @@ const finalSchema = {
   required: ['weeklyPlan', 'shoppingList']
 };
 
+/**
+ * Checks if an error is a quota-related API error.
+ */
+export function isQuotaError(error: unknown): boolean {
+    if (error instanceof Error) {
+        const message = error.message.toLowerCase();
+        return message.includes('429') || message.includes('quota') || message.includes('resource has been exhausted');
+    }
+    return false;
+}
+
+export async function processPdfTextWithGemini(text: string): Promise<MealPlanData | null> {
+    const prompt = `
+Sei un assistente nutrizionale esperto. Il tuo compito è analizzare il testo grezzo estratto da un PDF di un piano dietetico e strutturarlo in un formato JSON preciso.
+
+COMPITI:
+1.  **ANALIZZA E STRUTTURA**: Leggi il testo e crea un piano settimanale (\`weeklyPlan\`) da LUNEDI a DOMENICA. Per ogni giorno, identifica i pasti (COLAZIONE, PRANZO, etc.).
+2.  **IDENTIFICA INGREDIENTI**: Per ogni pasto, elenca tutti gli ingredienti. Per ogni ingrediente, fornisci:
+    *   \`fullDescription\`: Il testo originale completo (es. "60g di riso venere").
+    *   \`ingredientName\`: Il nome pulito e base dell'ingrediente (es. "Riso venere"). Mantieni la coerenza per lo stesso ingrediente.
+3.  **STIMA NUTRIZIONALE**: Fornisci una stima dei valori nutrizionali (\`nutrition\`: carbs, protein, fat, calories) per OGNI pasto.
+4.  **ASSEGNA ORARI**: Assegna un orario logico in formato HH:MM (\`time\`) a ogni pasto.
+5.  **CREA LISTA DELLA SPESA**: Genera una lista della spesa aggregata (\`shoppingList\`) per l'intera settimana, raggruppando gli ingredienti per categoria. L'item nella lista deve corrispondere a \`ingredientName\`.
+
+REGOLE IMPORTANTI:
+*   Fornisci l'output **esclusivamente** in formato JSON, seguendo lo schema specificato.
+*   Assicurati che l'intero piano settimanale sia coperto.
+
+Testo del PDF da analizzare:
+---
+${text}
+---
+`;
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: finalSchema,
+            },
+        });
+        const jsonString = response.text.trim();
+        return JSON.parse(jsonString) as MealPlanData;
+    } catch (error) {
+        console.error("Error calling Gemini API for PDF processing:", error);
+        throw error;
+    }
+}
+
 export async function regeneratePlanData(plan: DayPlan[]): Promise<MealPlanData | null> {
     const prompt = `
 Sei un assistente nutrizionale specializzato. Ti viene fornito un oggetto JSON che rappresenta un piano alimentare settimanale. Le descrizioni degli ingredienti ('fullDescription') potrebbero essere state modificate dall'utente.
@@ -133,6 +183,6 @@ ${JSON.stringify(plan)}
         return JSON.parse(jsonString) as MealPlanData;
     } catch (error) {
         console.error("Error calling Gemini API for recalculation:", error);
-        throw new Error("Failed to get a valid response from the AI during recalculation.");
+        throw error;
     }
 }

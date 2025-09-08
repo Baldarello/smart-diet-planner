@@ -15,7 +15,7 @@ import {
     ChangeDietIcon,
     ExamplePdf
 } from './components';
-import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon } from './components/Icons';
+import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon } from './components/Icons';
 
 const App: React.FC = observer(() => {
     const store = mealPlanStore;
@@ -139,6 +139,9 @@ const App: React.FC = observer(() => {
                          <button onClick={() => store.setLocale(store.locale === 'it' ? 'en' : 'it')} className="w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-md hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors font-bold text-violet-600 dark:text-violet-400">
                            {store.locale.toUpperCase()}
                         </button>
+                        <div className="p-2 rounded-full bg-white dark:bg-gray-800 shadow-md" title={store.onlineMode ? t('onlineModeTitle') : t('offlineModeTitle')}>
+                           {store.onlineMode ? <CloudOnlineIcon/> : <CloudOfflineIcon/>}
+                        </div>
                     </div>
                     <div className="text-center">
                         <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600">{t('mainTitle')}</h1>
