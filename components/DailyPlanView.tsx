@@ -10,28 +10,37 @@ import DailyNutritionSummary from './DailyNutritionSummary';
 import NutritionInfoDisplay from './NutritionInfoDisplay';
 
 const DailyPlanView: React.FC = observer(() => {
-    const { dailyPlan, mealPlan, toggleMealDone, dailyNutritionSummary, onlineMode } = mealPlanStore;
+    const { dailyPlan, toggleMealDone, dailyNutritionSummary, onlineMode } = mealPlanStore;
 
     if (!dailyPlan) {
         return ( <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg text-center max-w-2xl mx-auto"><h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('noPlanToday')}</h2><p className="text-gray-500 dark:text-gray-400">{t('noPlanTodaySubtitle')}</p></div> );
     }
 
-    const dayIndex = mealPlan.findIndex(d => d.day.toUpperCase() === dailyPlan.day.toUpperCase());
+    const dayIndex = mealPlanStore.mealPlan.findIndex(d => d.day.toUpperCase() === dailyPlan.day.toUpperCase());
 
-    const mealsWithOriginalIndex = dailyPlan.meals.map((meal, index) => ({ ...meal, originalIndex: index }));
-    const sortedMeals = mealsWithOriginalIndex.sort((a, b) => Number(a.done) - Number(b.done));
+    const sortedMeals = [...dailyPlan.meals]
+      .map((meal, index) => ({ ...meal, originalIndex: index }))
+      .sort((a, b) => {
+        if (a.done !== b.done) {
+            return Number(a.done) - Number(b.done);
+        }
+        if (a.time && b.time) {
+            return a.time.localeCompare(b.time);
+        }
+        return 0;
+    });
 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-xl transition-all duration-300 max-w-4xl mx-auto">
             <h3 className="text-3xl font-bold text-violet-700 dark:text-violet-400 mb-4 capitalize border-b dark:border-gray-700 pb-4">{t('todaysPlan')} {dailyPlan.day.toLowerCase()}</h3>
             
-            {onlineMode && <DailyNutritionSummary summary={dailyNutritionSummary} />}
+            {onlineMode && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
             
             <HydrationTracker />
 
             <div className="space-y-5 mt-6">
                 {sortedMeals.map((meal) => (
-                    <div key={meal.originalIndex} className={`bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg transition-opacity ${meal.done ? 'opacity-60' : ''}`}>
+                    <div key={meal.originalIndex} className={`bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg transition-all duration-500 ease-in-out ${meal.done ? 'opacity-60' : 'opacity-100'}`}>
                         <div className="flex justify-between items-start">
                              <div>
                                 <div className="flex items-center gap-x-2">

@@ -32,13 +32,18 @@ const SkeletonSummaryItem: React.FC<{ colorClasses: string }> = ({ colorClasses 
     </div>
 );
 
+interface DailyNutritionSummaryProps {
+  summary: NutritionInfo | null | undefined;
+  showTitle?: boolean;
+  className?: string;
+}
 
-const DailyNutritionSummary: React.FC<{ summary: NutritionInfo | null | undefined }> = ({ summary }) => {
+const DailyNutritionSummary: React.FC<DailyNutritionSummaryProps> = ({ summary, showTitle = true, className = 'my-6' }) => {
     
     if (summary === undefined) {
         return (
-             <div className="my-6">
-                <h4 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">{t('dailySummaryTitle')}</h4>
+             <div className={className}>
+                {showTitle && <h4 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">{t('dailySummaryTitle')}</h4>}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <SkeletonSummaryItem colorClasses="bg-orange-100 dark:bg-orange-900/40" />
                     <SkeletonSummaryItem colorClasses="bg-sky-100 dark:bg-sky-900/40" />
@@ -54,8 +59,8 @@ const DailyNutritionSummary: React.FC<{ summary: NutritionInfo | null | undefine
     }
 
     return (
-        <div className="my-6">
-            <h4 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">{t('dailySummaryTitle')}</h4>
+        <div className={className}>
+            {showTitle && <h4 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">{t('dailySummaryTitle')}</h4>}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <SummaryItem
                     icon={<CarbsIcon />}

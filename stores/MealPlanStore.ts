@@ -492,18 +492,18 @@ export class MealPlanStore {
     return this.mealPlan.find(d => d.day.toUpperCase() === todayName);
   }
 
-  get dailyNutritionSummary(): NutritionInfo | null | undefined {
-    if (!this.dailyPlan || !this.onlineMode) {
+  getDayNutritionSummary(dayPlan: DayPlan): NutritionInfo | null | undefined {
+    if (!this.onlineMode) {
       return null;
     }
 
-    if (this.dailyPlan.meals.some(meal => meal.nutrition === undefined)) {
+    if (dayPlan.meals.some(meal => meal.nutrition === undefined)) {
       return undefined; // Data is still loading
     }
 
     const summary: NutritionInfo = { carbs: 0, protein: 0, fat: 0, calories: 0 };
     let hasData = false;
-    this.dailyPlan.meals.forEach(meal => {
+    dayPlan.meals.forEach(meal => {
       if (meal.nutrition) {
         hasData = true;
         summary.carbs += meal.nutrition.carbs;
@@ -514,6 +514,13 @@ export class MealPlanStore {
     });
 
     return hasData ? summary : null;
+  }
+
+  get dailyNutritionSummary(): NutritionInfo | null | undefined {
+    if (!this.dailyPlan) {
+      return null;
+    }
+    return this.getDayNutritionSummary(this.dailyPlan);
   }
 
   private _enrichPlanDataInBackground = async () => {

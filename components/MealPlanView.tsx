@@ -7,19 +7,34 @@ import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
 import MealTimeEditor from './MealTimeEditor';
 import NutritionInfoDisplay from './NutritionInfoDisplay';
+import DailyNutritionSummary from './DailyNutritionSummary';
 
 const MealPlanView: React.FC<{ plan: DayPlan[] }> = observer(({ plan }) => (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {plan.map((day, dayIndex) => {
-            const mealsWithOriginalIndex = day.meals.map((meal, index) => ({ ...meal, originalIndex: index }));
-            const sortedMeals = mealsWithOriginalIndex.sort((a, b) => Number(a.done) - Number(b.done));
+            const sortedMeals = [...day.meals]
+                .map((meal, index) => ({ ...meal, originalIndex: index }))
+                .sort((a, b) => {
+                    if (a.done !== b.done) {
+                        return Number(a.done) - Number(b.done);
+                    }
+                    if (a.time && b.time) {
+                        return a.time.localeCompare(b.time);
+                    }
+                    return 0;
+            });
+
+            const summary = mealPlanStore.getDayNutritionSummary(day);
 
             return (
                 <div key={dayIndex} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 flex flex-col hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                     <h3 className="text-2xl font-bold text-violet-700 dark:text-violet-400 mb-4 capitalize">{day.day.toLowerCase()}</h3>
+                    
+                    {mealPlanStore.onlineMode && <DailyNutritionSummary summary={summary} showTitle={false} className="mb-4" />}
+
                     <div className="space-y-4 flex-grow">
                         {sortedMeals.map((meal) => (
-                            <div key={meal.originalIndex} className={`border-t border-gray-100 dark:border-gray-700 pt-3 transition-opacity ${meal.done ? 'opacity-60' : ''}`}>
+                            <div key={meal.originalIndex} className={`border-t border-gray-100 dark:border-gray-700 pt-3 transition-all duration-500 ease-in-out ${meal.done ? 'opacity-60' : 'opacity-100'}`}>
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <div className="flex items-center gap-x-2">
