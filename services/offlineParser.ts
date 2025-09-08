@@ -68,21 +68,42 @@ export function generateShoppingList(plan: DayPlan[]): ShoppingListCategory[] {
         day.meals.forEach(meal => {
             meal.items.forEach(item => {
                 const quantity = parseQuantity(item.fullDescription);
-                if (!quantity || quantity.value <= 0) return; // Skip items without a parsable quantity
+                const ingredientName = item.ingredientName;
+                const existing = aggregatedMap.get(ingredientName);
 
-                const existing = aggregatedMap.get(item.ingredientName);
+                // If quantity is not parsable (e.g., a range "1-2" or text "q.b."), treat it as a string.
+                if (!quantity) {
+                    if (existing) {
+                        const existingDesc = existing.quantity.value === 0 ? existing.quantity.unit : formatQuantity(existing.quantity);
+                        existing.quantity = { value: 0, unit: `${existingDesc}, ${item.fullDescription}` };
+                    } else {
+                        aggregatedMap.set(ingredientName, {
+                            quantity: { value: 0, unit: item.fullDescription },
+                            category: categorizeIngredient(ingredientName)
+                        });
+                    }
+                    return; // Continue to next item
+                }
+
+                // If quantity is zero, ignore it.
+                if (quantity.value <= 0) return;
+
+                // Standard logic for numeric quantities
                 if (existing) {
-                    if (existing.quantity.unit === quantity.unit) {
+                    // If the existing entry is numeric and units match, sum the values.
+                    if (existing.quantity.value !== 0 && existing.quantity.unit === quantity.unit) {
                         existing.quantity.value += quantity.value;
                     } else {
-                        // If units are different (e.g., 'g' vs 'cucchiaio'), combine them as a string
-                        const newQuantityString = `${formatQuantity(existing.quantity)}, ${formatQuantity(quantity)}`;
-                        existing.quantity = { value: 0, unit: newQuantityString }; 
+                        // Otherwise, concatenate as a string.
+                        const existingDesc = existing.quantity.value === 0 ? existing.quantity.unit : formatQuantity(existing.quantity);
+                        const newDesc = `${existingDesc}, ${formatQuantity(quantity)}`;
+                        existing.quantity = { value: 0, unit: newDesc };
                     }
                 } else {
-                    aggregatedMap.set(item.ingredientName, {
+                    // Add the new numeric item.
+                    aggregatedMap.set(ingredientName, {
                         quantity: quantity,
-                        category: categorizeIngredient(item.ingredientName)
+                        category: categorizeIngredient(ingredientName)
                     });
                 }
             });
@@ -110,83 +131,179 @@ export function generateShoppingList(plan: DayPlan[]): ShoppingListCategory[] {
 }
 
 /**
- * Parses the full text content of a diet PDF into structured meal plan and shopping list data.
- * @param text The raw text from the PDF.
- * @returns Structured meal plan data.
+ * Finds lines that repeat across multiple pages, likely headers or footers.
+ * @param pageTexts An array of strings, where each string is the text content of a page.
+ * @param numPages The total number of pages.
+ * @returns A Set of strings containing the detected header/footer lines.
  */
-export function parsePdfText(text: string): MealPlanData {
-    const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    const weeklyPlan: DayPlan[] = [];
-    let currentDay: DayPlan | null = null;
-    let currentMeal: Meal | null = null;
+function findRepeatedLines(pageTexts: string[], numPages: number): Set<string> {
+    const lineCounts = new Map<string, number>();
+    const repeatedLines = new Set<string>();
+    
+    if (numPages <= 1) {
+        return repeatedLines;
+    }
 
-    // Regex to detect lines starting with list markers (bullets, numbers)
-    const ingredientStartRegex = /^(\s*[*•]|\d+)/;
-    // Regex to strip bullet points. It's safe to run on non-bullet lines.
-    const bulletStripRegex = /^(\s*[*•]|\d+[.)])\s+/;
+    const pageLines = pageTexts.map(text => 
+        text.split('\n').map(l => l.trim()).filter(l => l.length > 3)
+    );
 
-    lines.forEach(line => {
-        const upperLine = line.toUpperCase();
-        
-        // State change: New Day
-        if (DAY_KEYWORDS.includes(upperLine)) {
-            currentDay = { day: line, meals: [] };
-            weeklyPlan.push(currentDay);
-            currentMeal = null;
-            return;
-        }
-        
-        // State change: New Meal
-        if (currentDay && MEAL_KEYWORDS.includes(upperLine)) {
-            currentMeal = {
-                name: line,
-                items: [],
-                done: false,
-                time: MEAL_TIMES[upperLine] || '12:00',
-            };
-            currentDay.meals.push(currentMeal);
-            return;
-        }
-        
-        // Ignore separator lines
-        if (IGNORED_LINES.includes(upperLine)) {
-            return;
-        }
+    pageLines.forEach(lines => {
+        const uniqueLinesOnPage = new Set(lines);
+        uniqueLinesOnPage.forEach(line => {
+            lineCounts.set(line, (lineCounts.get(line) || 0) + 1);
+        });
+    });
 
-        // Process line within a meal context
-        if (currentMeal) {
-            const isIngredient = ingredientStartRegex.test(line);
-
-            if (isIngredient) {
-                // This line is an ingredient. Clean the bullet point if it exists.
-                const description = line.replace(bulletStripRegex, '').trim();
-                // Fallback to original line if stripping results in an empty string
-                const contentLine = description || line; 
-                
-                // Split by ';' or '•' to handle multiple ingredients on the same line.
-                // Fix: Replace `replaceAll` with `replace` using a global regex for wider compatibility.
-                const ingredients = contentLine.replace(/•/g,"").split(/[;]/);
-                
-                ingredients.forEach(ingredientText => {
-                    const trimmedText = ingredientText.trim();
-                    if (trimmedText) { // Avoid adding empty items
-                        const { ingredientName } = extractIngredientInfo(trimmedText);
-                        currentMeal.items.push({
-                            fullDescription: trimmedText,
-                            ingredientName: ingredientName || trimmedText,
-                            used: false
-                        });
-                    }
-                });
-
-            } else if (!currentMeal.title && currentMeal.items.length === 0) {
-                // This line is not an ingredient and we don't have a title or any items yet.
-                // It's likely the title of the dish (e.g., "Polpette di ricotta veg").
-                currentMeal.title = line;
-            }
-            // Otherwise, ignore the line (it could be a note, instruction, etc.)
+    lineCounts.forEach((count, line) => {
+        // Heuristic: A line is a header/footer if it appears on more than half of the pages.
+        if (count > numPages / 2) {
+            repeatedLines.add(line);
         }
     });
+
+    return repeatedLines;
+}
+
+/**
+ * Processes a block of text lines belonging to a single meal to extract its title and ingredients.
+ * @param mealName The name of the meal (e.g., "COLAZIONE").
+ * @param contentLines The lines of text between this meal keyword and the next.
+ * @returns A structured Meal object.
+ */
+function processMealBlock(mealName: string, contentLines: string[]): Meal {
+    const meal: Meal = {
+        name: mealName,
+        items: [],
+        done: false,
+        time: MEAL_TIMES[mealName] || '12:00',
+    };
+
+    const ingredientStartRegex = /^(\s*[-*•]|\d+)/;
+    const bulletStripRegex = /^(\s*[*•]|\d+[.)])\s+/;
+    let hasFoundIngredients = false;
+
+    contentLines.forEach(line => {
+        if (IGNORED_LINES.includes(line.toUpperCase())) return;
+        
+        const isIngredientLine = ingredientStartRegex.test(line);
+
+        if (isIngredientLine) {
+            hasFoundIngredients = true;
+            const description = line.replace(bulletStripRegex, '').trim();
+            const contentLine = description || line;
+            
+            // Split by semicolon ONLY to handle multiple ingredients on the same line.
+            const ingredients = contentLine.split(';');
+            
+            ingredients.forEach(ingredientText => {
+                // Remove any bullet characters but do not split by them.
+                const cleanedIngredientText = ingredientText.replace(/•/g, '').trim();
+                if (cleanedIngredientText) {
+                    const { ingredientName } = extractIngredientInfo(cleanedIngredientText);
+                    meal.items.push({
+                        fullDescription: cleanedIngredientText,
+                        ingredientName: ingredientName || cleanedIngredientText,
+                        used: false,
+                    });
+                }
+            });
+        } 
+        // A non-ingredient line before any ingredients have been found is the title
+        else if (!meal.title && !hasFoundIngredients) {
+            meal.title = line;
+        }
+    });
+    
+    return meal;
+}
+
+/**
+ * Parses the text content from a diet PDF's pages into structured meal plan and shopping list data.
+ * @param pageTexts An array of strings, where each string is the raw text from one page of the PDF.
+ * @returns Structured meal plan data.
+ */
+export function parsePdfText(pageTexts: string[]): MealPlanData {
+    const numPages = pageTexts.length;
+    const repeatedLines = findRepeatedLines(pageTexts, numPages);
+    
+    const initialLines = pageTexts
+        .flatMap(text => text.split('\n'))
+        .map(line => line.trim())
+        .filter(line => line.length > 0 && !repeatedLines.has(line));
+    
+    // New, more robust logic to merge multi-line ingredients pivoted by a hyphen.
+    const mergedLines: string[] = [];
+    for (let i = 0; i < initialLines.length; i++) {
+        const currentLine = initialLines[i];
+
+        // If a line is just a hyphen, it's a continuation marker.
+        if (currentLine.trim() === '-') {
+            const prevLine = mergedLines.pop(); // Get the previously added line.
+            const nextLine = initialLines[i + 1]; // Look ahead to the next line.
+
+            if (prevLine && nextLine) {
+                // Merge the previous line, a hyphen, and the next line.
+                const merged = `${prevLine}-${nextLine}`;
+                mergedLines.push(merged);
+                i++; // Important: skip the next line since it has been merged.
+            } else if (prevLine) {
+                // This case handles a hyphen at the very end of the text. Put the previous line back.
+                mergedLines.push(prevLine);
+            }
+            // If there's no previous line, the hyphen is at the start and can be ignored.
+        } else {
+            mergedLines.push(currentLine);
+        }
+    }
+    const allLines = mergedLines;
+    
+    const weeklyPlan: DayPlan[] = [];
+    let currentDay: DayPlan | null = null;
+    let mealBlocks: { mealName: string, contentLines: string[] }[] = [];
+
+    allLines.forEach(line => {
+        const upperLine = line.toUpperCase();
+        
+        const dayKeyword = DAY_KEYWORDS.find(keyword => upperLine.includes(keyword));
+        if (dayKeyword) {
+            if (currentDay && mealBlocks.length > 0) {
+                mealBlocks.forEach(block => {
+                    const meal = processMealBlock(block.mealName, block.contentLines);
+                    if (meal.items.length > 0 || meal.title) {
+                        currentDay!.meals.push(meal);
+                    }
+                });
+            }
+            currentDay = { day: dayKeyword, meals: [] };
+            weeklyPlan.push(currentDay);
+            mealBlocks = [];
+            return;
+        }
+
+        if (!currentDay) {
+            return;
+        }
+
+        const mealKeyword = MEAL_KEYWORDS.find(keyword => upperLine.includes(keyword));
+        if (mealKeyword) {
+            mealBlocks.push({ mealName: mealKeyword, contentLines: [] });
+            return;
+        }
+
+        if (mealBlocks.length > 0) {
+            mealBlocks[mealBlocks.length - 1].contentLines.push(line);
+        }
+    });
+
+    if (currentDay && mealBlocks.length > 0) {
+        mealBlocks.forEach(block => {
+            const meal = processMealBlock(block.mealName, block.contentLines);
+            if (meal.items.length > 0 || meal.title) {
+                currentDay!.meals.push(meal);
+            }
+        });
+    }
 
     const shoppingList = generateShoppingList(weeklyPlan);
     return { weeklyPlan, shoppingList };

@@ -12,17 +12,15 @@ import DailyNutritionSummary from './DailyNutritionSummary';
 const MealPlanView: React.FC<{ plan: DayPlan[] }> = observer(({ plan }) => (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {plan.map((day, dayIndex) => {
+            const getSortKey = (meal: { done: boolean; time?: string }) => {
+                const primary = meal.done ? 1 : 0; // 0 for not done, 1 for done
+                const secondary = meal.time || '99:99'; // Push meals without a time to the end
+                return `${primary}-${secondary}`;
+            };
+
             const sortedMeals = [...day.meals]
                 .map((meal, index) => ({ ...meal, originalIndex: index }))
-                .sort((a, b) => {
-                    if (a.done !== b.done) {
-                        return Number(a.done) - Number(b.done);
-                    }
-                    if (a.time && b.time) {
-                        return a.time.localeCompare(b.time);
-                    }
-                    return 0;
-            });
+                .sort((a, b) => getSortKey(a).localeCompare(getSortKey(b)));
 
             const summary = mealPlanStore.getDayNutritionSummary(day);
 
@@ -52,7 +50,7 @@ const MealPlanView: React.FC<{ plan: DayPlan[] }> = observer(({ plan }) => (
                                         {meal.done ? <UndoIcon /> : <CheckCircleIcon />}
                                     </button>
                                 </div>
-                                <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} />
+                                <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} />
                                 {mealPlanStore.onlineMode && <NutritionInfoDisplay nutrition={meal.nutrition} />}
                             </div>
                         ))}

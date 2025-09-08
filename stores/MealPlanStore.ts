@@ -626,11 +626,11 @@ export class MealPlanStore {
                         console.warn("Gemini quota exceeded during parsing. Falling back to offline parser.");
                         runInAction(() => { this.onlineMode = false; });
                         this.saveSessionState();
-                        mealStructure = parsePdfText(fullText).weeklyPlan;
+                        mealStructure = parsePdfText(pageTexts).weeklyPlan;
                      } else { throw error; }
                  }
             } else {
-                mealStructure = parsePdfText(fullText).weeklyPlan;
+                mealStructure = parsePdfText(pageTexts).weeklyPlan;
             }
 
             if (!mealStructure || mealStructure.length === 0) {

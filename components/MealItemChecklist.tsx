@@ -3,7 +3,7 @@ import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { MealItem } from '../types';
 
-const EditableMealItem: React.FC<{ item: MealItem, dayIndex: number, mealIndex: number, itemIndex: number }> = ({ item, dayIndex, mealIndex, itemIndex }) => {
+const EditableMealItem: React.FC<{ item: MealItem, dayIndex: number, mealIndex: number, itemIndex: number, mealIsDone: boolean }> = ({ item, dayIndex, mealIndex, itemIndex, mealIsDone }) => {
     const [currentValue, setCurrentValue] = useState(item.fullDescription);
 
     useEffect(() => {
@@ -29,12 +29,12 @@ const EditableMealItem: React.FC<{ item: MealItem, dayIndex: number, mealIndex: 
             onChange={(e) => setCurrentValue(e.target.value)}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            className={`ml-2 w-full bg-transparent outline-none focus:bg-white dark:focus:bg-gray-700/50 rounded-md px-1 py-0.5 transition-colors duration-200 ${item.used ? 'line-through text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}
+            className={`ml-2 w-full bg-transparent outline-none focus:bg-white dark:focus:bg-gray-700/50 rounded-md px-1 py-0.5 transition-colors duration-200 ${(item.used || mealIsDone) ? 'line-through text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'}`}
         />
     );
 };
 
-const MealItemChecklist: React.FC<{items: MealItem[], dayIndex: number, mealIndex: number}> = observer(({items, dayIndex, mealIndex}) => {
+const MealItemChecklist: React.FC<{items: MealItem[], dayIndex: number, mealIndex: number, mealIsDone: boolean}> = observer(({items, dayIndex, mealIndex, mealIsDone}) => {
     return (
         <ul className="text-gray-600 dark:text-gray-400 text-sm mt-2 space-y-2">
             {items.map((item, itemIndex) => (
@@ -47,7 +47,7 @@ const MealItemChecklist: React.FC<{items: MealItem[], dayIndex: number, mealInde
                         onChange={() => mealPlanStore.toggleMealItem(dayIndex, mealIndex, itemIndex)}
                         aria-label={item.fullDescription}
                     />
-                    <EditableMealItem item={item} dayIndex={dayIndex} mealIndex={mealIndex} itemIndex={itemIndex} />
+                    <EditableMealItem item={item} dayIndex={dayIndex} mealIndex={mealIndex} itemIndex={itemIndex} mealIsDone={mealIsDone} />
                 </li>
             ))}
         </ul>

@@ -8,6 +8,7 @@ import HydrationTracker from './HydrationTracker';
 import MealTimeEditor from './MealTimeEditor';
 import DailyNutritionSummary from './DailyNutritionSummary';
 import NutritionInfoDisplay from './NutritionInfoDisplay';
+import { Meal } from '../types';
 
 const DailyPlanView: React.FC = observer(() => {
     const { dailyPlan, toggleMealDone, dailyNutritionSummary, onlineMode } = mealPlanStore;
@@ -18,17 +19,16 @@ const DailyPlanView: React.FC = observer(() => {
 
     const dayIndex = mealPlanStore.mealPlan.findIndex(d => d.day.toUpperCase() === dailyPlan.day.toUpperCase());
 
+    const getSortKey = (meal: { done: boolean; time?: string }) => {
+      const primary = meal.done ? 1 : 0; // 0 for not done, 1 for done
+      const secondary = meal.time || '99:99'; // Push meals without a time to the end
+      return `${primary}-${secondary}`;
+    };
+
     const sortedMeals = [...dailyPlan.meals]
       .map((meal, index) => ({ ...meal, originalIndex: index }))
-      .sort((a, b) => {
-        if (a.done !== b.done) {
-            return Number(a.done) - Number(b.done);
-        }
-        if (a.time && b.time) {
-            return a.time.localeCompare(b.time);
-        }
-        return 0;
-    });
+      .sort((a, b) => getSortKey(a).localeCompare(getSortKey(b)));
+
 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-xl transition-all duration-300 max-w-4xl mx-auto">
@@ -59,7 +59,7 @@ const DailyPlanView: React.FC = observer(() => {
                              </button>
                         </div>
 
-                        <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} />
+                        <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} />
                         {onlineMode && <NutritionInfoDisplay nutrition={meal.nutrition} />}
                     </div>
                 ))}

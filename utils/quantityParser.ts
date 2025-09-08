@@ -1,3 +1,5 @@
+
+
 export interface ParsedQuantity {
   value: number;
   unit: string;
@@ -14,18 +16,22 @@ function normalizeString(s: string): string {
 }
 
 /**
- * Parses a quantity string (e.g., "100g", "1 banana", "2-3 cucchiai") into a value and unit.
+ * Parses a quantity string (e.g., "100g", "1 banana") into a value and unit.
+ * It will return null for complex strings with separators or ranges (e.g., "1-2 noci", "120g - Petto di Pollo")
+ * to ensure they are treated as a single, un-parsable description.
  */
 export function parseQuantity(description: string): ParsedQuantity | null {
     if (!description) return null;
-    let desc = normalizeString(description);
+    const desc = normalizeString(description);
 
-    // Handle ranges like "2-3 noci" -> take the first number
-    const rangeMatch = desc.match(/^(\d+)-\d+\s*(.*)/);
-    if (rangeMatch) {
-        desc = `${rangeMatch[1]} ${rangeMatch[2] || ''}`.trim();
+    // Overhauled check for ranges or hyphenated descriptions to prevent splitting.
+    // This will catch: "1-2", "1 - 2", "120g - item", "1 - item".
+    // It checks if a line starting with a number contains a hyphen anywhere after it.
+    // This is a clear indicator that it's a range or a description, not a simple quantity.
+    if (/^\d+.*-/.test(desc)) {
+        return null;
     }
-    
+
     // Handle number words like "un vasetto", "mezza cipolla"
     const words = desc.split(' ');
     if (numberWords[words[0]]) {
@@ -35,15 +41,16 @@ export function parseQuantity(description: string): ParsedQuantity | null {
         };
     }
 
-    // Handle standard numbers "100g", "60 g", "1.5 tazze"
+    // Regex to capture a leading number and the rest of the string.
     const standardMatch = desc.match(/^(\d+[\.,]?\d*)\s*(.*)/);
+    
     if (standardMatch) {
         const value = parseFloat(standardMatch[1].replace(',', '.'));
-        const unit = standardMatch[2] || 'units';
+        const unit = (standardMatch[2] || '').trim() || 'units';
         return { value, unit };
     }
 
-    // If no quantity found, assume it's a non-quantifiable item (like "sale e pepe")
+    // If no quantity found, assume it's a non-quantifiable item
     return null;
 }
 
