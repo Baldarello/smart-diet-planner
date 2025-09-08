@@ -7,9 +7,10 @@ import { CheckCircleIcon, UndoIcon } from './Icons';
 import NutritionInfoDisplay from './NutritionInfoDisplay';
 import HydrationTracker from './HydrationTracker';
 import MealTimeEditor from './MealTimeEditor';
+import DailyNutritionSummary from './DailyNutritionSummary';
 
 const DailyPlanView: React.FC = observer(() => {
-    const { dailyPlan, mealPlan, toggleMealDone } = mealPlanStore;
+    const { dailyPlan, mealPlan, toggleMealDone, dailyNutritionSummary } = mealPlanStore;
 
     if (!dailyPlan) {
         return ( <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg text-center max-w-2xl mx-auto"><h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('noPlanToday')}</h2><p className="text-gray-500 dark:text-gray-400">{t('noPlanTodaySubtitle')}</p></div> );
@@ -24,6 +25,8 @@ const DailyPlanView: React.FC = observer(() => {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-xl transition-all duration-300 max-w-4xl mx-auto">
             <h3 className="text-3xl font-bold text-violet-700 dark:text-violet-400 mb-4 capitalize border-b dark:border-gray-700 pb-4">{t('todaysPlan')} {dailyPlan.day.toLowerCase()}</h3>
             
+            {dailyNutritionSummary && <DailyNutritionSummary summary={dailyNutritionSummary} />}
+
             <HydrationTracker />
 
             <div className="space-y-5 mt-6">

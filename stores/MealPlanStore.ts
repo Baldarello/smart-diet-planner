@@ -1,5 +1,5 @@
 import { makeAutoObservable, runInAction } from 'mobx';
-import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal } from '../types';
+import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo } from '../types';
 import { regeneratePlanData } from '../services/geminiService';
 import { parseQuantity, formatQuantity } from '../utils/quantityParser';
 
@@ -445,6 +445,27 @@ export class MealPlanStore {
     const todayIndex = new Date().getDay();
     const todayName = dayMap[todayIndex];
     return this.mealPlan.find(d => d.day.toUpperCase() === todayName);
+  }
+
+  get dailyNutritionSummary(): NutritionInfo | null {
+    if (!this.dailyPlan) return null;
+
+    const summary: NutritionInfo = {
+        carbs: 0,
+        protein: 0,
+        fat: 0,
+        calories: 0
+    };
+
+    return this.dailyPlan.meals.reduce((totals, meal) => {
+        if (meal.nutrition) {
+            totals.carbs += meal.nutrition.carbs;
+            totals.protein += meal.nutrition.protein;
+            totals.fat += meal.nutrition.fat;
+            totals.calories += meal.nutrition.calories;
+        }
+        return totals;
+    }, summary);
   }
 
   processPdf = async (file: File) => {

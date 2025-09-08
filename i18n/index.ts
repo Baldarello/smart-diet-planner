@@ -88,6 +88,7 @@ const translations = {
     nutritionCalories: "Calorie",
     nutritionUnitG: "g",
     nutritionUnitKcal: "kcal",
+    dailySummaryTitle: "Riepilogo Nutrizionale Giornaliero",
     
     // Hydration & Alarms
     hydrationTrackerTitle: "Tracciamento Idratazione",
@@ -186,6 +187,7 @@ const translations = {
     nutritionCalories: "Calories",
     nutritionUnitG: "g",
     nutritionUnitKcal: "kcal",
+    dailySummaryTitle: "Daily Nutrition Summary",
 
     // Hydration & Alarms
     hydrationTrackerTitle: "Hydration Tracking",
