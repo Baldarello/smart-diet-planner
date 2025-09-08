@@ -2,6 +2,7 @@ import React from 'react';
 import { NutritionInfo } from '../types';
 import { t } from '../i18n';
 import { FlameIcon, CarbsIcon, ProteinIcon, FatIcon } from './Icons';
+import SkeletonLoader from './SkeletonLoader';
 
 interface SummaryItemProps {
     icon: React.ReactNode;
@@ -21,8 +22,37 @@ const SummaryItem: React.FC<SummaryItemProps> = ({ icon, label, value, unit, col
     </div>
 );
 
+const SkeletonSummaryItem: React.FC<{ colorClasses: string }> = ({ colorClasses }) => (
+     <div className={`p-4 rounded-lg flex items-center ${colorClasses}`}>
+        <SkeletonLoader className="h-6 w-6 rounded-full mr-3" />
+        <div>
+            <SkeletonLoader className="h-5 w-16 mb-1" />
+            <SkeletonLoader className="h-3 w-20" />
+        </div>
+    </div>
+);
 
-const DailyNutritionSummary: React.FC<{ summary: NutritionInfo }> = ({ summary }) => {
+
+const DailyNutritionSummary: React.FC<{ summary: NutritionInfo | null | undefined }> = ({ summary }) => {
+    
+    if (summary === undefined) {
+        return (
+             <div className="my-6">
+                <h4 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">{t('dailySummaryTitle')}</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <SkeletonSummaryItem colorClasses="bg-orange-100 dark:bg-orange-900/40" />
+                    <SkeletonSummaryItem colorClasses="bg-sky-100 dark:bg-sky-900/40" />
+                    <SkeletonSummaryItem colorClasses="bg-amber-100 dark:bg-amber-900/40" />
+                    <SkeletonSummaryItem colorClasses="bg-red-100 dark:bg-red-900/40" />
+                </div>
+            </div>
+        );
+    }
+    
+    if (!summary) {
+        return null;
+    }
+
     return (
         <div className="my-6">
             <h4 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">{t('dailySummaryTitle')}</h4>

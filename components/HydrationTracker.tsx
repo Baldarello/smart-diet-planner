@@ -5,7 +5,9 @@ import { t } from '../i18n';
 import { WaterDropIcon } from './Icons';
 
 const HydrationTracker: React.FC = observer(() => {
-    const { hydrationGoalLiters, setHydrationGoal } = mealPlanStore;
+    const { hydrationGoalLiters, setHydrationGoal, waterIntakeMl } = mealPlanStore;
+    const goalMl = hydrationGoalLiters * 1000;
+    const progressPercentage = goalMl > 0 ? Math.min((waterIntakeMl / goalMl) * 100, 100) : 0;
 
     const handleGoalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseFloat(e.target.value);
@@ -15,26 +17,35 @@ const HydrationTracker: React.FC = observer(() => {
     };
 
     return (
-        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg flex items-center justify-between">
-            <div className="flex items-center">
-                <WaterDropIcon />
-                <div className="ml-3">
-                    <h4 className="font-semibold text-blue-800 dark:text-blue-300">{t('hydrationTrackerTitle')}</h4>
-                    <p className="text-sm text-blue-600 dark:text-blue-400">{t('hydrationGoal')}</p>
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mt-6">
+            <div className="flex items-center justify-between mb-3">
+                 <div className="flex items-center">
+                    <WaterDropIcon />
+                    <h4 className="font-semibold text-blue-800 dark:text-blue-300 ml-3">{t('hydrationTrackerTitle')}</h4>
+                </div>
+                 <div className="flex items-center">
+                    <label className="text-sm text-blue-600 dark:text-blue-400 mr-2">{t('hydrationGoal')}</label>
+                    <input
+                        type="number"
+                        value={hydrationGoalLiters}
+                        onChange={handleGoalChange}
+                        step="0.1"
+                        min="0"
+                        max="10"
+                        className="w-16 text-right font-bold bg-transparent border-b-2 border-blue-200 dark:border-blue-700 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-blue-700 dark:text-blue-200"
+                        aria-label={t('hydrationGoal')}
+                    />
+                    <span className="ml-2 font-semibold text-blue-700 dark:text-blue-200">{t('hydrationUnit')}</span>
                 </div>
             </div>
-            <div className="flex items-center">
-                <input
-                    type="number"
-                    value={hydrationGoalLiters}
-                    onChange={handleGoalChange}
-                    step="0.1"
-                    min="0"
-                    max="10"
-                    className="w-20 text-right font-bold text-lg bg-transparent border-b-2 border-blue-200 dark:border-blue-700 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-blue-700 dark:text-blue-200"
-                    aria-label={t('hydrationGoal')}
-                />
-                <span className="ml-2 font-semibold text-blue-700 dark:text-blue-200">{t('hydrationUnit')}</span>
+            <div>
+                <div className="flex justify-between items-baseline mb-1">
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{t('hydrationIntake')}</span>
+                    <span className="text-sm font-bold text-blue-800 dark:text-blue-200">{waterIntakeMl} / {goalMl} {t('hydrationUnitMl')}</span>
+                </div>
+                <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2.5">
+                    <div className="bg-blue-500 h-2.5 rounded-full transition-all duration-300 ease-in-out" style={{ width: `${progressPercentage}%` }}></div>
+                </div>
             </div>
         </div>
     );

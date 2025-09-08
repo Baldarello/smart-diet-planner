@@ -18,7 +18,7 @@ export interface Meal {
   items: MealItem[];
   done: boolean;
   time?: string; // e.g., "08:30"
-  nutrition?: NutritionInfo; // Fix: Add optional nutrition property
+  nutrition?: NutritionInfo | null;
 }
 
 export interface DayPlan {
@@ -57,3 +57,9 @@ export interface ArchivedPlan {
 
 export type Theme = 'light' | 'dark';
 export type Locale = 'it' | 'en';
+
+export interface HydrationSnackbarInfo {
+  visible: boolean;
+  time: string;
+  amount: number;
+}

@@ -14,4 +14,6 @@ export { default as HydrationTracker } from './HydrationTracker';
 export { default as MealTimeEditor } from './MealTimeEditor';
 export { default as DailyNutritionSummary } from './DailyNutritionSummary';
 export { default as NutritionInfoDisplay } from './NutritionInfoDisplay';
+export { default as SkeletonLoader } from './SkeletonLoader';
+export { default as Snackbar } from './Snackbar';
 export * from './Icons';

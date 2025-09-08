@@ -1,7 +1,7 @@
 import { makeAutoObservable, runInAction } from 'mobx';
-import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo } from '../types';
+import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo, HydrationSnackbarInfo } from '../types';
 import { parsePdfText, generateShoppingList, extractIngredientInfo } from '../services/offlineParser';
-import { processPdfTextWithGemini, regeneratePlanData, isQuotaError } from '../services/geminiService';
+import { parseMealStructure, getNutritionForMeal, generateShoppingListFromPlan, updatePlanDetails, isQuotaError } from '../services/geminiService';
 import { parseQuantity, formatQuantity } from '../utils/quantityParser';
 
 export enum AppStatus {
@@ -25,12 +25,13 @@ export class MealPlanStore {
   locale: Locale = 'it';
   hasUnsavedChanges = false;
 
-  // New state for online/offline mode and recalculation status
   onlineMode = true;
   recalculating = false;
 
-  // Hydration and Notification State
   hydrationGoalLiters = 3;
+  waterIntakeMl = 0;
+  hydrationSnackbar: HydrationSnackbarInfo | null = null;
+
   sentNotifications = new Map<string, boolean>();
   lastActiveDate: string = new Date().toLocaleDateString();
 
@@ -77,6 +78,19 @@ export class MealPlanStore {
     }
   }
 
+  logWaterIntake = (amountMl: number) => {
+    this.waterIntakeMl += amountMl;
+    this.saveToLocalStorage();
+  }
+
+  showHydrationSnackbar = (time: string, amount: number) => {
+    this.hydrationSnackbar = { visible: true, time, amount };
+  }
+
+  dismissHydrationSnackbar = () => {
+    this.hydrationSnackbar = null;
+  }
+
   updateMealTime = (dayIndex: number, mealIndex: number, newTime: string) => {
     const meal = this.mealPlan[dayIndex]?.meals[mealIndex];
     if (meal) {
@@ -93,6 +107,7 @@ export class MealPlanStore {
     const today = new Date().toLocaleDateString();
     if (this.lastActiveDate !== today) {
       this.sentNotifications.clear();
+      this.waterIntakeMl = 0;
       this.lastActiveDate = today;
       this.saveToLocalStorage();
     }
@@ -134,21 +149,26 @@ export class MealPlanStore {
     try {
         if (this.onlineMode) {
             try {
-                const result = await regeneratePlanData(this.mealPlan);
-                if (result) {
-                    runInAction(() => {
-                        this.mealPlan = result.weeklyPlan.map((day: DayPlan) => ({
-                            ...day,
-                            meals: day.meals.map((meal: Meal) => ({
-                                ...meal,
-                                done: false,
-                                items: meal.items.map(item => ({ ...item, used: false }))
-                            }))
-                        }));
-                        this.shoppingList = result.shoppingList;
-                        this.pantry = [];
-                    });
-                }
+                // Step 1: Update plan details (nutrition, corrected ingredient names, times)
+                const updatedPlan = await updatePlanDetails(this.mealPlan);
+                if (!updatedPlan) throw new Error("Failed to get updated plan from Gemini.");
+
+                // Step 2: Generate a new shopping list from the updated plan
+                const newShoppingList = await generateShoppingListFromPlan(updatedPlan);
+                if (!newShoppingList) throw new Error("Failed to generate shopping list from updated plan.");
+
+                runInAction(() => {
+                    this.mealPlan = updatedPlan.map((day: DayPlan) => ({
+                        ...day,
+                        meals: day.meals.map((meal: Meal) => ({
+                            ...meal,
+                            done: false,
+                            items: meal.items.map(item => ({ ...item, used: false }))
+                        }))
+                    }));
+                    this.shoppingList = newShoppingList;
+                    this.pantry = [];
+                });
             } catch (error) {
                 if (isQuotaError(error)) {
                     console.warn("Gemini quota exceeded during recalculation. Falling back to offline mode.");
@@ -206,7 +226,7 @@ export class MealPlanStore {
         this.hasUnsavedChanges = data.hasUnsavedChanges || false;
         this.hydrationGoalLiters = data.hydrationGoalLiters || 3;
         this.lastActiveDate = data.lastActiveDate || new Date().toLocaleDateString();
-        // MobX maps are not directly serializable, so we don't save `sentNotifications`. It resets daily.
+        this.waterIntakeMl = data.waterIntakeMl || 0;
         
         this.resetSentNotificationsIfNeeded();
 
@@ -216,7 +236,6 @@ export class MealPlanStore {
       }
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
-      // Reset to defaults on failure
       Object.assign(this, new MealPlanStore());
     }
   }
@@ -234,6 +253,7 @@ export class MealPlanStore {
         hasUnsavedChanges: this.hasUnsavedChanges,
         hydrationGoalLiters: this.hydrationGoalLiters,
         lastActiveDate: this.lastActiveDate,
+        waterIntakeMl: this.waterIntakeMl,
       };
       localStorage.setItem('dietPlanData', JSON.stringify(dataToSave));
     } catch (error) {
@@ -263,6 +283,7 @@ export class MealPlanStore {
         this.currentPlanName = 'My Diet Plan';
         this.hasUnsavedChanges = false;
         this.sentNotifications.clear();
+        this.waterIntakeMl = 0;
         this.saveToLocalStorage();
     });
   }
@@ -287,16 +308,17 @@ export class MealPlanStore {
           ...day,
           meals: day.meals.map(meal => ({
               ...meal,
-              done: false, // Reset progress on restore
-              items: meal.items.map(item => ({...item, used: false})) // Reset progress on restore
+              done: false,
+              items: meal.items.map(item => ({...item, used: false}))
           }))
         }));
 
         this.mealPlan = planToRestoreWithFlags;
         this.shoppingList = planToRestore.shoppingList;
         this.currentPlanName = planToRestore.name;
-        this.pantry = []; // Pantry is reset on restore
+        this.pantry = [];
         this.sentNotifications.clear();
+        this.waterIntakeMl = 0;
 
         this.archivedPlans = this.archivedPlans.filter(p => p.id !== planId);
         
@@ -470,31 +492,78 @@ export class MealPlanStore {
     return this.mealPlan.find(d => d.day.toUpperCase() === todayName);
   }
 
-  get dailyNutritionSummary(): NutritionInfo | null {
+  get dailyNutritionSummary(): NutritionInfo | null | undefined {
     if (!this.dailyPlan || !this.onlineMode) {
-        return null;
+      return null;
     }
 
-    const summary: NutritionInfo = {
-        carbs: 0,
-        protein: 0,
-        fat: 0,
-        calories: 0,
-    };
+    if (this.dailyPlan.meals.some(meal => meal.nutrition === undefined)) {
+      return undefined; // Data is still loading
+    }
 
-    let hasNutritionData = false;
+    const summary: NutritionInfo = { carbs: 0, protein: 0, fat: 0, calories: 0 };
+    let hasData = false;
     this.dailyPlan.meals.forEach(meal => {
-        if (meal.nutrition) {
-            hasNutritionData = true;
-            summary.carbs += meal.nutrition.carbs;
-            summary.protein += meal.nutrition.protein;
-            summary.fat += meal.nutrition.fat;
-            summary.calories += meal.nutrition.calories;
-        }
+      if (meal.nutrition) {
+        hasData = true;
+        summary.carbs += meal.nutrition.carbs;
+        summary.protein += meal.nutrition.protein;
+        summary.fat += meal.nutrition.fat;
+        summary.calories += meal.nutrition.calories;
+      }
     });
 
-    return hasNutritionData ? summary : null;
+    return hasData ? summary : null;
   }
+
+  private _enrichPlanDataInBackground = async () => {
+    if (!this.onlineMode) return;
+
+    try {
+      const planSnapshot = this.mealPlan;
+      
+      const shoppingListPromise = generateShoppingListFromPlan(planSnapshot);
+
+      const nutritionPromises = planSnapshot.flatMap((day, dayIndex) =>
+        day.meals.map(async (meal, mealIndex) => {
+          try {
+            const nutrition = await getNutritionForMeal(meal);
+            runInAction(() => {
+              // Ensure the plan hasn't been changed by the user in the meantime
+              if (this.mealPlan[dayIndex]?.meals[mealIndex]) {
+                this.mealPlan[dayIndex].meals[mealIndex].nutrition = nutrition;
+              }
+            });
+          } catch (e) {
+            console.error(`Failed to get nutrition for meal: ${meal.name}`, e);
+            runInAction(() => {
+              if (this.mealPlan[dayIndex]?.meals[mealIndex]) {
+                this.mealPlan[dayIndex].meals[mealIndex].nutrition = null;
+              }
+            });
+          }
+        })
+      );
+
+      const [shoppingListResult] = await Promise.all([shoppingListPromise, ...nutritionPromises]);
+
+      runInAction(() => {
+        if (shoppingListResult) {
+          this.shoppingList = shoppingListResult;
+        }
+      });
+
+    } catch (error) {
+        if (isQuotaError(error)) {
+            runInAction(() => { this.onlineMode = false });
+            this.saveSessionState();
+        } else {
+             console.error("An error occurred during background data enrichment:", error);
+        }
+    } finally {
+        this.saveToLocalStorage();
+    }
+  };
 
   processPdf = async (file: File) => {
     this.status = AppStatus.LOADING;
@@ -524,57 +593,56 @@ export class MealPlanStore {
     fileReader.onload = async (event) => {
         try {
             if (!event.target?.result) throw new Error("File could not be read.");
-
             const typedarray = new Uint8Array(event.target.result as ArrayBuffer);
             // @ts-ignore
             const pdf = await window.pdfjsLib.getDocument(typedarray).promise;
+            
+            runInAction(() => this.pdfParseProgress = 10);
+            
             const pageTexts: string[] = [];
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
                 pageTexts.push(textContent.items.map((s: any) => s.str).join('\n'));
-                runInAction(() => this.pdfParseProgress = Math.round((i / pdf.numPages) * 50));
+                runInAction(() => this.pdfParseProgress = 10 + Math.round((i / pdf.numPages) * 20));
             }
             const fullText = pageTexts.join('\n\n');
-            runInAction(() => this.pdfParseProgress = 75);
-
-            let finalResult: MealPlanData | null = null;
             
+            runInAction(() => this.pdfParseProgress = 31);
+
+            let mealStructure: DayPlan[] | null = null;
             if (this.onlineMode) {
-                try {
-                    finalResult = await processPdfTextWithGemini(fullText);
-                } catch (error) {
-                    if (isQuotaError(error)) {
-                        console.warn("Gemini quota exceeded. Falling back to offline parser.");
+                 try {
+                     mealStructure = await parseMealStructure(fullText);
+                 } catch (error) {
+                     if (isQuotaError(error)) {
+                        console.warn("Gemini quota exceeded during parsing. Falling back to offline parser.");
                         runInAction(() => { this.onlineMode = false; });
                         this.saveSessionState();
-                        finalResult = parsePdfText(fullText);
-                    } else {
-                        throw error; // Rethrow other API errors
-                    }
-                }
+                        mealStructure = parsePdfText(fullText).weeklyPlan;
+                     } else { throw error; }
+                 }
             } else {
-                 finalResult = parsePdfText(fullText);
+                mealStructure = parsePdfText(fullText).weeklyPlan;
             }
 
-            runInAction(() => this.pdfParseProgress = 100);
-
-            if (!finalResult || finalResult.weeklyPlan.length === 0) {
-                throw new Error("Failed to parse meal plan. The response was empty or invalid. Please check the PDF format.");
+            if (!mealStructure || mealStructure.length === 0) {
+                throw new Error("Failed to parse meal plan structure. The response was empty or invalid. Please check the PDF format.");
             }
-            
+
             runInAction(() => {
-                this.mealPlan = finalResult!.weeklyPlan;
-                this.shoppingList = finalResult!.shoppingList;
-                this.pantry = [];
+                this.pdfParseProgress = 50;
+                this.mealPlan = mealStructure;
                 this.status = AppStatus.SUCCESS;
                 this.activeTab = 'daily';
                 this.hasUnsavedChanges = false;
                 this.sentNotifications.clear();
                 this.lastActiveDate = new Date().toLocaleDateString();
+                this.waterIntakeMl = 0;
                 this.currentPlanName = `Diet Plan - ${new Date().toLocaleDateString('it-IT')}`;
-                this.saveToLocalStorage();
             });
+
+            this._enrichPlanDataInBackground();
 
         } catch (err: any) {
             runInAction(() => {

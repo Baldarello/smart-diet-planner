@@ -13,7 +13,8 @@ import {
     ArchiveView,
     ActivePlanNameEditor,
     ChangeDietIcon,
-    ExamplePdf
+    ExamplePdf,
+    Snackbar
 } from './components';
 import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon } from './components/Icons';
 
@@ -36,7 +37,7 @@ const App: React.FC = observer(() => {
         }
 
         const timer = setInterval(() => {
-            if (!hasActivePlan || notificationPermission.current !== 'granted') return;
+            if (!hasActivePlan) return;
 
             const now = new Date();
             const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -45,27 +46,32 @@ const App: React.FC = observer(() => {
             store.resetSentNotificationsIfNeeded();
             
             // Meal notifications
-            store.dailyPlan?.meals.forEach((meal, mealIndex) => {
-                if (meal.time === currentTime) {
-                    const dayIndex = store.mealPlan.findIndex(d => d.day === store.dailyPlan?.day);
-                    const key = `meal-${dayIndex}-${mealIndex}`;
-                    if (!store.sentNotifications.has(key)) {
-                        new Notification(t('notificationMealTitle', { mealName: meal.name }), {
-                            body: t('notificationMealBody', { mealTitle: meal.title || meal.name }),
-                        });
-                        store.markNotificationSent(key);
+            if (notificationPermission.current === 'granted') {
+                store.dailyPlan?.meals.forEach((meal, mealIndex) => {
+                    if (meal.time === currentTime) {
+                        const dayIndex = store.mealPlan.findIndex(d => d.day === store.dailyPlan?.day);
+                        const key = `meal-${dayIndex}-${mealIndex}`;
+                        if (!store.sentNotifications.has(key)) {
+                            new Notification(t('notificationMealTitle', { mealName: meal.name }), {
+                                body: t('notificationMealBody', { mealTitle: meal.title || meal.name }),
+                            });
+                            store.markNotificationSent(key);
+                        }
                     }
-                }
-            });
+                });
+            }
 
-            // Hydration notifications
+            // Hydration notifications and snackbar
             if (currentHour >= 9 && currentHour <= 19 && now.getMinutes() === 0) {
                  const key = `hydration-${currentHour}`;
                  if (!store.sentNotifications.has(key)) {
                     const amountToDrink = Math.round((store.hydrationGoalLiters * 1000) / 10);
-                    new Notification(t('notificationHydrationTitle'), {
-                        body: t('notificationHydrationBody', { amount: amountToDrink.toString() })
-                    });
+                     if (notificationPermission.current === 'granted') {
+                        new Notification(t('notificationHydrationTitle'), {
+                            body: t('notificationHydrationBody', { amount: amountToDrink.toString() })
+                        });
+                     }
+                    store.showHydrationSnackbar(currentTime, amountToDrink);
                     store.markNotificationSent(key);
                  }
             }
@@ -157,6 +163,7 @@ const App: React.FC = observer(() => {
                 </div>
             </header>
             <main>{renderMainContent()}</main>
+            <Snackbar />
             <footer className="text-center mt-12 text-sm text-gray-400 dark:text-gray-500"><p>{t('footer')}</p></footer>
         </div>
     );

@@ -27,11 +27,15 @@ const translations = {
     pdfFile: "File PDF del tuo piano dietetico",
 
     // Loader.tsx
-    readingPdf: "Lettura del PDF in corso...",
-    analyzingPlan: "Analisi del tuo piano...",
+    readingPdfTitle: "Lettura del PDF in corso...",
+    structuringPlanTitle: "Strutturazione del Piano...",
+    analyzingNutritionTitle: "Analisi Nutrizionale...",
+    generatingListTitle: "Creazione Lista Spesa...",
     progressComplete: "% Completo",
-    readingMessages: [ "Scansionando le pagine...", "Estraendo il testo...", "Riconoscendo i giorni...", "Identificando i pasti...", "Elaborando gli ingredienti...", ],
-    analyzingMessages: [ "Organizzando i pasti della tua settimana...", "Aggregando gli ingredienti...", "Generando la tua lista della spesa...", "Categorizzando gli ingredienti...", "Quasi pronto...", ],
+    readingMessages: [ "Scansionando le pagine...", "Estraendo il testo...", "Riconoscendo la struttura...", ],
+    structuringPlanMessages: [ "Organizzando i pasti della tua settimana...", "Identificando gli ingredienti...", "Assegnando gli orari dei pasti...", "Costruendo il piano giornaliero...", ],
+    analyzingNutritionMessages: [ "Stimando i valori nutrizionali...", "Calcolando le calorie per ogni pasto...", "Analizzando i macronutrienti...", "Questo richiederà un momento...", ],
+    generatingListMessages: [ "Aggregando gli ingredienti...", "Calcolando le quantità totali...", "Categorizzando gli articoli...", "Quasi pronto...", ],
 
     // ErrorMessage.tsx
     errorOccurred: "Si è verificato un errore",
@@ -87,12 +91,17 @@ const translations = {
     hydrationTrackerTitle: "Tracciamento Idratazione",
     hydrationGoal: "Obiettivo giornaliero:",
     hydrationUnit: "Litri",
+    hydrationIntake: "Assunzione di oggi:",
+    hydrationUnitMl: "ml",
     mealTime: "Orario pasto",
     notificationMealTitle: "È ora di {mealName}!",
     notificationMealBody: "È il momento di mangiare: {mealTitle}",
     notificationHydrationTitle: "Promemoria Idratazione!",
     notificationHydrationBody: "È ora di bere un po' d'acqua. Bevi circa {amount}ml per rimanere in linea con il tuo obiettivo.",
-    // Fix: Add nutrition translation keys
+    snackbarReminder: "Sono le {time}, ora di bere {amount}ml d'acqua!",
+    snackbarDone: "Fatto!",
+
+    // Nutrition
     dailySummaryTitle: "Riepilogo Nutrizionale Giornaliero",
     nutritionCarbs: "Carboidrati",
     nutritionProtein: "Proteine",
@@ -127,11 +136,15 @@ const translations = {
     pdfFile: "PDF file of your diet plan",
 
     // Loader.tsx
-    readingPdf: "Reading Your PDF...",
-    analyzingPlan: "Analyzing Your Plan",
+    readingPdfTitle: "Reading Your PDF...",
+    structuringPlanTitle: "Structuring Your Plan...",
+    analyzingNutritionTitle: "Analyzing Nutrition...",
+    generatingListTitle: "Generating Shopping List...",
     progressComplete: "% Complete",
-    readingMessages: [ "Scanning pages...", "Extracting text...", "Recognizing days...", "Identifying meals...", "Processing ingredients...", ],
-    analyzingMessages: [ "Organizing your week's meals...", "Aggregating ingredients...", "Generating your shopping list...", "Categorizing items...", "Almost ready...", ],
+    readingMessages: [ "Scanning pages...", "Extracting text...", "Recognizing structure...", ],
+    structuringPlanMessages: [ "Organizing your week's meals...", "Identifying ingredients...", "Assigning meal times...", "Building the daily schedule...", ],
+    analyzingNutritionMessages: [ "Estimating nutritional values...", "Calculating calories for each meal...", "Analyzing macronutrients...", "This will take a moment...", ],
+    generatingListMessages: [ "Aggregating ingredients...", "Calculating total quantities...", "Categorizing items...", "Almost ready...", ],
 
     // ErrorMessage.tsx
     errorOccurred: "An Error Occurred",
@@ -187,12 +200,17 @@ const translations = {
     hydrationTrackerTitle: "Hydration Tracking",
     hydrationGoal: "Daily Goal:",
     hydrationUnit: "Liters",
+    hydrationIntake: "Today's Intake:",
+    hydrationUnitMl: "ml",
     mealTime: "Meal time",
     notificationMealTitle: "Time for {mealName}!",
     notificationMealBody: "It's time to eat: {mealTitle}",
     notificationHydrationTitle: "Hydration Reminder!",
     notificationHydrationBody: "Time for some water. Drink about {amount}ml to stay on track.",
-    // Fix: Add nutrition translation keys
+    snackbarReminder: "It's {time}, time to drink {amount}ml of water!",
+    snackbarDone: "Done!",
+    
+    // Nutrition
     dailySummaryTitle: "Daily Nutrition Summary",
     nutritionCarbs: "Carbs",
     nutritionProtein: "Protein",
@@ -205,6 +223,7 @@ const translations = {
 
 type EnglishTranslations = typeof translations.en;
 type StringTranslationKey = { [K in keyof EnglishTranslations]: EnglishTranslations[K] extends string ? K : never }[keyof EnglishTranslations];
+type MessagesKey = 'readingMessages' | 'structuringPlanMessages' | 'analyzingNutritionMessages' | 'generatingListMessages';
 
 export const t = (key: StringTranslationKey, replacements?: { [key: string]: string }) => {
     let translation = translations[mealPlanStore.locale][key] || translations.en[key];
@@ -216,6 +235,6 @@ export const t = (key: StringTranslationKey, replacements?: { [key: string]: str
     return translation;
 };
 
-export const t_dynamic = (key: 'readingMessages' | 'analyzingMessages') => {
+export const t_dynamic = (key: MessagesKey): string[] => {
     return translations[mealPlanStore.locale][key] || translations.en[key];
 }

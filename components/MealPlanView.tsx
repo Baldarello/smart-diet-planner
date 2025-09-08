@@ -38,7 +38,7 @@ const MealPlanView: React.FC<{ plan: DayPlan[] }> = observer(({ plan }) => (
                                     </button>
                                 </div>
                                 <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} />
-                                {mealPlanStore.onlineMode && meal.nutrition && <NutritionInfoDisplay nutrition={meal.nutrition} />}
+                                {mealPlanStore.onlineMode && <NutritionInfoDisplay nutrition={meal.nutrition} />}
                             </div>
                         ))}
                     </div>

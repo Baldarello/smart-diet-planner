@@ -25,7 +25,7 @@ const DailyPlanView: React.FC = observer(() => {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-xl transition-all duration-300 max-w-4xl mx-auto">
             <h3 className="text-3xl font-bold text-violet-700 dark:text-violet-400 mb-4 capitalize border-b dark:border-gray-700 pb-4">{t('todaysPlan')} {dailyPlan.day.toLowerCase()}</h3>
             
-            {onlineMode && dailyNutritionSummary && <DailyNutritionSummary summary={dailyNutritionSummary} />}
+            {onlineMode && <DailyNutritionSummary summary={dailyNutritionSummary} />}
             
             <HydrationTracker />
 
@@ -51,7 +51,7 @@ const DailyPlanView: React.FC = observer(() => {
                         </div>
 
                         <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} />
-                        {onlineMode && meal.nutrition && <NutritionInfoDisplay nutrition={meal.nutrition} />}
+                        {onlineMode && <NutritionInfoDisplay nutrition={meal.nutrition} />}
                     </div>
                 ))}
             </div>
