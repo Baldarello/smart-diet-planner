@@ -23,6 +23,7 @@ import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, Mo
 const App: React.FC = observer(() => {
     const store = mealPlanStore;
     const notificationPermission = useRef(Notification.permission);
+    const hydrationTimerIdRef = useRef<number | null>(null);
     
     const [viewMode, setViewMode] = useState<'activePlan' | 'newPlan'>(
         store.currentPlanId ? 'activePlan' : 'newPlan'
@@ -51,13 +52,13 @@ const App: React.FC = observer(() => {
             });
         }
 
-        const timer = setInterval(() => {
+        // Timer for MEALS (checks every minute, which is reliable enough for this purpose)
+        const mealTimer = setInterval(() => {
             if (!store.currentPlanId) return;
 
             const now = new Date();
             const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-            const currentHour = now.getHours();
-
+            
             store.resetSentNotificationsIfNeeded();
             
             if (notificationPermission.current === 'granted') {
@@ -74,24 +75,74 @@ const App: React.FC = observer(() => {
                     }
                 });
             }
-
-            if (currentHour >= 9 && currentHour <= 19 && now.getMinutes() === 0) {
-                 const key = `hydration-${currentHour}`;
-                 if (!store.sentNotifications.has(key)) {
-                    const amountToDrink = Math.round((store.hydrationGoalLiters * 1000) / 10);
-                     if (notificationPermission.current === 'granted') {
-                        new Notification(t('notificationHydrationTitle'), {
-                            body: t('notificationHydrationBody', { amount: amountToDrink.toString() })
-                        });
-                     }
-                    store.showHydrationSnackbar(currentTime, amountToDrink);
-                    store.markNotificationSent(key);
-                 }
-            }
         }, 60 * 1000);
+        
+        // Scheduler for HYDRATION (uses precise setTimeout for reliability)
+        const scheduleNextHydrationNotification = () => {
+            if (hydrationTimerIdRef.current) {
+                clearTimeout(hydrationTimerIdRef.current);
+            }
 
-        return () => clearInterval(timer);
-    }, [store.currentPlanId, store]);
+            const now = new Date();
+            const nextNotificationTime = new Date(now);
+            // Start by setting the time to the top of the current hour
+            nextNotificationTime.setMinutes(0, 0, 0);
+
+            let nextHour = now.getHours() + 1;
+            
+            // If before 9am, schedule for 9am today
+            if (now.getHours() < 9) {
+                nextHour = 9;
+            } 
+            // If 7pm or later, schedule for 9am tomorrow
+            else if (now.getHours() >= 19) {
+                nextNotificationTime.setDate(now.getDate() + 1);
+                nextHour = 9;
+            }
+
+            nextNotificationTime.setHours(nextHour);
+
+            const delay = nextNotificationTime.getTime() - now.getTime();
+            
+            hydrationTimerIdRef.current = window.setTimeout(() => {
+                const hourToNotify = nextNotificationTime.getHours();
+                
+                // Only notify within the desired window
+                if (hourToNotify >= 9 && hourToNotify <= 19) {
+                    const key = `hydration-${hourToNotify}`;
+                    store.resetSentNotificationsIfNeeded();
+                    
+                    if (!store.sentNotifications.has(key)) {
+                        const amountToDrink = Math.round((store.hydrationGoalLiters * 1000) / 10);
+                        const timeStr = `${String(hourToNotify).padStart(2, '0')}:00`;
+                        
+                        if (notificationPermission.current === 'granted') {
+                            new Notification(t('notificationHydrationTitle'), {
+                                body: t('notificationHydrationBody', { amount: amountToDrink.toString() })
+                            });
+                        }
+                        store.showHydrationSnackbar(timeStr, amountToDrink);
+                        store.markNotificationSent(key);
+                    }
+                }
+
+                // Reschedule for the next hour
+                scheduleNextHydrationNotification();
+            }, delay);
+        };
+        
+        if (store.currentPlanId) {
+            scheduleNextHydrationNotification();
+        }
+
+        // Cleanup function for both timers
+        return () => {
+            clearInterval(mealTimer);
+            if (hydrationTimerIdRef.current) {
+                clearTimeout(hydrationTimerIdRef.current);
+            }
+        };
+    }, [store.currentPlanId]);
 
 
     const renderMainContent = () => {
