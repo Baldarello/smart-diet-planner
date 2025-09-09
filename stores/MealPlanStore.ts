@@ -14,7 +14,8 @@ export enum AppStatus {
 export class MealPlanStore {
   status: AppStatus = AppStatus.INITIAL;
   error: string | null = null;
-  mealPlan: DayPlan[] = [];
+  activeMealPlan: DayPlan[] = [];
+  presetMealPlan: DayPlan[] = [];
   shoppingList: ShoppingListCategory[] = [];
   pantry: PantryItem[] = [];
   archivedPlans: ArchivedPlan[] = [];
@@ -102,7 +103,7 @@ export class MealPlanStore {
   }
 
   updateMealTime = (dayIndex: number, mealIndex: number, newTime: string) => {
-    const meal = this.mealPlan[dayIndex]?.meals[mealIndex];
+    const meal = this.activeMealPlan[dayIndex]?.meals[mealIndex];
     if (meal) {
       meal.time = newTime;
       this.saveToLocalStorage();
@@ -188,7 +189,7 @@ export class MealPlanStore {
   }
   
   updateItemDescription = (dayIndex: number, mealIndex: number, itemIndex: number, newDescription: string) => {
-      const item = this.mealPlan[dayIndex]?.meals[mealIndex]?.items[itemIndex];
+      const item = this.activeMealPlan[dayIndex]?.meals[mealIndex]?.items[itemIndex];
       if (item && item.fullDescription !== newDescription) {
           item.fullDescription = newDescription;
           const { ingredientName } = extractIngredientInfo(newDescription);
@@ -208,14 +209,14 @@ export class MealPlanStore {
     runInAction(() => { this.recalculating = true; });
 
     try {
-        const updatedPlan = await updatePlanDetails(this.mealPlan);
+        const updatedPlan = await updatePlanDetails(this.activeMealPlan);
         if (!updatedPlan) throw new Error("Failed to get updated plan from Gemini.");
 
         const newShoppingList = await generateShoppingListFromPlan(updatedPlan);
         if (!newShoppingList) throw new Error("Failed to generate shopping list from updated plan.");
 
         runInAction(() => {
-            this.mealPlan = updatedPlan.map((day: DayPlan) => ({
+            this.activeMealPlan = updatedPlan.map((day: DayPlan) => ({
                 ...day,
                 meals: day.meals.map((meal: Meal) => ({
                     ...meal,
@@ -248,7 +249,7 @@ export class MealPlanStore {
   recalculateMealNutrition = async (dayIndex: number, mealIndex: number) => {
     if (!this.onlineMode) return;
 
-    const meal = this.mealPlan[dayIndex]?.meals[mealIndex];
+    const meal = this.activeMealPlan[dayIndex]?.meals[mealIndex];
     if (!meal) return;
 
     runInAction(() => {
@@ -258,8 +259,8 @@ export class MealPlanStore {
     try {
         const newNutrition = await getNutritionForMeal(meal);
         runInAction(() => {
-            if (this.mealPlan[dayIndex]?.meals[mealIndex]) {
-                this.mealPlan[dayIndex].meals[mealIndex].nutrition = newNutrition;
+            if (this.activeMealPlan[dayIndex]?.meals[mealIndex]) {
+                this.activeMealPlan[dayIndex].meals[mealIndex].nutrition = newNutrition;
             }
         });
     } catch (error) {
@@ -269,8 +270,8 @@ export class MealPlanStore {
             this.saveSessionState();
         }
         runInAction(() => {
-            if (this.mealPlan[dayIndex]?.meals[mealIndex]) {
-                this.mealPlan[dayIndex].meals[mealIndex].nutrition = null;
+            if (this.activeMealPlan[dayIndex]?.meals[mealIndex]) {
+                this.activeMealPlan[dayIndex].meals[mealIndex].nutrition = null;
             }
         });
     } finally {
@@ -281,14 +282,23 @@ export class MealPlanStore {
     }
   }
 
+    resetMealToPreset = (dayIndex: number, mealIndex: number) => {
+        if (this.presetMealPlan[dayIndex]?.meals[mealIndex] && this.activeMealPlan[dayIndex]?.meals[mealIndex]) {
+            runInAction(() => {
+                this.activeMealPlan[dayIndex].meals[mealIndex] = JSON.parse(JSON.stringify(this.presetMealPlan[dayIndex].meals[mealIndex]));
+            });
+            this.saveToLocalStorage();
+        }
+    }
+
   loadFromLocalStorage = () => {
     try {
       const savedData = localStorage.getItem('dietPlanData');
       if (savedData) {
         const data = JSON.parse(savedData);
         
-        const loadedPlan = data.mealPlan || [];
-        this.mealPlan = loadedPlan.map((day: DayPlan) => ({
+        const loadedPlan = data.activeMealPlan || data.mealPlan || [];
+        this.activeMealPlan = loadedPlan.map((day: DayPlan) => ({
             ...day,
             meals: day.meals.map((meal: Meal) => ({
                 ...meal,
@@ -296,6 +306,14 @@ export class MealPlanStore {
                 items: meal.items.map(item => ({ ...item, used: item.used ?? false }))
             }))
         }));
+
+        if (data.presetMealPlan) {
+            this.presetMealPlan = data.presetMealPlan;
+        } else if (this.activeMealPlan.length > 0) {
+            this.presetMealPlan = JSON.parse(JSON.stringify(this.activeMealPlan));
+        } else {
+            this.presetMealPlan = [];
+        }
 
         this.shoppingList = data.shoppingList || [];
         this.pantry = data.pantry || [];
@@ -314,13 +332,13 @@ export class MealPlanStore {
             this.sentNotifications = new Map(data.sentNotifications);
         }
 
-        if (this.mealPlan.length > 0 && !this.currentPlanId) {
+        if (this.activeMealPlan.length > 0 && !this.currentPlanId) {
             this.currentPlanId = 'migrated_' + Date.now().toString();
         }
         
         this.resetSentNotificationsIfNeeded();
 
-        if (this.mealPlan.length > 0) {
+        if (this.activeMealPlan.length > 0) {
           this.status = AppStatus.SUCCESS;
         }
       }
@@ -333,7 +351,8 @@ export class MealPlanStore {
   saveToLocalStorage = () => {
     try {
       const dataToSave = {
-        mealPlan: this.mealPlan,
+        activeMealPlan: this.activeMealPlan,
+        presetMealPlan: this.presetMealPlan,
         shoppingList: this.shoppingList,
         pantry: this.pantry,
         archivedPlans: this.archivedPlans,
@@ -355,10 +374,11 @@ export class MealPlanStore {
   }
 
   archiveCurrentPlan = () => {
-    if (this.mealPlan.length === 0) return;
+    if (this.activeMealPlan.length === 0) return;
 
     runInAction(() => {
-        this.mealPlan = [];
+        this.activeMealPlan = [];
+        this.presetMealPlan = [];
         this.shoppingList = [];
         this.pantry = [];
         this.status = AppStatus.INITIAL;
@@ -378,12 +398,12 @@ export class MealPlanStore {
     if (!planToRestore) return;
 
     runInAction(() => {
-        if (this.mealPlan.length > 0) {
+        if (this.activeMealPlan.length > 0) {
             const currentPlanArchive: ArchivedPlan = {
                 id: Date.now().toString(),
                 name: this.currentPlanName,
                 date: new Date().toLocaleDateString('it-IT'),
-                plan: this.mealPlan,
+                plan: this.activeMealPlan,
                 shoppingList: this.shoppingList,
             };
             this.archivedPlans.push(currentPlanArchive);
@@ -398,7 +418,8 @@ export class MealPlanStore {
           }))
         }));
 
-        this.mealPlan = planToRestoreWithFlags;
+        this.activeMealPlan = planToRestoreWithFlags;
+        this.presetMealPlan = JSON.parse(JSON.stringify(planToRestoreWithFlags));
         this.shoppingList = planToRestore.shoppingList;
         this.currentPlanName = planToRestore.name;
         this.pantry = [];
@@ -483,7 +504,7 @@ export class MealPlanStore {
 
   toggleMealItem = (dayIndex: number, mealIndex: number, itemIndex: number) => {
     runInAction(() => {
-        const mealItem = this.mealPlan[dayIndex]?.meals[mealIndex]?.items[itemIndex];
+        const mealItem = this.activeMealPlan[dayIndex]?.meals[mealIndex]?.items[itemIndex];
         if (!mealItem) return;
 
         mealItem.used = !mealItem.used;
@@ -536,7 +557,7 @@ export class MealPlanStore {
 }
 
   toggleMealDone = (dayIndex: number, mealIndex: number) => {
-    const meal = this.mealPlan[dayIndex]?.meals[mealIndex];
+    const meal = this.activeMealPlan[dayIndex]?.meals[mealIndex];
     if (meal) {
         meal.done = !meal.done;
         this.saveToLocalStorage();
@@ -547,7 +568,7 @@ export class MealPlanStore {
     const dayMap: { [key: number]: string } = { 0: 'DOMENICA', 1: 'LUNEDI', 2: 'MARTEDI', 3: 'MERCOLEDI', 4: 'GIOVEDI', 5: 'VENERDI', 6: 'SABATO' };
     const todayIndex = new Date().getDay();
     const todayName = dayMap[todayIndex];
-    return this.mealPlan.find(d => d.day.toUpperCase() === todayName);
+    return this.activeMealPlan.find(d => d.day.toUpperCase() === todayName);
   }
 
   getDayNutritionSummary(dayPlan: DayPlan): NutritionInfo | null | undefined {
@@ -585,7 +606,7 @@ export class MealPlanStore {
     if (!this.onlineMode) return;
 
     try {
-      const planSnapshot = this.mealPlan;
+      const planSnapshot = this.activeMealPlan;
       
       const shoppingListPromise = generateShoppingListFromPlan(planSnapshot);
 
@@ -594,8 +615,8 @@ export class MealPlanStore {
           try {
             const nutrition = await getNutritionForMeal(meal);
             runInAction(() => {
-              if (this.mealPlan[dayIndex]?.meals[mealIndex]) {
-                this.mealPlan[dayIndex].meals[mealIndex].nutrition = nutrition;
+              if (this.activeMealPlan[dayIndex]?.meals[mealIndex]) {
+                this.activeMealPlan[dayIndex].meals[mealIndex].nutrition = nutrition;
               }
             });
           } catch (e) {
@@ -606,8 +627,8 @@ export class MealPlanStore {
             }
 
             runInAction(() => {
-              if (this.mealPlan[dayIndex]?.meals[mealIndex]) {
-                this.mealPlan[dayIndex].meals[mealIndex].nutrition = null;
+              if (this.activeMealPlan[dayIndex]?.meals[mealIndex]) {
+                this.activeMealPlan[dayIndex].meals[mealIndex].nutrition = null;
               }
             });
           }
@@ -667,18 +688,19 @@ export class MealPlanStore {
         }
 
         runInAction(() => {
-            if (this.mealPlan.length > 0) {
+            if (this.activeMealPlan.length > 0) {
                 const currentPlanToArchive: ArchivedPlan = {
                     id: Date.now().toString(),
                     name: this.currentPlanName,
                     date: new Date().toLocaleDateString('it-IT'),
-                    plan: this.mealPlan,
+                    plan: this.activeMealPlan,
                     shoppingList: this.shoppingList,
                 };
                 this.archivedPlans.push(currentPlanToArchive);
             }
             this.pdfParseProgress = 50;
-            this.mealPlan = cleanedPlan;
+            this.activeMealPlan = cleanedPlan;
+            this.presetMealPlan = JSON.parse(JSON.stringify(cleanedPlan));
             this.status = AppStatus.SUCCESS;
             this.activeTab = 'daily';
             this.hasUnsavedChanges = false;
@@ -774,18 +796,19 @@ export class MealPlanStore {
             }
 
             runInAction(() => {
-                if (this.mealPlan.length > 0) {
+                if (this.activeMealPlan.length > 0) {
                     const currentPlanToArchive: ArchivedPlan = {
                         id: Date.now().toString(),
                         name: this.currentPlanName,
                         date: new Date().toLocaleDateString('it-IT'),
-                        plan: this.mealPlan,
+                        plan: this.activeMealPlan,
                         shoppingList: this.shoppingList,
                     };
                     this.archivedPlans.push(currentPlanToArchive);
                 }
                 this.pdfParseProgress = 50;
-                this.mealPlan = mealStructure;
+                this.activeMealPlan = mealStructure;
+                this.presetMealPlan = JSON.parse(JSON.stringify(mealStructure));
                 this.shoppingList = shoppingList;
                 this.status = AppStatus.SUCCESS;
                 this.activeTab = 'daily';

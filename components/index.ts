@@ -18,4 +18,5 @@ export { default as SkeletonLoader } from './SkeletonLoader';
 export { default as Snackbar } from './Snackbar';
 export { default as ManualPlanEntryForm } from './ManualPlanEntryForm';
 export { default as ConfirmationModal } from './ConfirmationModal';
+export { default as MealModificationControl } from './MealModificationControl';
 export * from './Icons';

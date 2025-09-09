@@ -64,7 +64,7 @@ const App: React.FC = observer(() => {
             if (notificationPermission.current === 'granted') {
                 store.dailyPlan?.meals.forEach((meal, mealIndex) => {
                     if (meal.time === currentTime) {
-                        const dayIndex = store.mealPlan.findIndex(d => d.day === store.dailyPlan?.day);
+                        const dayIndex = store.activeMealPlan.findIndex(d => d.day === store.dailyPlan?.day);
                         const key = `meal-${dayIndex}-${mealIndex}`;
                         if (!store.sentNotifications.has(key)) {
                             new Notification(t('notificationMealTitle', { mealName: meal.name }), {
@@ -205,7 +205,7 @@ const App: React.FC = observer(() => {
                         ))}
                     </div>
                     {store.activeTab === 'daily' && <DailyPlanView />}
-                    {store.activeTab === 'plan' && <MealPlanView plan={store.mealPlan} />}
+                    {store.activeTab === 'plan' && <MealPlanView plan={store.activeMealPlan} />}
                     {store.activeTab === 'list' && <ShoppingListView />}
                     {store.activeTab === 'pantry' && <PantryView />}
                     {store.activeTab === 'archive' && <ArchiveView />}

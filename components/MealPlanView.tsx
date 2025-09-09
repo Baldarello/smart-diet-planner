@@ -8,8 +8,9 @@ import { t } from '../i18n';
 import MealTimeEditor from './MealTimeEditor';
 import NutritionInfoDisplay from './NutritionInfoDisplay';
 import DailyNutritionSummary from './DailyNutritionSummary';
+import MealModificationControl from './MealModificationControl';
 
-const MealPlanView: React.FC<{ plan: DayPlan[] }> = observer(({ plan }) => (
+const MealPlanView: React.FC<{ plan: DayPlan[], isArchiveView?: boolean }> = observer(({ plan, isArchiveView = false }) => (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {plan.map((day, dayIndex) => {
             const getSortKey = (meal: { done: boolean; time?: string }) => {
@@ -37,21 +38,23 @@ const MealPlanView: React.FC<{ plan: DayPlan[] }> = observer(({ plan }) => (
                                     <div>
                                         <div className="flex items-center gap-x-2">
                                             <h4 className={`font-semibold text-gray-800 dark:text-gray-200 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.name}</h4>
-                                            <MealTimeEditor dayIndex={dayIndex} mealIndex={meal.originalIndex} />
+                                            {!isArchiveView && <MealTimeEditor dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
+                                            {!isArchiveView && <MealModificationControl dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
                                         </div>
                                         {meal.title && <p className={`text-sm font-medium text-violet-600 dark:text-violet-400 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.title}</p>}
                                     </div>
                                     <button
-                                        onClick={() => mealPlanStore.toggleMealDone(dayIndex, meal.originalIndex)}
+                                        onClick={() => !isArchiveView && mealPlanStore.toggleMealDone(dayIndex, meal.originalIndex)}
                                         title={meal.done ? t('markAsToDo') : t('markAsDone')}
-                                        className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0 -mr-1"
+                                        className={`p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0 -mr-1 ${isArchiveView ? 'cursor-not-allowed' : ''}`}
                                         aria-label={meal.done ? t('markAsToDo') : t('markAsDone')}
+                                        disabled={isArchiveView}
                                      >
                                         {meal.done ? <UndoIcon /> : <CheckCircleIcon />}
                                     </button>
                                 </div>
-                                <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} />
-                                {mealPlanStore.onlineMode && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
+                                <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} isArchiveView={isArchiveView} />
+                                {mealPlanStore.onlineMode && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} isArchiveView={isArchiveView} />}
                             </div>
                         ))}
                     </div>

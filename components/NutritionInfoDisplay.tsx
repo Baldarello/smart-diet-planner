@@ -18,9 +18,10 @@ interface NutritionInfoDisplayProps {
     nutrition: NutritionInfo | null | undefined;
     dayIndex: number;
     mealIndex: number;
+    isArchiveView?: boolean;
 }
 
-const NutritionInfoDisplay: React.FC<NutritionInfoDisplayProps> = observer(({ nutrition, dayIndex, mealIndex }) => {
+const NutritionInfoDisplay: React.FC<NutritionInfoDisplayProps> = observer(({ nutrition, dayIndex, mealIndex, isArchiveView = false }) => {
     const { onlineMode, recalculatingMeal } = mealPlanStore;
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -50,7 +51,7 @@ const NutritionInfoDisplay: React.FC<NutritionInfoDisplayProps> = observer(({ nu
                     <NutritionItem label={t('nutritionFat')} value={nutrition.fat} unit={t('nutritionUnitG')} />
                     <NutritionItem label={t('nutritionCalories')} value={nutrition.calories} unit={t('nutritionUnitKcal')} />
                 </div>
-                {onlineMode && (
+                {onlineMode && !isArchiveView && (
                     <button
                         onClick={() => setIsModalOpen(true)}
                         className="ml-2 p-1.5 rounded-full text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"

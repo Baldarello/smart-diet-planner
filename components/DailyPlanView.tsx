@@ -9,6 +9,7 @@ import MealTimeEditor from './MealTimeEditor';
 import DailyNutritionSummary from './DailyNutritionSummary';
 import NutritionInfoDisplay from './NutritionInfoDisplay';
 import { Meal } from '../types';
+import MealModificationControl from './MealModificationControl';
 
 const DailyPlanView: React.FC = observer(() => {
     const { dailyPlan, toggleMealDone, dailyNutritionSummary, onlineMode } = mealPlanStore;
@@ -17,7 +18,7 @@ const DailyPlanView: React.FC = observer(() => {
         return ( <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg text-center max-w-2xl mx-auto"><h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('noPlanToday')}</h2><p className="text-gray-500 dark:text-gray-400">{t('noPlanTodaySubtitle')}</p></div> );
     }
 
-    const dayIndex = mealPlanStore.mealPlan.findIndex(d => d.day.toUpperCase() === dailyPlan.day.toUpperCase());
+    const dayIndex = mealPlanStore.activeMealPlan.findIndex(d => d.day.toUpperCase() === dailyPlan.day.toUpperCase());
 
     const getSortKey = (meal: { done: boolean; time?: string }) => {
       const primary = meal.done ? 1 : 0; // 0 for not done, 1 for done
@@ -46,6 +47,7 @@ const DailyPlanView: React.FC = observer(() => {
                                 <div className="flex items-center gap-x-2">
                                     <h4 className={`text-xl font-semibold text-gray-800 dark:text-gray-200 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.name}</h4>
                                     <MealTimeEditor dayIndex={dayIndex} mealIndex={meal.originalIndex} />
+                                    <MealModificationControl dayIndex={dayIndex} mealIndex={meal.originalIndex} />
                                 </div>
                                 {meal.title && <p className={`text-md font-medium text-violet-600 dark:text-violet-400 mt-1 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.title}</p>}
                              </div>

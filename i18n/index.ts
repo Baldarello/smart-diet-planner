@@ -130,6 +130,11 @@ const translations = {
     recalcModalTitle: "Conferma Ricalcolo",
     recalcModalContent: "I valori nutrizionali sono stime generate da un'IA e potrebbero non essere scientificamente accurati. Sono intesi come linee guida. Vuoi procedere?",
     confirm: "Conferma",
+
+    // Meal Modification
+    resetMealToPresetTitle: "Ripristina Pasto",
+    resetMealModalTitle: "Conferma Ripristino",
+    resetMealModalContent: "Tutte le modifiche a questo pasto (ingredienti, tempi, stato 'usato') verranno annullate e verrà ripristinata la versione originale. Sei sicuro?",
   },
   en: {
     // App.tsx
@@ -260,6 +265,11 @@ const translations = {
     recalcModalTitle: "Confirm Recalculation",
     recalcModalContent: "Nutritional values are AI-generated estimates and may not be scientifically accurate. They are intended as a guideline. Do you want to proceed?",
     confirm: "Confirm",
+    
+    // Meal Modification
+    resetMealToPresetTitle: "Reset Meal",
+    resetMealModalTitle: "Confirm Reset",
+    resetMealModalContent: "All changes to this meal (ingredients, timings, 'used' status) will be undone, reverting to the original version. Are you sure?",
   }
 };
 
