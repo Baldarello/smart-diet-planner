@@ -111,6 +111,7 @@ export class MealPlanStore {
 
   markNotificationSent = (key: string) => {
     this.sentNotifications.set(key, true);
+    this.saveToLocalStorage();
   }
 
   resetSentNotificationsIfNeeded = () => {
@@ -125,39 +126,30 @@ export class MealPlanStore {
 
   checkAndProcessMissedHydration = (): { time: string, amount: number }[] => {
     const now = Date.now();
-    this.resetSentNotificationsIfNeeded(); // Ensure we're on the correct day and notifications are cleared if needed.
+    this.resetSentNotificationsIfNeeded();
 
     const lastCheck = this.lastHydrationCheckTimestamp;
-    
-    // Update the timestamp immediately.
+
     this.lastHydrationCheckTimestamp = now;
     this.saveToLocalStorage();
 
     if (!lastCheck) {
-        // If this is the first check (e.g., first time app is run), do nothing.
         return [];
     }
 
     const missedNotifications: { time: string, amount: number }[] = [];
     const amountToDrink = Math.round((this.hydrationGoalLiters * 1000) / 10);
-    const nowTime = new Date(now);
+    
+    const cursor = new Date(lastCheck);
+    cursor.setMinutes(0, 0, 0);
+    
+    const endTime = new Date(now);
 
-    // Start checking from the last known time.
-    let checkTime = new Date(lastCheck);
+    cursor.setHours(cursor.getHours() + 1);
 
-    // Loop through each hour between the last check and now.
-    while (checkTime < nowTime) {
-        // Move to the top of the next hour.
-        checkTime.setHours(checkTime.getHours() + 1, 0, 0, 0);
+    while (cursor <= endTime) {
+        const hour = cursor.getHours();
 
-        // If we've jumped past the current time, we're done.
-        if (checkTime > nowTime) {
-            break;
-        }
-
-        const hour = checkTime.getHours();
-
-        // Only process reminders within the active window (9 AM to 7 PM).
         if (hour >= 9 && hour <= 19) {
             const key = `hydration-${hour}`;
             if (!this.sentNotifications.has(key)) {
@@ -166,9 +158,10 @@ export class MealPlanStore {
                 this.markNotificationSent(key);
             }
         }
+        
+        cursor.setHours(cursor.getHours() + 1);
     }
 
-    // If there were any missed notifications, show a snackbar for the most recent one.
     if (missedNotifications.length > 0) {
         const latestMiss = missedNotifications[missedNotifications.length - 1];
         this.showHydrationSnackbar(latestMiss.time, latestMiss.amount);
@@ -201,8 +194,6 @@ export class MealPlanStore {
           const { ingredientName } = extractIngredientInfo(newDescription);
           item.ingredientName = ingredientName;
           
-          // Online mode offers an AI-powered recalculation, which is now optional.
-          // Offline, changes are handled by `toggleMealItem` directly.
           if (this.onlineMode) {
             this.hasUnsavedChanges = true;
           }
@@ -217,11 +208,9 @@ export class MealPlanStore {
     runInAction(() => { this.recalculating = true; });
 
     try {
-        // Step 1: Update plan details (nutrition, corrected ingredient names, times)
         const updatedPlan = await updatePlanDetails(this.mealPlan);
         if (!updatedPlan) throw new Error("Failed to get updated plan from Gemini.");
 
-        // Step 2: Generate a new shopping list from the updated plan
         const newShoppingList = await generateShoppingListFromPlan(updatedPlan);
         if (!newShoppingList) throw new Error("Failed to generate shopping list from updated plan.");
 
@@ -235,7 +224,7 @@ export class MealPlanStore {
                 }))
             }));
             this.shoppingList = newShoppingList;
-            this.pantry = []; // Reset pantry as the list is brand new
+            this.pantry = [];
         });
 
     } catch (error: any) {
@@ -281,7 +270,7 @@ export class MealPlanStore {
         }
         runInAction(() => {
             if (this.mealPlan[dayIndex]?.meals[mealIndex]) {
-                this.mealPlan[dayIndex].meals[mealIndex].nutrition = null; // Set to null on failure
+                this.mealPlan[dayIndex].meals[mealIndex].nutrition = null;
             }
         });
     } finally {
@@ -321,6 +310,10 @@ export class MealPlanStore {
         this.currentPlanId = data.currentPlanId || null;
         this.lastHydrationCheckTimestamp = data.lastHydrationCheckTimestamp || null;
 
+        if (data.sentNotifications) {
+            this.sentNotifications = new Map(data.sentNotifications);
+        }
+
         if (this.mealPlan.length > 0 && !this.currentPlanId) {
             this.currentPlanId = 'migrated_' + Date.now().toString();
         }
@@ -353,6 +346,7 @@ export class MealPlanStore {
         waterIntakeMl: this.waterIntakeMl,
         currentPlanId: this.currentPlanId,
         lastHydrationCheckTimestamp: this.lastHydrationCheckTimestamp,
+        sentNotifications: Array.from(this.sentNotifications.entries()),
       };
       localStorage.setItem('dietPlanData', JSON.stringify(dataToSave));
     } catch (error) {
@@ -497,14 +491,13 @@ export class MealPlanStore {
         const itemQuantityToToggle = parseQuantity(mealItem.fullDescription);
         if (!itemQuantityToToggle || itemQuantityToToggle.value <= 0) {
             this.saveToLocalStorage();
-            return; // It's a non-quantifiable item, just toggle its state
+            return;
         }
         
         const ingredientName = mealItem.ingredientName;
         const pantryItem = this.pantry.find(p => p.item.toLowerCase() === ingredientName.toLowerCase());
 
         if (mealItem.used) {
-            // Item is being marked as "used" or "consumed" -> DECREASE from pantry
             if (pantryItem) {
                 const pantryQuantity = parseQuantity(pantryItem.quantity);
                 if (pantryQuantity && pantryQuantity.unit === itemQuantityToToggle.unit) {
@@ -512,13 +505,11 @@ export class MealPlanStore {
                     if (pantryQuantity.value > 0.01) {
                         pantryItem.quantity = formatQuantity(pantryQuantity);
                     } else {
-                        // Remove from pantry if quantity is zero or less
                         this.pantry = this.pantry.filter(p => p.item.toLowerCase() !== ingredientName.toLowerCase());
                     }
                 }
             }
         } else {
-            // Item is being marked as "not used" -> INCREASE in pantry
             if (pantryItem) {
                 const pantryQuantity = parseQuantity(pantryItem.quantity);
                 if (pantryQuantity && pantryQuantity.unit === itemQuantityToToggle.unit) {
@@ -526,8 +517,6 @@ export class MealPlanStore {
                     pantryItem.quantity = formatQuantity(pantryQuantity);
                 }
             } else {
-                // If it wasn't in the pantry, add it back.
-                // We need to find its original category from the shopping list if possible.
                 let originalCategory = 'Altro';
                 for (const cat of this.shoppingList) {
                     if (cat.items.some(i => i.item.toLowerCase() === ingredientName.toLowerCase())) {
@@ -567,7 +556,7 @@ export class MealPlanStore {
     }
 
     if (dayPlan.meals.some(meal => meal.nutrition === undefined)) {
-      return undefined; // Data is still loading
+      return undefined;
     }
 
     const summary: NutritionInfo = { carbs: 0, protein: 0, fat: 0, calories: 0 };
@@ -605,7 +594,6 @@ export class MealPlanStore {
           try {
             const nutrition = await getNutritionForMeal(meal);
             runInAction(() => {
-              // Ensure the plan hasn't been changed by the user in the meantime
               if (this.mealPlan[dayIndex]?.meals[mealIndex]) {
                 this.mealPlan[dayIndex].meals[mealIndex].nutrition = nutrition;
               }
@@ -613,12 +601,10 @@ export class MealPlanStore {
           } catch (e) {
             console.error(`Failed to get nutrition for meal: ${meal.name}`, e);
             
-            // If it's a quota error, re-throw to trigger the main catch block and switch to offline mode.
             if (isQuotaError(e)) {
                 throw e;
             }
 
-            // For other non-critical errors, just nullify this meal's nutrition and continue.
             runInAction(() => {
               if (this.mealPlan[dayIndex]?.meals[mealIndex]) {
                 this.mealPlan[dayIndex].meals[mealIndex].nutrition = null;
@@ -800,24 +786,22 @@ export class MealPlanStore {
                 }
                 this.pdfParseProgress = 50;
                 this.mealPlan = mealStructure;
-                this.shoppingList = shoppingList; // Set the shopping list if generated offline
+                this.shoppingList = shoppingList;
                 this.status = AppStatus.SUCCESS;
                 this.activeTab = 'daily';
                 this.hasUnsavedChanges = false;
                 this.sentNotifications.clear();
                 this.lastActiveDate = new Date().toLocaleDateString();
                 this.waterIntakeMl = 0;
-                this.pantry = []; // Reset pantry
+                this.pantry = [];
                 this.currentPlanId = Date.now().toString();
                 this.currentPlanName = `Diet Plan - ${new Date().toLocaleDateString('it-IT')}`;
             });
             
-            // If we are online, the shopping list wasn't generated yet.
-            // _enrichPlanDataInBackground will handle it.
             if(this.onlineMode) {
                 this._enrichPlanDataInBackground();
             } else {
-                this.saveToLocalStorage(); // Save offline-generated data
+                this.saveToLocalStorage();
             }
 
         } catch (err: any) {
