@@ -144,6 +144,41 @@ const App: React.FC = observer(() => {
         };
     }, [store.currentPlanId]);
 
+    // Effect for catching up on missed notifications when tab becomes visible
+    useEffect(() => {
+        const processMissedNotifications = () => {
+            if (store.currentPlanId) {
+                const missedNotifications = store.checkAndProcessMissedHydration();
+                if (notificationPermission.current === 'granted' && missedNotifications.length > 0) {
+                    // Fire system notifications for all missed reminders, staggered slightly
+                    missedNotifications.forEach((notif, index) => {
+                        setTimeout(() => {
+                            new Notification(t('notificationHydrationTitle'), {
+                                body: t('notificationHydrationBody', { amount: notif.amount.toString() }),
+                                tag: `hydration-${notif.time}` // Tag prevents duplicates
+                            });
+                        }, index * 1500);
+                    });
+                }
+            }
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                processMissedNotifications();
+            }
+        };
+        
+        // Initial check on load/plan change
+        processMissedNotifications();
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [store.currentPlanId]);
+
 
     const renderMainContent = () => {
         if (store.status === AppStatus.LOADING) return <Loader />;

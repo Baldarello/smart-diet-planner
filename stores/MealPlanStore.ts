@@ -36,6 +36,7 @@ export class MealPlanStore {
 
   sentNotifications = new Map<string, boolean>();
   lastActiveDate: string = new Date().toLocaleDateString();
+  lastHydrationCheckTimestamp: number | null = null;
 
   constructor() {
     makeAutoObservable(this);
@@ -121,6 +122,60 @@ export class MealPlanStore {
       this.saveToLocalStorage();
     }
   }
+
+  checkAndProcessMissedHydration = (): { time: string, amount: number }[] => {
+    const now = Date.now();
+    this.resetSentNotificationsIfNeeded(); // Ensure we're on the correct day and notifications are cleared if needed.
+
+    const lastCheck = this.lastHydrationCheckTimestamp;
+    
+    // Update the timestamp immediately.
+    this.lastHydrationCheckTimestamp = now;
+    this.saveToLocalStorage();
+
+    if (!lastCheck) {
+        // If this is the first check (e.g., first time app is run), do nothing.
+        return [];
+    }
+
+    const missedNotifications: { time: string, amount: number }[] = [];
+    const amountToDrink = Math.round((this.hydrationGoalLiters * 1000) / 10);
+    const nowTime = new Date(now);
+
+    // Start checking from the last known time.
+    let checkTime = new Date(lastCheck);
+
+    // Loop through each hour between the last check and now.
+    while (checkTime < nowTime) {
+        // Move to the top of the next hour.
+        checkTime.setHours(checkTime.getHours() + 1, 0, 0, 0);
+
+        // If we've jumped past the current time, we're done.
+        if (checkTime > nowTime) {
+            break;
+        }
+
+        const hour = checkTime.getHours();
+
+        // Only process reminders within the active window (9 AM to 7 PM).
+        if (hour >= 9 && hour <= 19) {
+            const key = `hydration-${hour}`;
+            if (!this.sentNotifications.has(key)) {
+                const timeStr = `${String(hour).padStart(2, '0')}:00`;
+                missedNotifications.push({ time: timeStr, amount: amountToDrink });
+                this.markNotificationSent(key);
+            }
+        }
+    }
+
+    // If there were any missed notifications, show a snackbar for the most recent one.
+    if (missedNotifications.length > 0) {
+        const latestMiss = missedNotifications[missedNotifications.length - 1];
+        this.showHydrationSnackbar(latestMiss.time, latestMiss.amount);
+    }
+
+    return missedNotifications;
+  };
 
   setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry') => {
     this.activeTab = tab;
@@ -264,6 +319,7 @@ export class MealPlanStore {
         this.lastActiveDate = data.lastActiveDate || new Date().toLocaleDateString();
         this.waterIntakeMl = data.waterIntakeMl || 0;
         this.currentPlanId = data.currentPlanId || null;
+        this.lastHydrationCheckTimestamp = data.lastHydrationCheckTimestamp || null;
 
         if (this.mealPlan.length > 0 && !this.currentPlanId) {
             this.currentPlanId = 'migrated_' + Date.now().toString();
@@ -296,6 +352,7 @@ export class MealPlanStore {
         lastActiveDate: this.lastActiveDate,
         waterIntakeMl: this.waterIntakeMl,
         currentPlanId: this.currentPlanId,
+        lastHydrationCheckTimestamp: this.lastHydrationCheckTimestamp,
       };
       localStorage.setItem('dietPlanData', JSON.stringify(dataToSave));
     } catch (error) {
