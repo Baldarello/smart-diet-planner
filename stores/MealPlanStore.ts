@@ -28,6 +28,7 @@ export class MealPlanStore {
 
   onlineMode = true;
   recalculating = false;
+  recalculatingMeal: { dayIndex: number; mealIndex: number } | null = null;
 
   hydrationGoalLiters = 3;
   waterIntakeMl = 0;
@@ -195,6 +196,42 @@ export class MealPlanStore {
         runInAction(() => {
             this.hasUnsavedChanges = false;
             this.recalculating = false;
+        });
+        this.saveToLocalStorage();
+    }
+  }
+
+  recalculateMealNutrition = async (dayIndex: number, mealIndex: number) => {
+    if (!this.onlineMode) return;
+
+    const meal = this.mealPlan[dayIndex]?.meals[mealIndex];
+    if (!meal) return;
+
+    runInAction(() => {
+        this.recalculatingMeal = { dayIndex, mealIndex };
+    });
+
+    try {
+        const newNutrition = await getNutritionForMeal(meal);
+        runInAction(() => {
+            if (this.mealPlan[dayIndex]?.meals[mealIndex]) {
+                this.mealPlan[dayIndex].meals[mealIndex].nutrition = newNutrition;
+            }
+        });
+    } catch (error) {
+        console.error(`Failed to recalculate nutrition for meal: ${meal.name}`, error);
+            if (isQuotaError(error)) {
+            runInAction(() => { this.onlineMode = false });
+            this.saveSessionState();
+        }
+        runInAction(() => {
+            if (this.mealPlan[dayIndex]?.meals[mealIndex]) {
+                this.mealPlan[dayIndex].meals[mealIndex].nutrition = null; // Set to null on failure
+            }
+        });
+    } finally {
+        runInAction(() => {
+            this.recalculatingMeal = null;
         });
         this.saveToLocalStorage();
     }
@@ -518,6 +555,13 @@ export class MealPlanStore {
             });
           } catch (e) {
             console.error(`Failed to get nutrition for meal: ${meal.name}`, e);
+            
+            // If it's a quota error, re-throw to trigger the main catch block and switch to offline mode.
+            if (isQuotaError(e)) {
+                throw e;
+            }
+
+            // For other non-critical errors, just nullify this meal's nutrition and continue.
             runInAction(() => {
               if (this.mealPlan[dayIndex]?.meals[mealIndex]) {
                 this.mealPlan[dayIndex].meals[mealIndex].nutrition = null;

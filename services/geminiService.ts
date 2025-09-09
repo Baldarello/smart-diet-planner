@@ -131,17 +131,19 @@ export async function parseMealStructure(text: string): Promise<DayPlan[] | null
 Sei un assistente nutrizionale esperto. Il tuo compito è analizzare il testo grezzo estratto da un PDF di un piano dietetico e strutturarlo in un formato JSON preciso.
 
 COMPITI:
-1.  **ANALIZZA E STRUTTURA**: Leggi il testo e crea un piano settimanale da LUNEDI a DOMENICA. Per ogni giorno, identifica i pasti (COLAZIONE, PRANZO, etc.).
-2.  **IDENTIFICA INGREDIENTI**: Per ogni pasto, elenca tutti gli ingredienti. Per ogni ingrediente, fornisci:
-    *   \`fullDescription\`: Il testo originale completo (es. "60g di riso venere").
-    *   \`ingredientName\`: Il nome pulito e base dell'ingrediente (es. "Riso venere"). Mantieni la coerenza per lo stesso ingrediente.
-3.  **ASSEGNA ORARI**: Assegna un orario logico in formato HH:MM (\`time\`) a ogni pasto.
+1.  **ANALIZZA E STRUTTURA**: Leggi il testo e crea un piano settimanale da LUNEDI a DOMENICA. Per ogni giorno, identifica i pasti (COLAZIONE, PRANZO, SPUNTINO, MERENDA, CENA).
+2.  **ESTRAI TITOLI E INGREDIENTI**: Per ogni pasto:
+    *   **Titolo del Piatto (\`title\`)**: Identifica se c'è un nome specifico per il piatto. A volte si trova sulla stessa riga del nome del pasto (es. "PRANZO Riso venere con ceci...").
+    *   **Lista Ingredienti (\`items\`)**: Estrai solo le righe che sono chiaramente ingredienti, di solito precedute da un punto elenco (•, -, *) o un numero. Per ogni ingrediente, fornisci:
+        *   \`fullDescription\`: Il testo originale completo, incluse quantità e note (es. "60g di riso venere", "2-3 cucchiai di hummus di ceci (fatto in casa...)"). Mantieni l'intera descrizione, anche se è lunga.
+        *   \`ingredientName\`: Il nome pulito e base dell'ingrediente (es. "Riso venere", "Hummus di ceci"). Sii coerente per lo stesso ingrediente in tutto il piano.
+3.  **ASSEGNA ORARI**: Assegna un orario logico in formato HH:MM (\`time\`) a ogni pasto (es. COLAZIONE: "08:00").
 
-REGOLE IMPORTANTI:
-*   Fornisci l'output **esclusivamente** in formato JSON, come un array di piani giornalieri, seguendo lo schema specificato.
-*   **NON** calcolare o includere valori nutrizionali in questa fase.
-*   **NON** generare una lista della spesa.
-*   Assicurati che l'intero piano settimanale sia coperto.
+REGOLE IMPORTANTI E COSA IGNORARE:
+*   **IGNORA I PROCEDIMENTI**: Ignora completamente qualsiasi sezione o paragrafo intitolato "Procedimento:" o che descrive chiaramente le istruzioni di cottura. Queste non sono liste di ingredienti.
+*   **GESTISCI CASI SPECIALI**: Se un pasto è descritto come "Libera" (es. "CENA: Libera"), imposta questo come \`title\` e lascia la lista \`items\` vuota.
+*   **NON** calcolare valori nutrizionali né generare una lista della spesa in questa fase.
+*   L'output deve essere **esclusivamente** un array JSON che segue lo schema fornito. Non includere testo o spiegazioni aggiuntive.
 
 Testo del PDF da analizzare:
 ---
@@ -198,8 +200,8 @@ Fornisci la risposta **esclusivamente** in formato JSON, seguendo lo schema spec
         return JSON.parse(jsonString) as NutritionInfo;
     } catch (error) {
         console.error("Error calling Gemini API for nutrition analysis:", error);
-        // Do not rethrow, just return null to indicate failure for this single meal
-        return null;
+        // Re-throw the error so the calling function can handle it, especially for quota errors.
+        throw error;
     }
 }
 

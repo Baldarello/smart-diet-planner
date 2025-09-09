@@ -125,6 +125,11 @@ const translations = {
     nutritionCalories: "Calorie",
     nutritionUnitG: "g",
     nutritionUnitKcal: "kcal",
+    recalculateNutrition: "Ricalcola Nutrizione",
+    recalculateNutritionTitle: "Ricalcola i valori nutrizionali per questo pasto",
+    recalcModalTitle: "Conferma Ricalcolo",
+    recalcModalContent: "I valori nutrizionali sono stime generate da un'IA e potrebbero non essere scientificamente accurati. Sono intesi come linee guida. Vuoi procedere?",
+    confirm: "Conferma",
   },
   en: {
     // App.tsx
@@ -250,6 +255,11 @@ const translations = {
     nutritionCalories: "Calories",
     nutritionUnitG: "g",
     nutritionUnitKcal: "kcal",
+    recalculateNutrition: "Recalculate Nutrition",
+    recalculateNutritionTitle: "Recalculate nutritional values for this meal",
+    recalcModalTitle: "Confirm Recalculation",
+    recalcModalContent: "Nutritional values are AI-generated estimates and may not be scientifically accurate. They are intended as a guideline. Do you want to proceed?",
+    confirm: "Confirm",
   }
 };
 

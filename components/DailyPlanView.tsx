@@ -60,7 +60,7 @@ const DailyPlanView: React.FC = observer(() => {
                         </div>
 
                         <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} />
-                        {onlineMode && <NutritionInfoDisplay nutrition={meal.nutrition} />}
+                        {onlineMode && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
                     </div>
                 ))}
             </div>

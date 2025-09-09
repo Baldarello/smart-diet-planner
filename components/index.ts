@@ -17,4 +17,5 @@ export { default as NutritionInfoDisplay } from './NutritionInfoDisplay';
 export { default as SkeletonLoader } from './SkeletonLoader';
 export { default as Snackbar } from './Snackbar';
 export { default as ManualPlanEntryForm } from './ManualPlanEntryForm';
+export { default as ConfirmationModal } from './ConfirmationModal';
 export * from './Icons';
