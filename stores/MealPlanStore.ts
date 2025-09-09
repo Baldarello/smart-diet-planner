@@ -24,6 +24,7 @@ export class MealPlanStore {
   theme: Theme = 'light';
   locale: Locale = 'it';
   hasUnsavedChanges = false;
+  currentPlanId: string | null = null;
 
   onlineMode = true;
   recalculating = false;
@@ -81,6 +82,13 @@ export class MealPlanStore {
   logWaterIntake = (amountMl: number) => {
     this.waterIntakeMl += amountMl;
     this.saveToLocalStorage();
+  }
+
+  setWaterIntake = (amountMl: number) => {
+    if (amountMl >= 0) {
+      this.waterIntakeMl = amountMl;
+      this.saveToLocalStorage();
+    }
   }
 
   showHydrationSnackbar = (time: string, amount: number) => {
@@ -218,6 +226,11 @@ export class MealPlanStore {
         this.hydrationGoalLiters = data.hydrationGoalLiters || 3;
         this.lastActiveDate = data.lastActiveDate || new Date().toLocaleDateString();
         this.waterIntakeMl = data.waterIntakeMl || 0;
+        this.currentPlanId = data.currentPlanId || null;
+
+        if (this.mealPlan.length > 0 && !this.currentPlanId) {
+            this.currentPlanId = 'migrated_' + Date.now().toString();
+        }
         
         this.resetSentNotificationsIfNeeded();
 
@@ -245,6 +258,7 @@ export class MealPlanStore {
         hydrationGoalLiters: this.hydrationGoalLiters,
         lastActiveDate: this.lastActiveDate,
         waterIntakeMl: this.waterIntakeMl,
+        currentPlanId: this.currentPlanId,
       };
       localStorage.setItem('dietPlanData', JSON.stringify(dataToSave));
     } catch (error) {
@@ -255,16 +269,7 @@ export class MealPlanStore {
   archiveCurrentPlan = () => {
     if (this.mealPlan.length === 0) return;
 
-    const newArchive: ArchivedPlan = {
-      id: Date.now().toString(),
-      name: this.currentPlanName,
-      date: new Date().toLocaleDateString('it-IT'),
-      plan: this.mealPlan,
-      shoppingList: this.shoppingList,
-    };
-
     runInAction(() => {
-        this.archivedPlans.push(newArchive);
         this.mealPlan = [];
         this.shoppingList = [];
         this.pantry = [];
@@ -275,6 +280,7 @@ export class MealPlanStore {
         this.hasUnsavedChanges = false;
         this.sentNotifications.clear();
         this.waterIntakeMl = 0;
+        this.currentPlanId = null;
         this.saveToLocalStorage();
     });
   }
@@ -316,6 +322,7 @@ export class MealPlanStore {
         this.hasUnsavedChanges = false;
         this.status = AppStatus.SUCCESS;
         this.activeTab = 'daily';
+        this.currentPlanId = Date.now().toString();
         
         this.saveToLocalStorage();
     });
@@ -540,6 +547,74 @@ export class MealPlanStore {
     }
   };
 
+  processManualPlan = (planData: DayPlan[]) => {
+    runInAction(() => {
+        this.status = AppStatus.LOADING;
+        this.error = null;
+        this.pdfParseProgress = 0;
+    });
+
+    setTimeout(() => {
+        const cleanedPlan = planData.map(day => ({
+            ...day,
+            meals: day.meals.map(meal => ({
+                ...meal,
+                title: meal.title?.trim(),
+                items: meal.items
+                    .filter(item => item.fullDescription.trim() !== '')
+                    .map(item => ({
+                        ...extractIngredientInfo(item.fullDescription.trim()),
+                        fullDescription: item.fullDescription.trim(),
+                        used: false,
+                    })),
+            })).filter(meal => meal.items.length > 0 || (meal.title && meal.title.trim() !== ''))
+        })).filter(day => day.meals.length > 0);
+
+        if (cleanedPlan.length === 0) {
+            runInAction(() => {
+                this.status = AppStatus.ERROR;
+                this.error = "The submitted plan is empty. Please add at least one meal item.";
+                this.pdfParseProgress = 0;
+            });
+            return;
+        }
+
+        runInAction(() => {
+            if (this.mealPlan.length > 0) {
+                const currentPlanToArchive: ArchivedPlan = {
+                    id: Date.now().toString(),
+                    name: this.currentPlanName,
+                    date: new Date().toLocaleDateString('it-IT'),
+                    plan: this.mealPlan,
+                    shoppingList: this.shoppingList,
+                };
+                this.archivedPlans.push(currentPlanToArchive);
+            }
+            this.pdfParseProgress = 50;
+            this.mealPlan = cleanedPlan;
+            this.status = AppStatus.SUCCESS;
+            this.activeTab = 'daily';
+            this.hasUnsavedChanges = false;
+            this.sentNotifications.clear();
+            this.lastActiveDate = new Date().toLocaleDateString();
+            this.waterIntakeMl = 0;
+            this.pantry = [];
+            this.currentPlanId = Date.now().toString();
+            this.currentPlanName = `Manual Plan - ${new Date().toLocaleDateString('it-IT')}`;
+        });
+
+        if (this.onlineMode) {
+            this._enrichPlanDataInBackground();
+        } else {
+            const shoppingList = generateShoppingListOffline(cleanedPlan);
+            runInAction(() => {
+                this.shoppingList = shoppingList;
+            });
+            this.saveToLocalStorage();
+        }
+    }, 500);
+  }
+
   processPdf = async (file: File) => {
     this.status = AppStatus.LOADING;
     this.error = null;
@@ -612,6 +687,16 @@ export class MealPlanStore {
             }
 
             runInAction(() => {
+                if (this.mealPlan.length > 0) {
+                    const currentPlanToArchive: ArchivedPlan = {
+                        id: Date.now().toString(),
+                        name: this.currentPlanName,
+                        date: new Date().toLocaleDateString('it-IT'),
+                        plan: this.mealPlan,
+                        shoppingList: this.shoppingList,
+                    };
+                    this.archivedPlans.push(currentPlanToArchive);
+                }
                 this.pdfParseProgress = 50;
                 this.mealPlan = mealStructure;
                 this.shoppingList = shoppingList; // Set the shopping list if generated offline
@@ -622,6 +707,7 @@ export class MealPlanStore {
                 this.lastActiveDate = new Date().toLocaleDateString();
                 this.waterIntakeMl = 0;
                 this.pantry = []; // Reset pantry
+                this.currentPlanId = Date.now().toString();
                 this.currentPlanName = `Diet Plan - ${new Date().toLocaleDateString('it-IT')}`;
             });
             

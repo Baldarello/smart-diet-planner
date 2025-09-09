@@ -1,9 +1,9 @@
 import { MealPlanData, DayPlan, Meal, ShoppingListCategory, ShoppingListItem, MealItem } from '../types';
 import { parseQuantity, formatQuantity, ParsedQuantity } from '../utils/quantityParser';
 
-const DAY_KEYWORDS = ['LUNEDI', 'MARTEDI', 'MERCOLEDI', 'GIOVEDI', 'VENERDI', 'SABATO', 'DOMENICA'];
-const MEAL_KEYWORDS = ['COLAZIONE', 'SPUNTINO', 'PRANZO', 'MERENDA', 'CENA'];
-const MEAL_TIMES: { [key: string]: string } = {
+export const DAY_KEYWORDS = ['LUNEDI', 'MARTEDI', 'MERCOLEDI', 'GIOVEDI', 'VENERDI', 'SABATO', 'DOMENICA'];
+export const MEAL_KEYWORDS = ['COLAZIONE', 'SPUNTINO', 'PRANZO', 'MERENDA', 'CENA'];
+export const MEAL_TIMES: { [key: string]: string } = {
   COLAZIONE: '08:00',
   SPUNTINO: '10:30',
   PRANZO: '13:00',

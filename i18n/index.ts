@@ -5,8 +5,8 @@ const translations = {
     // App.tsx
     mainTitle: "Smart Diet Planner",
     mainSubtitle: "Il tuo assistente intelligente per la pianificazione dei pasti.",
-    changeDiet: "Cambia Dieta",
-    changeDietTitle: "Archivia il piano attuale e iniziane uno nuovo",
+    changeDiet: "Nuovo Piano",
+    changeDietTitle: "Crea o ripristina un piano",
     tabDaily: "Oggi",
     tabWeekly: "Settimana",
     tabShopping: "Spesa",
@@ -20,6 +20,21 @@ const translations = {
     errorAndUpload: "Per favore, prova a caricare un nuovo file",
     onlineModeTitle: "Modalità Online: Analisi AI e nutrizione attive.",
     offlineModeTitle: "Modalità Offline: Quota API superata. Funzionalità di base attive.",
+    or: "o",
+    orCreateManually: "crea un piano manualmente",
+    cancelAndReturn: "Annulla e torna al piano",
+    restoreFromArchiveTitle: "Oppure, ripristina un piano archiviato",
+
+    // ManualPlanEntryForm.tsx
+    manualEntryTitle: "Crea il Tuo Piano Dietetico",
+    mealTitleLabel: "Nome del piatto (opzionale)",
+    ingredientsLabel: "Ingredienti",
+    addIngredient: "Aggiungi Ingrediente",
+    removeIngredient: "Rimuovi Ingrediente",
+    savePlan: "Genera Piano",
+    cancel: "Annulla",
+    planEmptyError: "Il piano inviato è vuoto. Per favore, aggiungi almeno un ingrediente.",
+    ingredientPlaceholder: "Es. 60g di riso venere",
     
     // FileUpload.tsx
     clickToUpload: "Clicca per caricare",
@@ -93,6 +108,7 @@ const translations = {
     hydrationUnit: "Litri",
     hydrationIntake: "Assunzione di oggi:",
     hydrationUnitMl: "ml",
+    editIntakeTitle: "Clicca per modificare",
     mealTime: "Orario pasto",
     notificationMealTitle: "È ora di {mealName}!",
     notificationMealBody: "È il momento di mangiare: {mealTitle}",
@@ -114,8 +130,8 @@ const translations = {
     // App.tsx
     mainTitle: "Smart Diet Planner",
     mainSubtitle: "Your intelligent meal planning assistant.",
-    changeDiet: "Change Diet",
-    changeDietTitle: "Archive current plan and start a new one",
+    changeDiet: "New Plan",
+    changeDietTitle: "Create or restore a plan",
     tabDaily: "Daily",
     tabWeekly: "Weekly",
     tabShopping: "Shopping",
@@ -129,6 +145,21 @@ const translations = {
     errorAndUpload: "Please try uploading a new file",
     onlineModeTitle: "Online Mode: AI analysis & nutrition facts are active.",
     offlineModeTitle: "Offline Mode: API quota exceeded. Basic features are active.",
+    or: "or",
+    orCreateManually: "create a plan manually",
+    cancelAndReturn: "Cancel and return to plan",
+    restoreFromArchiveTitle: "Or, restore an archived plan",
+    
+    // ManualPlanEntryForm.tsx
+    manualEntryTitle: "Create Your Diet Plan",
+    mealTitleLabel: "Dish name (optional)",
+    ingredientsLabel: "Ingredients",
+    addIngredient: "Add Ingredient",
+    removeIngredient: "Remove Ingredient",
+    savePlan: "Generate Plan",
+    cancel: "Cancel",
+    planEmptyError: "The submitted plan is empty. Please add at least one meal item.",
+    ingredientPlaceholder: "E.g., 60g of black rice",
 
     // FileUpload.tsx
     clickToUpload: "Click to upload",
@@ -202,6 +233,7 @@ const translations = {
     hydrationUnit: "Liters",
     hydrationIntake: "Today's Intake:",
     hydrationUnitMl: "ml",
+    editIntakeTitle: "Click to edit",
     mealTime: "Meal time",
     notificationMealTitle: "Time for {mealName}!",
     notificationMealBody: "It's time to eat: {mealTitle}",

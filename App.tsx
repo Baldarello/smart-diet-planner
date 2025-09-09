@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore, AppStatus } from './stores/MealPlanStore';
 import { t } from './i18n';
@@ -14,30 +14,45 @@ import {
     ActivePlanNameEditor,
     ChangeDietIcon,
     ExamplePdf,
-    Snackbar
+    Snackbar,
+    ManualPlanEntryForm,
+    ArchivedPlanItem
 } from './components';
 import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon } from './components/Icons';
 
 const App: React.FC = observer(() => {
     const store = mealPlanStore;
-    const hasActivePlan = store.mealPlan.length > 0;
     const notificationPermission = useRef(Notification.permission);
+    
+    const [viewMode, setViewMode] = useState<'activePlan' | 'newPlan'>(
+        store.currentPlanId ? 'activePlan' : 'newPlan'
+    );
+    const [showManualForm, setShowManualForm] = useState(false);
 
     useEffect(() => {
         const root = window.document.documentElement;
         root.classList.remove(store.theme === 'light' ? 'dark' : 'light');
         root.classList.add(store.theme);
     }, [store.theme]);
+    
+    useEffect(() => {
+        if (store.currentPlanId) {
+            setViewMode('activePlan');
+            setShowManualForm(false);
+        } else {
+            setViewMode('newPlan');
+        }
+    }, [store.currentPlanId]);
 
     useEffect(() => {
-        if (hasActivePlan && notificationPermission.current === 'default') {
+        if (store.currentPlanId && notificationPermission.current === 'default') {
             Notification.requestPermission().then(permission => {
                 notificationPermission.current = permission;
             });
         }
 
         const timer = setInterval(() => {
-            if (!hasActivePlan) return;
+            if (!store.currentPlanId) return;
 
             const now = new Date();
             const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -45,7 +60,6 @@ const App: React.FC = observer(() => {
 
             store.resetSentNotificationsIfNeeded();
             
-            // Meal notifications
             if (notificationPermission.current === 'granted') {
                 store.dailyPlan?.meals.forEach((meal, mealIndex) => {
                     if (meal.time === currentTime) {
@@ -61,7 +75,6 @@ const App: React.FC = observer(() => {
                 });
             }
 
-            // Hydration notifications and snackbar
             if (currentHour >= 9 && currentHour <= 19 && now.getMinutes() === 0) {
                  const key = `hydration-${currentHour}`;
                  if (!store.sentNotifications.has(key)) {
@@ -75,10 +88,10 @@ const App: React.FC = observer(() => {
                     store.markNotificationSent(key);
                  }
             }
-        }, 60 * 1000); // Check every minute
+        }, 60 * 1000);
 
         return () => clearInterval(timer);
-    }, [hasActivePlan, store]);
+    }, [store.currentPlanId, store]);
 
 
     const renderMainContent = () => {
@@ -87,7 +100,7 @@ const App: React.FC = observer(() => {
             return ( <div className="text-center"><ErrorMessage message={store.error!} /><div className="mt-8"><h2 className="text-2xl font-bold dark:text-gray-200 text-gray-800 mb-4">{t('errorAndUpload')}</h2><FileUpload /></div></div> );
         }
 
-        if (hasActivePlan) {
+        if (viewMode === 'activePlan' && store.currentPlanId) {
             const tabs = [
                 { id: 'daily', icon: <TodayIcon />, label: t('tabDaily') },
                 { id: 'plan', icon: <CalendarIcon />, label: t('tabWeekly') },
@@ -114,22 +127,45 @@ const App: React.FC = observer(() => {
             );
         }
 
-        if (store.activeTab === 'archive') {
-             return ( <div><ArchiveView /><div className="text-center mt-8"><button onClick={() => store.setActiveTab('plan')} className="bg-violet-600 text-white font-semibold px-6 py-3 rounded-full hover:bg-violet-700 transition-colors shadow-lg">{t('uploadNew')}</button></div></div> );
+        // New Plan View
+        if (showManualForm) {
+            return <ManualPlanEntryForm onCancel={() => setShowManualForm(false)} />;
         }
         
         return (
             <div className="text-center">
+                 {store.currentPlanId && (
+                    <div className="mb-10">
+                        <button 
+                            onClick={() => setViewMode('activePlan')}
+                            className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold px-8 py-3 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md"
+                        >
+                            {t('cancelAndReturn')}
+                        </button>
+                    </div>
+                )}
                 <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('welcomeTitle')}</h2>
                 <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-xl mx-auto">{t('welcomeSubtitle')}</p>
                 <FileUpload />
-                { store.archivedPlans.length === 0 && <ExamplePdf /> }
-                {store.archivedPlans.length > 0 && (
-                    <div className="mt-12">
-                        <p className="text-gray-600 dark:text-gray-400">or</p>
-                        <button onClick={() => store.setActiveTab('archive')} className="mt-2 text-violet-600 dark:text-violet-400 font-semibold hover:underline">{t('viewArchived')}</button>
+                <div className="mt-6 text-gray-600 dark:text-gray-400">
+                   {t('or')}
+                   <button onClick={() => setShowManualForm(true)} className="ml-2 text-violet-600 dark:text-violet-400 font-semibold hover:underline">
+                       {t('orCreateManually')}
+                   </button>
+                </div>
+                
+                 {store.archivedPlans.length > 0 && (
+                    <div className="mt-12 max-w-4xl mx-auto">
+                        <h3 className="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4 border-t dark:border-gray-700 pt-8">{t('restoreFromArchiveTitle')}</h3>
+                        <div className="space-y-4">
+                            {store.archivedPlans.slice().reverse().map((archive) => (
+                                <ArchivedPlanItem key={archive.id} archive={archive} />
+                            ))}
+                        </div>
                     </div>
                 )}
+
+                {store.archivedPlans.length === 0 && <ExamplePdf />}
             </div>
         );
     };
@@ -137,8 +173,9 @@ const App: React.FC = observer(() => {
     return (
         <div className="min-h-screen p-4 sm:p-6 lg:p-8">
             <header className="mb-10">
-                <div className="max-w-4xl mx-auto relative">
-                     <div className="absolute top-0 left-0 -mt-2 sm:mt-0 flex items-center gap-2">
+                <div className="max-w-4xl mx-auto flex flex-col sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-4">
+                    {/* Left Controls */}
+                    <div className="flex items-center gap-2 justify-center sm:justify-start">
                         <button onClick={() => store.setTheme(store.theme === 'light' ? 'dark' : 'light')} className="p-2 rounded-full bg-white dark:bg-gray-800 shadow-md hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors">
                            {store.theme === 'light' ? <MoonIcon/> : <SunIcon/>}
                         </button>
@@ -149,22 +186,26 @@ const App: React.FC = observer(() => {
                            {store.onlineMode ? <CloudOnlineIcon/> : <CloudOfflineIcon/>}
                         </div>
                     </div>
-                    <div className="text-center">
-                        <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600">{t('mainTitle')}</h1>
+
+                    {/* Title */}
+                    <div className="text-center my-4 sm:my-0">
+                        <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600">{t('mainTitle')}</h1>
                         <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">{t('mainSubtitle')}</p>
                     </div>
-                    {hasActivePlan && (
-                        <div className="absolute top-0 right-0 -mt-2 sm:mt-0">
-                             <button onClick={() => store.archiveCurrentPlan()} className="bg-white dark:bg-gray-800 text-violet-700 dark:text-violet-400 font-semibold px-4 py-2 rounded-full shadow-md hover:bg-violet-100 dark:hover:bg-gray-700 transition-colors flex items-center" title={t('changeDietTitle')}>
-                                <ChangeDietIcon/><span className="hidden sm:inline ml-2">{t('changeDiet')}</span>
+
+                    {/* Right Controls */}
+                    <div className="flex justify-center sm:justify-end">
+                        {viewMode === 'activePlan' && store.currentPlanId && (
+                             <button onClick={() => setViewMode('newPlan')} className="bg-white dark:bg-gray-800 text-violet-700 dark:text-violet-400 font-semibold px-4 py-2 rounded-full shadow-md hover:bg-violet-100 dark:hover:bg-gray-700 transition-colors flex items-center" title={t('changeDietTitle')}>
+                                <ChangeDietIcon/><span className="sm:inline ml-2">{t('changeDiet')}</span>
                              </button>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </header>
             <main>{renderMainContent()}</main>
-            <Snackbar />
             <footer className="text-center mt-12 text-sm text-gray-400 dark:text-gray-500"><p>{t('footer')}</p></footer>
+            <Snackbar />
         </div>
     );
 });

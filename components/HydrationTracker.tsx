@@ -1,11 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
 import { WaterDropIcon } from './Icons';
 
 const HydrationTracker: React.FC = observer(() => {
-    const { hydrationGoalLiters, setHydrationGoal, waterIntakeMl } = mealPlanStore;
+    const { hydrationGoalLiters, setHydrationGoal, waterIntakeMl, setWaterIntake } = mealPlanStore;
+    const [isEditingIntake, setIsEditingIntake] = useState(false);
+    const [editableIntake, setEditableIntake] = useState(waterIntakeMl.toString());
+
+    // Sync local state with store state when not editing
+    useEffect(() => {
+        if (!isEditingIntake) {
+            setEditableIntake(waterIntakeMl.toString());
+        }
+    }, [waterIntakeMl, isEditingIntake]);
+    
     const goalMl = hydrationGoalLiters * 1000;
     const progressPercentage = goalMl > 0 ? Math.min((waterIntakeMl / goalMl) * 100, 100) : 0;
 
@@ -16,15 +26,34 @@ const HydrationTracker: React.FC = observer(() => {
         }
     };
 
+    const handleIntakeSave = () => {
+        const value = parseInt(editableIntake, 10);
+        if (!isNaN(value) && value >= 0) {
+            setWaterIntake(value);
+        } else {
+            setEditableIntake(waterIntakeMl.toString());
+        }
+        setIsEditingIntake(false);
+    };
+
+    const handleIntakeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.currentTarget.blur(); // this will trigger onBlur which saves
+        } else if (e.key === 'Escape') {
+            setEditableIntake(waterIntakeMl.toString());
+            setIsEditingIntake(false);
+        }
+    };
+
     return (
         <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mt-6">
-            <div className="flex items-center justify-between mb-3">
-                 <div className="flex items-center">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 gap-y-3 sm:gap-y-0">
+                 <div className="flex items-center flex-shrink-0">
                     <WaterDropIcon />
                     <h4 className="font-semibold text-blue-800 dark:text-blue-300 ml-3">{t('hydrationTrackerTitle')}</h4>
                 </div>
-                 <div className="flex items-center">
-                    <label className="text-sm text-blue-600 dark:text-blue-400 mr-2">{t('hydrationGoal')}</label>
+                 <div className="flex items-center self-end sm:self-center">
+                    <label className="text-sm text-blue-600 dark:text-blue-400 mr-2 whitespace-nowrap">{t('hydrationGoal')}</label>
                     <input
                         type="number"
                         value={hydrationGoalLiters}
@@ -39,9 +68,31 @@ const HydrationTracker: React.FC = observer(() => {
                 </div>
             </div>
             <div>
-                <div className="flex justify-between items-baseline mb-1">
-                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{t('hydrationIntake')}</span>
-                    <span className="text-sm font-bold text-blue-800 dark:text-blue-200">{waterIntakeMl} / {goalMl} {t('hydrationUnitMl')}</span>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline mb-1">
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300 whitespace-nowrap">{t('hydrationIntake')}</span>
+                    <span className="text-sm font-bold text-blue-800 dark:text-blue-200 self-end sm:self-auto">
+                        {isEditingIntake ? (
+                            <input
+                                type="number"
+                                value={editableIntake}
+                                onChange={(e) => setEditableIntake(e.target.value)}
+                                onBlur={handleIntakeSave}
+                                onKeyDown={handleIntakeKeyDown}
+                                autoFocus
+                                className="w-20 text-right font-bold bg-white dark:bg-gray-700 border-b-2 border-blue-400 dark:border-blue-500 outline-none text-blue-700 dark:text-blue-200"
+                                aria-label={t('hydrationIntake')}
+                            />
+                        ) : (
+                            <span
+                                onClick={() => setIsEditingIntake(true)}
+                                className="cursor-pointer p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                                title={t('editIntakeTitle')}
+                            >
+                                {waterIntakeMl}
+                            </span>
+                        )}
+                        &nbsp;/ {goalMl} {t('hydrationUnitMl')}
+                    </span>
                 </div>
                 <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2.5">
                     <div className="bg-blue-500 h-2.5 rounded-full transition-all duration-300 ease-in-out" style={{ width: `${progressPercentage}%` }}></div>
