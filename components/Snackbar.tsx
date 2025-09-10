@@ -18,7 +18,7 @@ const Snackbar: React.FC = observer(() => {
 
     return (
         <div 
-            className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:w-11/12 max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 flex items-center justify-between z-50 animate-slide-in-up border dark:border-gray-700"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:w-11/12 max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 flex items-center justify-between z-50 animate-slide-in-up border dark:border-gray-700"
             role="alert"
             aria-live="assertive"
         >

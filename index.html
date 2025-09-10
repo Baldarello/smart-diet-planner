@@ -54,12 +54,12 @@
 
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').then(registration => {
-          console.log('ServiceWorker registration successful with scope: ', registration.scope);
-        }).catch(err => {
-          console.log('ServiceWorker registration failed: ', err);
-        });
+      // Register SW immediately for faster PWA detection, not waiting for page load.
+      // Using an absolute path is more robust for scope.
+      navigator.serviceWorker.register('/sw.js').then(registration => {
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+      }).catch(err => {
+        console.log('ServiceWorker registration failed: ', err);
       });
     }
   </script>
