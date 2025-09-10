@@ -10,6 +10,7 @@ import DailyNutritionSummary from './DailyNutritionSummary';
 import NutritionInfoDisplay from './NutritionInfoDisplay';
 import { Meal } from '../types';
 import MealModificationControl from './MealModificationControl';
+import Snackbar from './Snackbar';
 
 const DailyPlanView: React.FC = observer(() => {
     const { dailyPlan, toggleMealDone, dailyNutritionSummary, onlineMode } = mealPlanStore;
@@ -38,6 +39,7 @@ const DailyPlanView: React.FC = observer(() => {
             {onlineMode && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
             
             <HydrationTracker />
+            <Snackbar />
 
             <div className="space-y-5 mt-6">
                 {sortedMeals.map((meal) => (

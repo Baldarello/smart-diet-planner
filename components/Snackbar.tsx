@@ -18,12 +18,12 @@ const Snackbar: React.FC = observer(() => {
 
     return (
         <div 
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:w-11/12 max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 flex items-center justify-between z-50 animate-slide-in-up border dark:border-gray-700"
+            className="mt-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 flex flex-col sm:flex-row items-center justify-between w-full animate-slide-in-up border dark:border-gray-700"
             role="alert"
             aria-live="assertive"
         >
-            <div className="flex items-center">
-                <div className="text-blue-500">
+            <div className="flex items-center mb-3 sm:mb-0 text-center sm:text-left">
+                <div className="text-blue-500 flex-shrink-0">
                     <WaterDropIcon />
                 </div>
                 <p className="ml-3 font-medium text-gray-700 dark:text-gray-200">

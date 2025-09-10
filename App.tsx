@@ -14,7 +14,6 @@ import {
     ActivePlanNameEditor,
     ChangeDietIcon,
     ExamplePdf,
-    Snackbar,
     ManualPlanEntryForm,
     ArchivedPlanItem,
     InstallPwaSnackbar
@@ -231,7 +230,6 @@ const App: React.FC = observer(() => {
             </header>
             <main>{renderMainContent()}</main>
             <footer className="text-center mt-12 text-sm text-gray-400 dark:text-gray-500"><p>{t('footer')}</p></footer>
-            <Snackbar />
             {installPrompt && <InstallPwaSnackbar onInstall={handleInstallClick} onDismiss={handleDismissInstall} />}
         </div>
     );
