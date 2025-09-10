@@ -16,19 +16,43 @@ import {
     ExamplePdf,
     Snackbar,
     ManualPlanEntryForm,
-    ArchivedPlanItem
+    ArchivedPlanItem,
+    InstallPwaSnackbar
 } from './components';
 import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon } from './components/Icons';
 
 const App: React.FC = observer(() => {
     const store = mealPlanStore;
     const notificationPermission = useRef(Notification.permission);
-    const hydrationTimerIdRef = useRef<number | null>(null);
     
     const [viewMode, setViewMode] = useState<'activePlan' | 'newPlan'>(
         store.currentPlanId ? 'activePlan' : 'newPlan'
     );
     const [showManualForm, setShowManualForm] = useState(false);
+    const [installPrompt, setInstallPrompt] = useState<any>(null);
+
+    useEffect(() => {
+        const handleBeforeInstallPrompt = (e: Event) => {
+            e.preventDefault();
+            setInstallPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        };
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (!installPrompt) return;
+        const result = await installPrompt.prompt();
+        console.log(`Install prompt user choice: ${result.userChoice}`);
+        setInstallPrompt(null);
+    };
+
+    const handleDismissInstall = () => {
+        setInstallPrompt(null);
+    };
+
 
     useEffect(() => {
         const root = window.document.documentElement;
@@ -52,7 +76,7 @@ const App: React.FC = observer(() => {
             });
         }
 
-        // Timer for MEALS (checks every minute, which is reliable enough for this purpose)
+        // Timer for MEALS (checks every minute)
         const mealTimer = setInterval(() => {
             if (!store.currentPlanId) return;
 
@@ -77,105 +101,21 @@ const App: React.FC = observer(() => {
             }
         }, 60 * 1000);
         
-        // Scheduler for HYDRATION (uses precise setTimeout for reliability)
-        const scheduleNextHydrationNotification = () => {
-            if (hydrationTimerIdRef.current) {
-                clearTimeout(hydrationTimerIdRef.current);
+        // Timer for HYDRATION (checks every minute)
+        const hydrationTimer = setInterval(() => {
+             if (store.currentPlanId) {
+                store.updateHydrationStatus();
             }
+        }, 60 * 1000);
 
-            const now = new Date();
-            const nextNotificationTime = new Date(now);
-            // Start by setting the time to the top of the current hour
-            nextNotificationTime.setMinutes(0, 0, 0);
-
-            let nextHour = now.getHours() + 1;
-            
-            // If before 9am, schedule for 9am today
-            if (now.getHours() < 9) {
-                nextHour = 9;
-            } 
-            // If 7pm or later, schedule for 9am tomorrow
-            else if (now.getHours() >= 19) {
-                nextNotificationTime.setDate(now.getDate() + 1);
-                nextHour = 9;
-            }
-
-            nextNotificationTime.setHours(nextHour);
-
-            const delay = nextNotificationTime.getTime() - now.getTime();
-            
-            hydrationTimerIdRef.current = window.setTimeout(() => {
-                const hourToNotify = nextNotificationTime.getHours();
-                
-                // Only notify within the desired window
-                if (hourToNotify >= 9 && hourToNotify <= 19) {
-                    const key = `hydration-${hourToNotify}`;
-                    store.resetSentNotificationsIfNeeded();
-                    
-                    if (!store.sentNotifications.has(key)) {
-                        const amountToDrink = Math.round((store.hydrationGoalLiters * 1000) / 10);
-                        const timeStr = `${String(hourToNotify).padStart(2, '0')}:00`;
-                        
-                        if (notificationPermission.current === 'granted') {
-                            new Notification(t('notificationHydrationTitle'), {
-                                body: t('notificationHydrationBody', { amount: amountToDrink.toString() })
-                            });
-                        }
-                        store.showHydrationSnackbar(timeStr, amountToDrink);
-                        store.markNotificationSent(key);
-                    }
-                }
-
-                // Reschedule for the next hour
-                scheduleNextHydrationNotification();
-            }, delay);
-        };
-        
+        // Initial check on load
         if (store.currentPlanId) {
-            scheduleNextHydrationNotification();
+            store.updateHydrationStatus();
         }
 
-        // Cleanup function for both timers
         return () => {
             clearInterval(mealTimer);
-            if (hydrationTimerIdRef.current) {
-                clearTimeout(hydrationTimerIdRef.current);
-            }
-        };
-    }, [store.currentPlanId]);
-
-    // Effect for catching up on missed notifications when tab becomes visible
-    useEffect(() => {
-        const processMissedNotifications = () => {
-            if (store.currentPlanId) {
-                const missedNotifications = store.checkAndProcessMissedHydration();
-                if (notificationPermission.current === 'granted' && missedNotifications.length > 0) {
-                    // Fire system notifications for all missed reminders, staggered slightly
-                    missedNotifications.forEach((notif, index) => {
-                        setTimeout(() => {
-                            new Notification(t('notificationHydrationTitle'), {
-                                body: t('notificationHydrationBody', { amount: notif.amount.toString() }),
-                                tag: `hydration-${notif.time}` // Tag prevents duplicates
-                            });
-                        }, index * 1500);
-                    });
-                }
-            }
-        };
-
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                processMissedNotifications();
-            }
-        };
-        
-        // Initial check on load/plan change
-        processMissedNotifications();
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        
-        return () => {
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            clearInterval(hydrationTimer);
         };
     }, [store.currentPlanId]);
 
@@ -292,6 +232,7 @@ const App: React.FC = observer(() => {
             <main>{renderMainContent()}</main>
             <footer className="text-center mt-12 text-sm text-gray-400 dark:text-gray-500"><p>{t('footer')}</p></footer>
             <Snackbar />
+            {installPrompt && <InstallPwaSnackbar onInstall={handleInstallClick} onDismiss={handleDismissInstall} />}
         </div>
     );
 });

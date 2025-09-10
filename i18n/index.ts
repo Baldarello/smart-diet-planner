@@ -114,8 +114,9 @@ const translations = {
     notificationMealBody: "È il momento di mangiare: {mealTitle}",
     notificationHydrationTitle: "Promemoria Idratazione!",
     notificationHydrationBody: "È ora di bere un po' d'acqua. Bevi circa {amount}ml per rimanere in linea con il tuo obiettivo.",
-    snackbarReminder: "Sono le {time}, ora di bere {amount}ml d'acqua!",
+    snackbarReminder: "Sei indietro con l'idratazione! Bevi {amount}ml per rimetterti in pari.",
     snackbarDone: "Fatto!",
+    quickAddWaterTitle: "Aggiunta Rapida",
 
     // Nutrition
     dailySummaryTitle: "Riepilogo Nutrizionale Giornaliero",
@@ -135,6 +136,11 @@ const translations = {
     resetMealToPresetTitle: "Ripristina Pasto",
     resetMealModalTitle: "Conferma Ripristino",
     resetMealModalContent: "Tutte le modifiche a questo pasto (ingredienti, tempi, stato 'usato') verranno annullate e verrà ripristinata la versione originale. Sei sicuro?",
+
+    // PWA
+    installPwaPrompt: "Installa questa app per un'esperienza migliore e accesso offline.",
+    install: "Installa",
+    dismiss: "Ignora",
   },
   en: {
     // App.tsx
@@ -249,8 +255,9 @@ const translations = {
     notificationMealBody: "It's time to eat: {mealTitle}",
     notificationHydrationTitle: "Hydration Reminder!",
     notificationHydrationBody: "Time for some water. Drink about {amount}ml to stay on track.",
-    snackbarReminder: "It's {time}, time to drink {amount}ml of water!",
+    snackbarReminder: "You're behind on hydration! Drink {amount}ml to catch up.",
     snackbarDone: "Done!",
+    quickAddWaterTitle: "Quick Add",
     
     // Nutrition
     dailySummaryTitle: "Daily Nutrition Summary",
@@ -270,6 +277,11 @@ const translations = {
     resetMealToPresetTitle: "Reset Meal",
     resetMealModalTitle: "Confirm Reset",
     resetMealModalContent: "All changes to this meal (ingredients, timings, 'used' status) will be undone, reverting to the original version. Are you sure?",
+
+    // PWA
+    installPwaPrompt: "Install this app for a better experience and offline access.",
+    install: "Install",
+    dismiss: "Dismiss",
   }
 };
 

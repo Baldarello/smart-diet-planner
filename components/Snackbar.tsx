@@ -27,7 +27,7 @@ const Snackbar: React.FC = observer(() => {
                     <WaterDropIcon />
                 </div>
                 <p className="ml-3 font-medium text-gray-700 dark:text-gray-200">
-                    {t('snackbarReminder', { time: hydrationSnackbar.time, amount: hydrationSnackbar.amount.toString() })}
+                    {t('snackbarReminder', { amount: hydrationSnackbar.amount.toString() })}
                 </p>
             </div>
             <button

@@ -5,7 +5,7 @@ import { t } from '../i18n';
 import { WaterDropIcon } from './Icons';
 
 const HydrationTracker: React.FC = observer(() => {
-    const { hydrationGoalLiters, setHydrationGoal, waterIntakeMl, setWaterIntake } = mealPlanStore;
+    const { hydrationGoalLiters, setHydrationGoal, waterIntakeMl, setWaterIntake, logWaterIntake } = mealPlanStore;
     const [isEditingIntake, setIsEditingIntake] = useState(false);
     const [editableIntake, setEditableIntake] = useState(waterIntakeMl.toString());
 
@@ -96,6 +96,21 @@ const HydrationTracker: React.FC = observer(() => {
                 </div>
                 <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2.5">
                     <div className="bg-blue-500 h-2.5 rounded-full transition-all duration-300 ease-in-out" style={{ width: `${progressPercentage}%` }}></div>
+                </div>
+            </div>
+            <div className="mt-4 text-center">
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{t('quickAddWaterTitle')}</span>
+                <div className="flex justify-center gap-2 mt-2">
+                    {[250, 500, 750].map(amount => (
+                        <button
+                            key={amount}
+                            onClick={() => logWaterIntake(amount)}
+                            className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200 font-semibold px-4 py-2 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800/60 transition-colors text-sm"
+                            aria-label={`Add ${amount} ml`}
+                        >
+                            +{amount} ml
+                        </button>
+                    ))}
                 </div>
             </div>
         </div>

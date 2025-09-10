@@ -3,6 +3,7 @@ import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, 
 import { parsePdfText, generateShoppingList as generateShoppingListOffline, extractIngredientInfo } from '../services/offlineParser';
 import { parseMealStructure, getNutritionForMeal, generateShoppingListFromPlan, updatePlanDetails, isQuotaError } from '../services/geminiService';
 import { parseQuantity, formatQuantity } from '../utils/quantityParser';
+import { db } from '../services/db';
 
 export enum AppStatus {
   INITIAL,
@@ -37,12 +38,19 @@ export class MealPlanStore {
 
   sentNotifications = new Map<string, boolean>();
   lastActiveDate: string = new Date().toLocaleDateString();
-  lastHydrationCheckTimestamp: number | null = null;
 
   constructor() {
     makeAutoObservable(this);
-    this.loadFromLocalStorage();
+    this.init();
     this.loadSessionState();
+  }
+
+  init = async () => {
+    try {
+      await this.loadFromDB();
+    } catch (error) {
+      console.error("Initialization from DB failed. Starting with a fresh state.", error);
+    }
   }
 
   loadSessionState = () => {
@@ -67,30 +75,30 @@ export class MealPlanStore {
 
   setTheme = (theme: Theme) => {
     this.theme = theme;
-    this.saveToLocalStorage();
+    this.saveToDB();
   }
 
   setLocale = (locale: Locale) => {
     this.locale = locale;
-    this.saveToLocalStorage();
+    this.saveToDB();
   }
 
   setHydrationGoal = (liters: number) => {
     if (liters > 0 && liters <= 10) {
       this.hydrationGoalLiters = liters;
-      this.saveToLocalStorage();
+      this.saveToDB();
     }
   }
 
   logWaterIntake = (amountMl: number) => {
     this.waterIntakeMl += amountMl;
-    this.saveToLocalStorage();
+    this.saveToDB();
   }
 
   setWaterIntake = (amountMl: number) => {
     if (amountMl >= 0) {
       this.waterIntakeMl = amountMl;
-      this.saveToLocalStorage();
+      this.saveToDB();
     }
   }
 
@@ -106,13 +114,13 @@ export class MealPlanStore {
     const meal = this.activeMealPlan[dayIndex]?.meals[mealIndex];
     if (meal) {
       meal.time = newTime;
-      this.saveToLocalStorage();
+      this.saveToDB();
     }
   }
 
   markNotificationSent = (key: string) => {
     this.sentNotifications.set(key, true);
-    this.saveToLocalStorage();
+    this.saveToDB();
   }
 
   resetSentNotificationsIfNeeded = () => {
@@ -121,54 +129,44 @@ export class MealPlanStore {
       this.sentNotifications.clear();
       this.waterIntakeMl = 0;
       this.lastActiveDate = today;
-      this.saveToLocalStorage();
+      this.saveToDB();
     }
   }
 
-  checkAndProcessMissedHydration = (): { time: string, amount: number }[] => {
-    const now = Date.now();
+  updateHydrationStatus = () => {
     this.resetSentNotificationsIfNeeded();
 
-    const lastCheck = this.lastHydrationCheckTimestamp;
+    const now = new Date();
+    const currentHour = now.getHours();
 
-    this.lastHydrationCheckTimestamp = now;
-    this.saveToLocalStorage();
-
-    if (!lastCheck) {
-        return [];
+    // The hydration window is from 9:00 to 18:00 (10 hours/slots)
+    if (currentHour < 9) {
+      // Before the window starts, ensure there's no snackbar
+      this.dismissHydrationSnackbar();
+      return;
     }
 
-    const missedNotifications: { time: string, amount: number }[] = [];
-    const amountToDrink = Math.round((this.hydrationGoalLiters * 1000) / 10);
+    // Amount to drink per one-hour slot
+    const amountPerSlot = Math.round((this.hydrationGoalLiters * 1000) / 10);
     
-    const cursor = new Date(lastCheck);
-    cursor.setMinutes(0, 0, 0);
+    // Calculate how many slots should have passed by now.
+    // At 9:xx, 1 slot passed. At 18:xx, 10 slots have passed.
+    const slotsPassed = Math.min(10, Math.max(0, currentHour - 8)); 
     
-    const endTime = new Date(now);
+    const expectedIntake = slotsPassed * amountPerSlot;
+    const missedAmount = expectedIntake - this.waterIntakeMl;
 
-    cursor.setHours(cursor.getHours() + 1);
-
-    while (cursor <= endTime) {
-        const hour = cursor.getHours();
-
-        if (hour >= 9 && hour <= 19) {
-            const key = `hydration-${hour}`;
-            if (!this.sentNotifications.has(key)) {
-                const timeStr = `${String(hour).padStart(2, '0')}:00`;
-                missedNotifications.push({ time: timeStr, amount: amountToDrink });
-                this.markNotificationSent(key);
-            }
-        }
+    if (missedAmount > 50) { // Use a 50ml threshold to avoid tiny reminders
+        const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        // Round up to the nearest 50ml for a cleaner number
+        const roundedMissedAmount = Math.ceil(missedAmount / 50) * 50;
         
-        cursor.setHours(cursor.getHours() + 1);
+        // Show or update the snackbar
+        this.showHydrationSnackbar(currentTime, roundedMissedAmount);
+    } else {
+        // If caught up, dismiss the snackbar
+        this.dismissHydrationSnackbar();
     }
-
-    if (missedNotifications.length > 0) {
-        const latestMiss = missedNotifications[missedNotifications.length - 1];
-        this.showHydrationSnackbar(latestMiss.time, latestMiss.amount);
-    }
-
-    return missedNotifications;
   };
 
   setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry') => {
@@ -177,14 +175,14 @@ export class MealPlanStore {
   
   setCurrentPlanName = (name: string) => {
     this.currentPlanName = name;
-    this.saveToLocalStorage();
+    this.saveToDB();
   }
   
   updateArchivedPlanName = (planId: string, newName: string) => {
     const planIndex = this.archivedPlans.findIndex(p => p.id === planId);
     if (planIndex > -1) {
       this.archivedPlans[planIndex].name = newName;
-      this.saveToLocalStorage();
+      this.saveToDB();
     }
   }
   
@@ -199,7 +197,7 @@ export class MealPlanStore {
             this.hasUnsavedChanges = true;
           }
 
-          this.saveToLocalStorage();
+          this.saveToDB();
       }
   }
 
@@ -242,7 +240,7 @@ export class MealPlanStore {
             this.hasUnsavedChanges = false;
             this.recalculating = false;
         });
-        this.saveToLocalStorage();
+        this.saveToDB();
     }
   }
 
@@ -278,7 +276,7 @@ export class MealPlanStore {
         runInAction(() => {
             this.recalculatingMeal = null;
         });
-        this.saveToLocalStorage();
+        this.saveToDB();
     }
   }
 
@@ -287,68 +285,68 @@ export class MealPlanStore {
             runInAction(() => {
                 this.activeMealPlan[dayIndex].meals[mealIndex] = JSON.parse(JSON.stringify(this.presetMealPlan[dayIndex].meals[mealIndex]));
             });
-            this.saveToLocalStorage();
+            this.saveToDB();
         }
     }
 
-  loadFromLocalStorage = () => {
+  loadFromDB = async () => {
     try {
-      const savedData = localStorage.getItem('dietPlanData');
-      if (savedData) {
-        const data = JSON.parse(savedData);
+      const savedState = await db.appState.get('dietPlanData');
+      if (savedState) {
+        const data = savedState.value;
         
-        const loadedPlan = data.activeMealPlan || data.mealPlan || [];
-        this.activeMealPlan = loadedPlan.map((day: DayPlan) => ({
-            ...day,
-            meals: day.meals.map((meal: Meal) => ({
-                ...meal,
-                done: meal.done ?? false,
-                items: meal.items.map(item => ({ ...item, used: item.used ?? false }))
-            }))
-        }));
+        runInAction(() => {
+          const loadedPlan = data.activeMealPlan || data.mealPlan || [];
+          this.activeMealPlan = loadedPlan.map((day: DayPlan) => ({
+              ...day,
+              meals: day.meals.map((meal: Meal) => ({
+                  ...meal,
+                  done: meal.done ?? false,
+                  items: meal.items.map(item => ({ ...item, used: item.used ?? false }))
+              }))
+          }));
 
-        if (data.presetMealPlan) {
-            this.presetMealPlan = data.presetMealPlan;
-        } else if (this.activeMealPlan.length > 0) {
-            this.presetMealPlan = JSON.parse(JSON.stringify(this.activeMealPlan));
-        } else {
-            this.presetMealPlan = [];
-        }
+          if (data.presetMealPlan) {
+              this.presetMealPlan = data.presetMealPlan;
+          } else if (this.activeMealPlan.length > 0) {
+              this.presetMealPlan = JSON.parse(JSON.stringify(this.activeMealPlan));
+          } else {
+              this.presetMealPlan = [];
+          }
 
-        this.shoppingList = data.shoppingList || [];
-        this.pantry = data.pantry || [];
-        this.archivedPlans = data.archivedPlans || [];
-        this.currentPlanName = data.currentPlanName || 'My Diet Plan';
-        this.theme = data.theme || 'light';
-        this.locale = data.locale || 'it';
-        this.hasUnsavedChanges = data.hasUnsavedChanges || false;
-        this.hydrationGoalLiters = data.hydrationGoalLiters || 3;
-        this.lastActiveDate = data.lastActiveDate || new Date().toLocaleDateString();
-        this.waterIntakeMl = data.waterIntakeMl || 0;
-        this.currentPlanId = data.currentPlanId || null;
-        this.lastHydrationCheckTimestamp = data.lastHydrationCheckTimestamp || null;
+          this.shoppingList = data.shoppingList || [];
+          this.pantry = data.pantry || [];
+          this.archivedPlans = data.archivedPlans || [];
+          this.currentPlanName = data.currentPlanName || 'My Diet Plan';
+          this.theme = data.theme || 'light';
+          this.locale = data.locale || 'it';
+          this.hasUnsavedChanges = data.hasUnsavedChanges || false;
+          this.hydrationGoalLiters = data.hydrationGoalLiters || 3;
+          this.lastActiveDate = data.lastActiveDate || new Date().toLocaleDateString();
+          this.waterIntakeMl = data.waterIntakeMl || 0;
+          this.currentPlanId = data.currentPlanId || null;
 
-        if (data.sentNotifications) {
-            this.sentNotifications = new Map(data.sentNotifications);
-        }
+          if (data.sentNotifications) {
+              this.sentNotifications = new Map(data.sentNotifications);
+          }
 
-        if (this.activeMealPlan.length > 0 && !this.currentPlanId) {
-            this.currentPlanId = 'migrated_' + Date.now().toString();
-        }
-        
-        this.resetSentNotificationsIfNeeded();
+          if (this.activeMealPlan.length > 0 && !this.currentPlanId) {
+              this.currentPlanId = 'migrated_' + Date.now().toString();
+          }
+          
+          this.resetSentNotificationsIfNeeded();
 
-        if (this.activeMealPlan.length > 0) {
-          this.status = AppStatus.SUCCESS;
-        }
+          if (this.activeMealPlan.length > 0) {
+            this.status = AppStatus.SUCCESS;
+          }
+        });
       }
     } catch (error) {
-      console.error("Failed to load data from localStorage", error);
-      Object.assign(this, new MealPlanStore());
+      console.error("Failed to load data from IndexedDB", error);
     }
   }
 
-  saveToLocalStorage = () => {
+  saveToDB = async () => {
     try {
       const dataToSave = {
         activeMealPlan: this.activeMealPlan,
@@ -364,12 +362,11 @@ export class MealPlanStore {
         lastActiveDate: this.lastActiveDate,
         waterIntakeMl: this.waterIntakeMl,
         currentPlanId: this.currentPlanId,
-        lastHydrationCheckTimestamp: this.lastHydrationCheckTimestamp,
         sentNotifications: Array.from(this.sentNotifications.entries()),
       };
-      localStorage.setItem('dietPlanData', JSON.stringify(dataToSave));
+      await db.appState.put({ key: 'dietPlanData', value: dataToSave });
     } catch (error) {
-      console.error("Failed to save data to localStorage", error);
+      console.error("Failed to save data to IndexedDB", error);
     }
   }
 
@@ -389,7 +386,7 @@ export class MealPlanStore {
         this.sentNotifications.clear();
         this.waterIntakeMl = 0;
         this.currentPlanId = null;
-        this.saveToLocalStorage();
+        this.saveToDB();
     });
   }
   
@@ -433,7 +430,7 @@ export class MealPlanStore {
         this.activeTab = 'daily';
         this.currentPlanId = Date.now().toString();
         
-        this.saveToLocalStorage();
+        this.saveToDB();
     });
   }
 
@@ -463,7 +460,7 @@ export class MealPlanStore {
             this.shoppingList = this.shoppingList.filter(c => c.category !== categoryName);
         }
     }
-    this.saveToLocalStorage();
+    this.saveToDB();
   }
 
   movePantryItemToShoppingList = (pantryItemToMove: PantryItem) => {
@@ -491,14 +488,14 @@ export class MealPlanStore {
     }
 
     this.pantry = this.pantry.filter(p => p.item !== pantryItemToMove.item);
-    this.saveToLocalStorage();
+    this.saveToDB();
   }
 
   updatePantryItemQuantity = (itemName: string, newQuantity: string) => {
     const item = this.pantry.find(p => p.item === itemName);
     if (item) {
       item.quantity = newQuantity;
-      this.saveToLocalStorage();
+      this.saveToDB();
     }
   }
 
@@ -511,7 +508,7 @@ export class MealPlanStore {
 
         const itemQuantityToToggle = parseQuantity(mealItem.fullDescription);
         if (!itemQuantityToToggle || itemQuantityToToggle.value <= 0) {
-            this.saveToLocalStorage();
+            this.saveToDB();
             return;
         }
         
@@ -552,7 +549,7 @@ export class MealPlanStore {
                 });
             }
         }
-        this.saveToLocalStorage();
+        this.saveToDB();
     });
 }
 
@@ -560,7 +557,7 @@ export class MealPlanStore {
     const meal = this.activeMealPlan[dayIndex]?.meals[mealIndex];
     if (meal) {
         meal.done = !meal.done;
-        this.saveToLocalStorage();
+        this.saveToDB();
     }
   }
 
@@ -651,7 +648,7 @@ export class MealPlanStore {
              console.error("An error occurred during background data enrichment:", error);
         }
     } finally {
-        this.saveToLocalStorage();
+        this.saveToDB();
     }
   };
 
@@ -719,7 +716,7 @@ export class MealPlanStore {
             runInAction(() => {
                 this.shoppingList = shoppingList;
             });
-            this.saveToLocalStorage();
+            this.saveToDB();
         }
     }, 500);
   }
@@ -824,7 +821,7 @@ export class MealPlanStore {
             if(this.onlineMode) {
                 this._enrichPlanDataInBackground();
             } else {
-                this.saveToLocalStorage();
+                this.saveToDB();
             }
 
         } catch (err: any) {

@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Diet Plan Organizer</title>
+
+  <!-- PWA Manifest & Theme -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#8b5cf6">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192x192.png">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -36,7 +42,8 @@
     "mobx-react-lite": "https://aistudiocdn.com/mobx-react-lite@^4.1.0",
     "url": "https://aistudiocdn.com/url@^0.11.4",
     "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.0.2",
-    "vite": "https://aistudiocdn.com/vite@^7.1.5"
+    "vite": "https://aistudiocdn.com/vite@^7.1.5",
+    "dexie": "https://aistudiocdn.com/dexie@^4.0.7"
   }
 }
 </script>
@@ -44,5 +51,17 @@
 <body class="bg-slate-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
   <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then(registration => {
+          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        }).catch(err => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+      });
+    }
+  </script>
 </body>
 </html>

@@ -1,0 +1,21 @@
+{
+  "name": "Smart Diet Planner",
+  "short_name": "Diet Planner",
+  "description": "An intelligent meal plan assistant that reads a diet PDF, organizes it into a weekly calendar, and automatically generates a complete, aggregated shopping list.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#8b5cf6",
+  "icons": [
+    {
+      "src": "assets/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
