@@ -24,9 +24,7 @@ const App: React.FC = observer(() => {
     const store = mealPlanStore;
     const notificationPermission = useRef(Notification.permission);
     
-    const [viewMode, setViewMode] = useState<'activePlan' | 'newPlan'>(
-        store.currentPlanId ? 'activePlan' : 'newPlan'
-    );
+    const [showNewPlanFlow, setShowNewPlanFlow] = useState(false);
     const [showManualForm, setShowManualForm] = useState(false);
     const [installPrompt, setInstallPrompt] = useState<any>(null);
 
@@ -60,11 +58,11 @@ const App: React.FC = observer(() => {
     }, [store.theme]);
     
     useEffect(() => {
+        // When a new plan is created or an old one is cleared/restored,
+        // ensure we exit the "new plan" flow.
         if (store.currentPlanId) {
-            setViewMode('activePlan');
+            setShowNewPlanFlow(false);
             setShowManualForm(false);
-        } else {
-            setViewMode('newPlan');
         }
     }, [store.currentPlanId]);
 
@@ -120,12 +118,15 @@ const App: React.FC = observer(() => {
 
 
     const renderMainContent = () => {
+        if (store.status === AppStatus.HYDRATING) return <Loader />;
         if (store.status === AppStatus.LOADING) return <Loader />;
         if (store.status === AppStatus.ERROR) {
             return ( <div className="text-center"><ErrorMessage message={store.error!} /><div className="mt-8"><h2 className="text-2xl font-bold dark:text-gray-200 text-gray-800 mb-4">{t('errorAndUpload')}</h2><FileUpload /></div></div> );
         }
 
-        if (viewMode === 'activePlan' && store.currentPlanId) {
+        const hasActivePlan = store.status === AppStatus.SUCCESS && store.currentPlanId;
+
+        if (hasActivePlan && !showNewPlanFlow) {
             const tabs = [
                 { id: 'daily', icon: <TodayIcon />, label: t('tabDaily') },
                 { id: 'plan', icon: <CalendarIcon />, label: t('tabWeekly') },
@@ -152,17 +153,17 @@ const App: React.FC = observer(() => {
             );
         }
 
-        // New Plan View
+        // New Plan View / Initial View
         if (showManualForm) {
             return <ManualPlanEntryForm onCancel={() => setShowManualForm(false)} />;
         }
         
         return (
             <div className="text-center">
-                 {store.currentPlanId && (
+                 {hasActivePlan && (
                     <div className="mb-10">
                         <button 
-                            onClick={() => setViewMode('activePlan')}
+                            onClick={() => setShowNewPlanFlow(false)}
                             className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold px-8 py-3 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md"
                         >
                             {t('cancelAndReturn')}
@@ -220,8 +221,8 @@ const App: React.FC = observer(() => {
 
                     {/* Right Controls */}
                     <div className="flex justify-center sm:justify-end">
-                        {viewMode === 'activePlan' && store.currentPlanId && (
-                             <button onClick={() => setViewMode('newPlan')} className="bg-white dark:bg-gray-800 text-violet-700 dark:text-violet-400 font-semibold px-4 py-2 rounded-full shadow-md hover:bg-violet-100 dark:hover:bg-gray-700 transition-colors flex items-center" title={t('changeDietTitle')}>
+                        {store.status === AppStatus.SUCCESS && store.currentPlanId && !showNewPlanFlow && (
+                             <button onClick={() => setShowNewPlanFlow(true)} className="bg-white dark:bg-gray-800 text-violet-700 dark:text-violet-400 font-semibold px-4 py-2 rounded-full shadow-md hover:bg-violet-100 dark:hover:bg-gray-700 transition-colors flex items-center" title={t('changeDietTitle')}>
                                 <ChangeDietIcon/><span className="sm:inline ml-2">{t('changeDiet')}</span>
                              </button>
                         )}

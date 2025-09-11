@@ -118,6 +118,15 @@ const shoppingListSchema = {
     items: shoppingCategorySchema
 };
 
+const planAndListSchema = {
+    type: Type.OBJECT,
+    properties: {
+        weeklyPlan: weeklyPlanSchemaWithNutrition,
+        shoppingList: shoppingListSchema,
+    },
+    required: ['weeklyPlan', 'shoppingList']
+};
+
 export function isQuotaError(error: unknown): boolean {
     if (error instanceof Error) {
         const message = error.message.toLowerCase();
@@ -205,56 +214,21 @@ Fornisci la risposta **esclusivamente** in formato JSON, seguendo lo schema spec
     }
 }
 
-export async function generateShoppingListFromPlan(plan: DayPlan[]): Promise<ShoppingListCategory[] | null> {
+export async function getPlanDetailsAndShoppingList(plan: DayPlan[]): Promise<{ weeklyPlan: DayPlan[], shoppingList: ShoppingListCategory[] } | null> {
     const prompt = `
-Sei un assistente alla spesa. Ti viene fornito un piano alimentare settimanale in formato JSON.
-
-IL TUO COMPITO:
-1.  **ANALIZZA E AGGREGA**: Leggi tutti gli ingredienti (\`ingredientName\`) e le loro quantità (\`fullDescription\`) per l'intera settimana.
-2.  **CREA LISTA DELLA SPESA**: Genera una lista della spesa aggregata. Somma le quantità dello stesso ingrediente.
-3.  **CATEGORIZZA**: Raggruppa gli ingredienti per categoria di cibo (es. 'Frutta', 'Verdura', 'Carne e Pesce', etc.).
-
-REGOLE IMPORTANTI:
-*   Il campo \`"item"\` nella lista della spesa DEVE corrispondere esattamente all'\`"ingredientName"\` del piano.
-*   Fornisci l'output **esclusivamente** in formato JSON, seguendo lo schema specificato.
-
-JSON del piano alimentare:
----
-${JSON.stringify(plan)}
----
-`;
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: shoppingListSchema,
-            },
-        });
-        if (!response.text) {
-            throw new Error("Gemini API returned an empty or invalid response for shopping list generation.");
-        }
-        const jsonString = response.text.trim();
-        return JSON.parse(jsonString) as ShoppingListCategory[];
-    } catch (error) {
-        console.error("Error calling Gemini API for shopping list generation:", error);
-        throw error;
-    }
-}
-
-export async function updatePlanDetails(plan: DayPlan[]): Promise<DayPlan[] | null> {
-    const prompt = `
-Sei un assistente nutrizionale specializzato. Ti viene fornito un oggetto JSON che rappresenta un piano alimentare settimanale. Le descrizioni degli ingredienti ('fullDescription') potrebbero essere state modificate dall'utente.
+Sei un assistente nutrizionale esperto. Ti viene fornito un oggetto JSON che rappresenta un piano alimentare settimanale. Le descrizioni degli ingredienti ('fullDescription') potrebbero essere state modificate.
 
 I TUOI COMPITI SONO:
-1.  **RIPULIRE E STANDARDIZZARE**: Analizza l'intero piano. Per ogni ingrediente, assicurati che il campo \`ingredientName\` sia il nome pulito e base dell'ingrediente. Lo stesso ingrediente deve avere lo stesso \`ingredientName\` ovunque.
-2.  **ASSEGNARE ORARI**: Per OGNI pasto, assegna un orario logico e appropriato nel campo \`time\` in formato HH:MM (es. COLAZIONE -> "08:00", PRANZO -> "13:00"). Se un orario è già presente, mantienilo a meno che non sia palesemente illogico per il tipo di pasto.
-3.  **ANALISI NUTRIZIONALE**: Per OGNI pasto, analizza i suoi ingredienti e fornisci una **stima** del contenuto nutrizionale (carbs, protein, fat, calories).
+1.  **ANALISI COMPLETA DEL PIANO**: Analizza l'intero piano. Per ogni ingrediente:
+    *   Assicurati che \`ingredientName\` sia il nome pulito e base dell'ingrediente. Lo stesso ingrediente deve avere lo stesso \`ingredientName\` ovunque.
+2.  **ORARI E NUTRIZIONE**: Per OGNI pasto:
+    *   Assegna un orario logico in \`time\` (formato HH:MM).
+    *   Fornisci una stima nutrizionale (carbs, protein, fat, calories) nel campo \`nutrition\`.
+3.  **LISTA DELLA SPESA**: Basandoti sul piano aggiornato, genera una lista della spesa aggregata e categorizzata.
+    *   Il campo "item" nella lista deve corrispondere esattamente all'"ingredientName" del piano.
 
 **REGOLE IMPORTANTI:**
-*   **NON** generare una lista della spesa. Restituisci solo l'array \`DayPlan[]\` aggiornato.
-*   Mantieni la struttura del piano settimanale, popolando i campi \`time\`, \`nutrition\` e modificando \`ingredientName\` se necessario.
+*   Restituisci un singolo oggetto JSON contenente sia il piano settimanale aggiornato (\`weeklyPlan\`) sia la lista della spesa (\`shoppingList\`).
 *   Fornisci l'output **esclusivamente** in formato JSON, seguendo lo schema specificato.
 
 JSON del piano alimentare da elaborare:
@@ -268,16 +242,16 @@ ${JSON.stringify(plan)}
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: weeklyPlanSchemaWithNutrition,
+                responseSchema: planAndListSchema,
             },
         });
         if (!response.text) {
-            throw new Error("Gemini API returned an empty or invalid response for plan update.");
+            throw new Error("Gemini API returned an empty response for plan details and shopping list generation.");
         }
         const jsonString = response.text.trim();
-        return JSON.parse(jsonString) as DayPlan[];
+        return JSON.parse(jsonString) as { weeklyPlan: DayPlan[], shoppingList: ShoppingListCategory[] };
     } catch (error) {
-        console.error("Error calling Gemini API for plan update:", error);
+        console.error("Error calling Gemini API for plan details and shopping list:", error);
         throw error;
     }
 }

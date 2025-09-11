@@ -42,6 +42,8 @@ const translations = {
     pdfFile: "File PDF del tuo piano dietetico",
 
     // Loader.tsx
+    loadingPlanTitle: "Caricamento del piano...",
+    loadingPlanMessage: "Un momento, stiamo recuperando i tuoi dati.",
     readingPdfTitle: "Lettura del PDF in corso...",
     structuringPlanTitle: "Strutturazione del Piano...",
     analyzingNutritionTitle: "Analisi Nutrizionale...",
@@ -183,6 +185,8 @@ const translations = {
     pdfFile: "PDF file of your diet plan",
 
     // Loader.tsx
+    loadingPlanTitle: "Loading your plan...",
+    loadingPlanMessage: "One moment, we're retrieving your data.",
     readingPdfTitle: "Reading Your PDF...",
     structuringPlanTitle: "Structuring Your Plan...",
     analyzingNutritionTitle: "Analyzing Nutrition...",
