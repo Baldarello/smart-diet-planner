@@ -1,4 +1,4 @@
-import { makeAutoObservable, runInAction } from 'mobx';
+import { makeAutoObservable, runInAction, toJS } from 'mobx';
 import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo, HydrationSnackbarInfo } from '../types';
 import { parsePdfText, generateShoppingList as generateShoppingListOffline, extractIngredientInfo } from '../services/offlineParser';
 import { parseMealStructure, getNutritionForMeal, getPlanDetailsAndShoppingList, isQuotaError } from '../services/geminiService';
@@ -49,16 +49,19 @@ export class MealPlanStore {
   init = async () => {
     try {
         const savedState = await db.appState.get('dietPlanData');
-        if (savedState) {
-            const data = savedState.value;
-            runInAction(() => {
+        
+        runInAction(() => {
+            if (savedState) {
+                const data = savedState.value;
                 const loadedPlan = data.activeMealPlan || data.mealPlan || [];
+                
+                // Defensively map the loaded plan to prevent errors from malformed data
                 this.activeMealPlan = loadedPlan.map((day: DayPlan) => ({
                     ...day,
-                    meals: day.meals.map((meal: Meal) => ({
+                    meals: (day.meals || []).map((meal: Meal) => ({
                         ...meal,
                         done: meal.done ?? false,
-                        items: meal.items.map(item => ({ ...item, used: item.used ?? false }))
+                        items: (meal.items || []).map(item => ({ ...item, used: item.used ?? false }))
                     }))
                 }));
 
@@ -86,23 +89,24 @@ export class MealPlanStore {
                     this.sentNotifications = new Map(data.sentNotifications);
                 }
 
+                // Migration: Ensure an ID exists if a plan exists
                 if (this.activeMealPlan.length > 0 && !this.currentPlanId) {
                     this.currentPlanId = 'migrated_' + Date.now().toString();
                 }
 
                 this.resetSentNotificationsIfNeeded();
 
-                if (this.activeMealPlan.length > 0) {
+                // Final status check: A plan is only successful if both the plan array and ID exist.
+                if (this.activeMealPlan.length > 0 && this.currentPlanId) {
                     this.status = AppStatus.SUCCESS;
                 } else {
                     this.status = AppStatus.INITIAL;
                 }
-            });
-        } else {
-            runInAction(() => {
+            } else {
+                // No saved state found
                 this.status = AppStatus.INITIAL;
-            });
-        }
+            }
+        });
     } catch (error) {
         console.error("Initialization from DB failed. Starting with a fresh state.", error);
         runInAction(() => {
@@ -348,11 +352,11 @@ export class MealPlanStore {
   saveToDB = async () => {
     try {
       const dataToSave = {
-        activeMealPlan: this.activeMealPlan,
-        presetMealPlan: this.presetMealPlan,
-        shoppingList: this.shoppingList,
-        pantry: this.pantry,
-        archivedPlans: this.archivedPlans,
+        activeMealPlan: toJS(this.activeMealPlan),
+        presetMealPlan: toJS(this.presetMealPlan),
+        shoppingList: toJS(this.shoppingList),
+        pantry: toJS(this.pantry),
+        archivedPlans: toJS(this.archivedPlans),
         currentPlanName: this.currentPlanName,
         theme: this.theme,
         locale: this.locale,
