@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import 'dexie-observable';
+import observable from 'dexie-observable';
 import { ArchivedPlan, DayPlan, PantryItem, ShoppingListCategory, Theme, Locale } from '../types';
 
 // Define the structure of the object we are storing.
@@ -30,12 +30,12 @@ export class MySubClassedDexie extends Dexie {
   appState!: Table<AppState, string>; // The second type parameter is the primary key type.
 
   constructor() {
-    super('dietPlanDatabase');
-    // FIX: A type assertion is used to resolve a TypeScript error where the `version`
-    // method was not found on the subclass type within the constructor. This can happen
-    // due to tooling or configuration issues. Casting `this` to the base `Dexie`
-    // class ensures TypeScript recognizes the inherited method.
-    (this as Dexie).version(1).stores({
+    // Fix: For Dexie v4, addons should be passed explicitly to the constructor
+    // to ensure they are properly initialized. The old side-effect import
+    // is deprecated and can be unreliable in some module setups, leading to
+    // runtime errors like 'cannot read property of undefined'.
+    super('dietPlanDatabase', { addons: [observable] });
+    this.version(1).stores({
       appState: 'key', // Primary key is 'key'
     });
   }
