@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore, AppStatus } from './stores/MealPlanStore';
+import { authStore } from './stores/AuthStore';
 import { t } from './i18n';
 import {
     FileUpload,
@@ -16,7 +17,8 @@ import {
     ExamplePdf,
     ManualPlanEntryForm,
     ArchivedPlanItem,
-    InstallPwaSnackbar
+    InstallPwaSnackbar,
+    GoogleLogin
 } from './components';
 import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon } from './components/Icons';
 
@@ -27,6 +29,10 @@ const App: React.FC = observer(() => {
     const [showNewPlanFlow, setShowNewPlanFlow] = useState(false);
     const [showManualForm, setShowManualForm] = useState(false);
     const [installPrompt, setInstallPrompt] = useState<any>(null);
+
+    useEffect(() => {
+        authStore.init();
+    }, []);
 
     useEffect(() => {
         const handleBeforeInstallPrompt = (e: Event) => {
@@ -220,12 +226,13 @@ const App: React.FC = observer(() => {
                     </div>
 
                     {/* Right Controls */}
-                    <div className="flex justify-center sm:justify-end">
+                    <div className="flex justify-center sm:justify-end items-center gap-4">
                         {store.status === AppStatus.SUCCESS && store.currentPlanId && !showNewPlanFlow && (
                              <button onClick={() => setShowNewPlanFlow(true)} className="bg-white dark:bg-gray-800 text-violet-700 dark:text-violet-400 font-semibold px-4 py-2 rounded-full shadow-md hover:bg-violet-100 dark:hover:bg-gray-700 transition-colors flex items-center" title={t('changeDietTitle')}>
                                 <ChangeDietIcon/><span className="sm:inline ml-2">{t('changeDiet')}</span>
                              </button>
                         )}
+                        <GoogleLogin />
                     </div>
                 </div>
             </header>

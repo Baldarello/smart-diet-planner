@@ -63,3 +63,10 @@ export interface HydrationSnackbarInfo {
   time: string;
   amount: number;
 }
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  picture: string;
+}

@@ -150,6 +150,14 @@ const translations = {
     installPwaPrompt: "Installa questa app per un'esperienza migliore e accesso offline.",
     install: "Installa",
     dismiss: "Ignora",
+
+    // Google Login & Sync
+    signIn: "Accedi",
+    signOut: "Esci",
+    signInTitle: "Accedi con Google per sincronizzare i dati",
+    signOutTitle: "Esci dall'account",
+    syncDisabled: "Accesso non configurato. La sincronizzazione è disabilitata.",
+
   },
   en: {
     // App.tsx
@@ -300,6 +308,13 @@ const translations = {
     installPwaPrompt: "Install this app for a better experience and offline access.",
     install: "Install",
     dismiss: "Dismiss",
+
+     // Google Login & Sync
+    signIn: "Sign In",
+    signOut: "Sign Out",
+    signInTitle: "Sign in with Google to sync data",
+    signOutTitle: "Sign out of your account",
+    syncDisabled: "Login not configured. Sync is disabled.",
   }
 };
 

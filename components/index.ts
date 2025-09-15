@@ -20,4 +20,5 @@ export { default as ManualPlanEntryForm } from './ManualPlanEntryForm';
 export { default as ConfirmationModal } from './ConfirmationModal';
 export { default as MealModificationControl } from './MealModificationControl';
 export { default as InstallPwaSnackbar } from './InstallPwaSnackbar';
+export { default as GoogleLogin } from './GoogleLogin';
 export * from './Icons';

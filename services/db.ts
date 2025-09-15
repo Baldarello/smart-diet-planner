@@ -1,10 +1,12 @@
 import Dexie, { type Table } from 'dexie';
 import observable from 'dexie-observable';
 import { ArchivedPlan, DayPlan, PantryItem, ShoppingListCategory, Theme, Locale } from '../types';
+import { authStore } from '../stores/AuthStore';
+import { saveStateToDrive } from './driveService';
 
 // Define the structure of the object we are storing.
 // This is based on MealPlanStore.saveToDB
-interface StoredState {
+export interface StoredState {
     activeMealPlan: DayPlan[];
     presetMealPlan: DayPlan[];
     shoppingList: ShoppingListCategory[];
@@ -55,26 +57,41 @@ interface DexieObservableChange {
   oldObj?: any;
 }
 
+let syncTimeout: number | undefined;
+
+const debounceSync = (callback: () => void, delay: number) => {
+    clearTimeout(syncTimeout);
+    syncTimeout = window.setTimeout(callback, delay);
+};
 
 /**
- * Placeholder function for handling database changes, intended for future
- * integration with a cloud sync service like Google Drive.
+ * Handles database changes for syncing with Google Drive.
  * @param changes - An array of change objects from dexie-observable.
  */
-function handleDatabaseChangeForSync(changes: DexieObservableChange[]) {
-  // We only care about create/update changes to our main state object.
-  // change.type: 1 (Create), 2 (Update), 3 (Delete)
-  const appStateChange = changes.find(c => c.table === 'appState' && (c.type === 1 || c.type === 2));
+async function handleDatabaseChangeForSync(changes: DexieObservableChange[]) {
+    if (!authStore.isLoggedIn || !authStore.accessToken) {
+        console.log("User not logged in, skipping sync.");
+        return;
+    }
+    
+    const appStateChange = changes.find(c => c.table === 'appState' && c.key === 'dietPlanData' && (c.type === 1 || c.type === 2));
 
-  if (appStateChange) {
-    console.log('Database state changed. Ready to sync with Google Drive.');
-    // In a future implementation, this function would:
-    // 1. Check if the user is authenticated with Google Drive.
-    // 2. Serialize the updated state (maybe from the change object or by re-reading from DB).
-    // 3. Debounce the requests to avoid too many API calls.
-    // 4. Upload the new state to a specific file in the user's Google Drive AppData folder.
-  }
+    if (appStateChange) {
+        debounceSync(async () => {
+            console.log('Database state changed. Debouncing sync with Google Drive.');
+            try {
+                const latestState = await db.appState.get('dietPlanData');
+                if (latestState && authStore.accessToken) {
+                    await saveStateToDrive(latestState.value, authStore.accessToken);
+                    console.log('Successfully synced state to Google Drive.');
+                }
+            } catch (error) {
+                console.error('Failed to sync state to Google Drive:', error);
+            }
+        }, 5000); // Wait 5 seconds after the last change before syncing
+    }
 }
+
 
 // Subscribe to database changes.
 // The subscription will be triggered after any successful database modification.
