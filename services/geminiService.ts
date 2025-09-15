@@ -1,13 +1,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { MealPlanData, DayPlan, ShoppingListCategory, Meal, NutritionInfo } from '../types';
 
-if (!process.env.GEMINI_API_KEY) {
-  const errorMsg = "GEMINI_API_KEY environment variable not set.";
-  alert(errorMsg);
+if (!process.env.API_KEY) {
+  const errorMsg = "FATAL: API_KEY environment variable not set. The application cannot start without it.";
+  console.error(errorMsg);
   throw new Error(errorMsg);
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const mealItemSchema = {
   type: Type.OBJECT,

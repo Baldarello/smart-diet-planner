@@ -53,7 +53,8 @@ export class MealPlanStore {
         runInAction(() => {
             if (savedState) {
                 const data = savedState.value;
-                const loadedPlan = data.activeMealPlan || data.mealPlan || [];
+                // Fix: Removed reference to 'mealPlan', which does not exist on the StoredState type.
+                const loadedPlan = data.activeMealPlan || [];
                 
                 // Defensively map the loaded plan to prevent errors from malformed data
                 this.activeMealPlan = loadedPlan.map((day: DayPlan) => ({
@@ -502,6 +503,47 @@ export class MealPlanStore {
     }
   }
 
+  // New methods for manual shopping list editing
+  addShoppingListItem = (categoryName: string, item: ShoppingListItem) => {
+    const category = this.shoppingList.find(c => c.category === categoryName);
+    if (category && item.item.trim() && item.quantity.trim()) {
+        category.items.push(item);
+        this.hasUnsavedChanges = true;
+        this.saveToDB();
+    }
+  }
+
+  deleteShoppingListItem = (categoryName: string, itemIndex: number) => {
+    const category = this.shoppingList.find(c => c.category === categoryName);
+    if (category) {
+        category.items.splice(itemIndex, 1);
+        if (category.items.length === 0) {
+            this.shoppingList = this.shoppingList.filter(c => c.category !== categoryName);
+        }
+        this.hasUnsavedChanges = true;
+        this.saveToDB();
+    }
+  }
+
+  updateShoppingListItem = (categoryName: string, itemIndex: number, updatedItem: ShoppingListItem) => {
+    const category = this.shoppingList.find(c => c.category === categoryName);
+    if (category && category.items[itemIndex] && updatedItem.item.trim() && updatedItem.quantity.trim()) {
+        category.items[itemIndex] = updatedItem;
+        this.hasUnsavedChanges = true;
+        this.saveToDB();
+    }
+  }
+
+  addShoppingListCategory = (categoryName: string) => {
+    const trimmedName = categoryName.trim();
+    if (trimmedName && !this.shoppingList.some(c => c.category.toLowerCase() === trimmedName.toLowerCase())) {
+        this.shoppingList.push({ category: trimmedName, items: [] });
+        this.shoppingList.sort((a, b) => a.category.localeCompare(b.category));
+        this.hasUnsavedChanges = true;
+        this.saveToDB();
+    }
+  }
+
   toggleMealItem = (dayIndex: number, mealIndex: number, itemIndex: number) => {
     runInAction(() => {
         const mealItem = this.activeMealPlan[dayIndex]?.meals[mealIndex]?.items[itemIndex];
@@ -781,6 +823,7 @@ export class MealPlanStore {
                      } else { throw error; }
                  }
             } else {
+                // Fix: Corrected function call from `parsePdf.parse` to `parsePdfText`
                 const offlineData = parsePdfText(pageTexts);
                 mealStructure = offlineData.weeklyPlan;
                 shoppingList = offlineData.shoppingList;

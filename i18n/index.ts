@@ -75,6 +75,13 @@ const translations = {
     shoppingListStaleMessage: "Il tuo piano alimentare è cambiato. La lista e la dispensa potrebbero non essere accurate.",
     recalculateList: "Ricalcola Lista",
     recalculating: "Ricalcolando...",
+    addItem: "Aggiungi Voce",
+    addCategory: "Aggiungi Categoria",
+    newCategoryPrompt: "Nome nuova categoria",
+    save: "Salva",
+    deleteItemTitle: "Elimina Voce",
+    editItemTitle: "Modifica Voce",
+    quantityPlaceholder: "Quantità",
 
     // PantryView.tsx
     pantryTitle: "La Mia Dispensa",
@@ -218,6 +225,13 @@ const translations = {
     shoppingListStaleMessage: "Your meal plan has changed. The list and pantry may be inaccurate.",
     recalculateList: "Recalculate List",
     recalculating: "Recalculating...",
+    addItem: "Add Item",
+    addCategory: "Add Category",
+    newCategoryPrompt: "New category name",
+    save: "Save",
+    deleteItemTitle: "Delete Item",
+    editItemTitle: "Edit Item",
+    quantityPlaceholder: "Quantity",
 
     // PantryView.tsx
     pantryTitle: "My Pantry",
