@@ -1,3 +1,6 @@
+// Fix: Add a triple-slash directive to provide Node.js types to TypeScript,
+// resolving the error on 'process.cwd()'.
+/// <reference types="node" />
 
 import { URL, fileURLToPath } from 'url';
 import { defineConfig, loadEnv } from 'vite';

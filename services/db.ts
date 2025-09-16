@@ -37,7 +37,9 @@ export class MySubClassedDexie extends Dexie {
     // is deprecated and can be unreliable in some module setups, leading to
     // runtime errors like 'cannot read property of undefined'.
     super('dietPlanDatabase', { addons: [observable] });
-    this.version(1).stores({
+    // Fix: Use a type assertion to work around a TypeScript error where the 'version'
+    // method is not found on the subclassed type, likely due to addon interference.
+    (this as any).version(1).stores({
       appState: 'key', // Primary key is 'key'
     });
   }

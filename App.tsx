@@ -20,7 +20,7 @@ import {
     InstallPwaSnackbar,
     GoogleLogin
 } from './components';
-import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon } from './components/Icons';
+import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon, ExportIcon } from './components/Icons';
 
 const App: React.FC = observer(() => {
     const store = mealPlanStore;
@@ -122,6 +122,26 @@ const App: React.FC = observer(() => {
         };
     }, [store.currentPlanId]);
 
+    const handleExport = () => {
+        const dataToExport = {
+            planName: store.currentPlanName,
+            weeklyPlan: store.activeMealPlan,
+            shoppingList: store.shoppingList,
+            pantry: store.pantry,
+        };
+
+        const jsonString = JSON.stringify(dataToExport, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const safePlanName = store.currentPlanName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        a.download = `diet-plan-${safePlanName}-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
 
     const renderMainContent = () => {
         if (store.status === AppStatus.HYDRATING) return <Loader />;
@@ -228,9 +248,14 @@ const App: React.FC = observer(() => {
                     {/* Right Controls */}
                     <div className="flex justify-center sm:justify-end items-center gap-4">
                         {store.status === AppStatus.SUCCESS && store.currentPlanId && !showNewPlanFlow && (
-                             <button onClick={() => setShowNewPlanFlow(true)} className="bg-white dark:bg-gray-800 text-violet-700 dark:text-violet-400 font-semibold px-4 py-2 rounded-full shadow-md hover:bg-violet-100 dark:hover:bg-gray-700 transition-colors flex items-center" title={t('changeDietTitle')}>
-                                <ChangeDietIcon/><span className="sm:inline ml-2">{t('changeDiet')}</span>
-                             </button>
+                             <>
+                                <button onClick={() => setShowNewPlanFlow(true)} className="bg-white dark:bg-gray-800 text-violet-700 dark:text-violet-400 font-semibold px-4 py-2 rounded-full shadow-md hover:bg-violet-100 dark:hover:bg-gray-700 transition-colors flex items-center" title={t('changeDietTitle')}>
+                                    <ChangeDietIcon/><span className="sm:inline ml-2">{t('changeDiet')}</span>
+                                </button>
+                                <button onClick={handleExport} className="bg-white dark:bg-gray-800 text-violet-700 dark:text-violet-400 font-semibold px-4 py-2 rounded-full shadow-md hover:bg-violet-100 dark:hover:bg-gray-700 transition-colors flex items-center" title={t('exportPlanTitle')}>
+                                    <ExportIcon /><span className="sm:inline ml-2">{t('exportPlan')}</span>
+                                </button>
+                             </>
                         )}
                         <GoogleLogin />
                     </div>
