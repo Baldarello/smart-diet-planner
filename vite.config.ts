@@ -1,7 +1,7 @@
-// Fix: Add a triple-slash directive to provide Node.js types to TypeScript,
-// resolving the error on 'process.cwd()'.
-/// <reference types="node" />
-
+// Fix: The triple-slash directive for Node.js types was failing, causing a type error.
+// It has been replaced with an explicit import of the 'process' object to provide
+// the necessary types for `process.cwd()` and `process.env`.
+import process from 'node:process';
 import { URL, fileURLToPath } from 'url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';

@@ -14,8 +14,10 @@ const translations = {
     tabShopping: "Spesa",
     tabPantry: "Dispensa",
     tabArchive: "Archivio",
-    welcomeTitle: "Benvenuto nel tuo Organizzatore di Piani Dietetici",
-    welcomeSubtitle: "Carica il tuo piano alimentare settimanale in formato PDF e la nostra IA creerà automaticamente un programma giornaliero e una lista della spesa completa per te.",
+    welcomeTitle: "Inizia un Nuovo Piano Dietetico",
+    welcomeSubtitle: "Carica un PDF, importa un file JSON, o inserisci il tuo piano manualmente per iniziare.",
+    uploadPdfTitle: "Carica il tuo PDF",
+    importJsonTitle: "Importa da JSON",
     viewArchived: "Vedi Piani Archiviati",
     uploadNew: "Carica un Nuovo Piano Dietetico",
     footer: "Realizzato con React & MobX. Parsing offline.",
@@ -42,6 +44,10 @@ const translations = {
     clickToUpload: "Clicca per caricare",
     dragAndDrop: "o trascina e rilascia",
     pdfFile: "File PDF del tuo piano dietetico",
+    
+    // JsonImportButton.tsx
+    clickToImport: "Clicca per importare",
+    jsonFile: "File JSON del tuo piano dietetico",
 
     // Loader.tsx
     loadingPlanTitle: "Caricamento del piano...",
@@ -174,8 +180,10 @@ const translations = {
     tabShopping: "Shopping",
     tabPantry: "Pantry",
     tabArchive: "Archive",
-    welcomeTitle: "Welcome to your Diet Plan Organizer",
-    welcomeSubtitle: "Upload your weekly meal plan in PDF format, and our AI will automatically create a daily schedule and a complete shopping list for you.",
+    welcomeTitle: "Start a New Diet Plan",
+    welcomeSubtitle: "Upload a PDF, import a JSON file, or enter your plan manually to get started.",
+    uploadPdfTitle: "Upload Your PDF",
+    importJsonTitle: "Import from JSON",
     viewArchived: "View Archived Plans",
     uploadNew: "Upload a New Diet Plan",
     footer: "Powered by React & MobX. Offline parsing.",
@@ -202,6 +210,10 @@ const translations = {
     clickToUpload: "Click to upload",
     dragAndDrop: "or drag and drop",
     pdfFile: "PDF file of your diet plan",
+
+    // JsonImportButton.tsx
+    clickToImport: "Click to import",
+    jsonFile: "JSON file of your diet plan",
 
     // Loader.tsx
     loadingPlanTitle: "Loading your plan...",

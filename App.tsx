@@ -13,14 +13,14 @@ import {
     DailyPlanView,
     ArchiveView,
     ActivePlanNameEditor,
-    ChangeDietIcon,
     ExamplePdf,
     ManualPlanEntryForm,
     ArchivedPlanItem,
     InstallPwaSnackbar,
-    GoogleLogin
+    GoogleLogin,
+    JsonImportButton
 } from './components';
-import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon, ExportIcon } from './components/Icons';
+import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon, ExportIcon, ChangeDietIcon } from './components/Icons';
 
 const App: React.FC = observer(() => {
     const store = mealPlanStore;
@@ -197,9 +197,20 @@ const App: React.FC = observer(() => {
                     </div>
                 )}
                 <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('welcomeTitle')}</h2>
-                <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-xl mx-auto">{t('welcomeSubtitle')}</p>
-                <FileUpload />
-                <div className="mt-6 text-gray-600 dark:text-gray-400">
+                <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-2xl mx-auto">{t('welcomeSubtitle')}</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                    <div>
+                        <h3 className="text-xl font-semibold mb-3 text-gray-700 dark:text-gray-300">{t('uploadPdfTitle')}</h3>
+                        <FileUpload />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-semibold mb-3 text-gray-700 dark:text-gray-300">{t('importJsonTitle')}</h3>
+                        <JsonImportButton />
+                    </div>
+                </div>
+
+                <div className="mt-8 text-gray-600 dark:text-gray-400">
                    {t('or')}
                    <button onClick={() => setShowManualForm(true)} className="ml-2 text-violet-600 dark:text-violet-400 font-semibold hover:underline">
                        {t('orCreateManually')}

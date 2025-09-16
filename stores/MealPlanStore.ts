@@ -13,6 +13,13 @@ export enum AppStatus {
   ERROR,
 }
 
+interface ImportedJsonData {
+  planName: string;
+  weeklyPlan: DayPlan[];
+  shoppingList: ShoppingListCategory[];
+  pantry?: PantryItem[];
+}
+
 export class MealPlanStore {
   status: AppStatus = AppStatus.HYDRATING;
   error: string | null = null;
@@ -759,6 +766,79 @@ export class MealPlanStore {
             this.saveToDB();
         }
     }, 500);
+  }
+  
+  processJsonFile = (file: File) => {
+    this.status = AppStatus.LOADING;
+    this.error = null;
+    this.pdfParseProgress = 0; // Not really a progress, but sets the loading state.
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            if (!event.target?.result) throw new Error("Failed to read the JSON file.");
+            const text = event.target.result as string;
+            const data = JSON.parse(text) as ImportedJsonData;
+
+            // More robust validation
+            if (typeof data.planName !== 'string' || !Array.isArray(data.weeklyPlan) || !Array.isArray(data.shoppingList)) {
+                throw new Error("Invalid JSON format. Required fields 'planName', 'weeklyPlan', or 'shoppingList' are missing or have the wrong type.");
+            }
+            
+            runInAction(() => {
+                if (this.activeMealPlan.length > 0 && this.currentPlanId) {
+                    const currentPlanToArchive: ArchivedPlan = {
+                        id: this.currentPlanId,
+                        name: this.currentPlanName,
+                        date: new Date().toLocaleDateString('it-IT'),
+                        plan: this.activeMealPlan,
+                        shoppingList: this.shoppingList,
+                    };
+                    this.archivedPlans.push(currentPlanToArchive);
+                }
+
+                this.currentPlanName = data.planName;
+                
+                // Defensively map over the loaded data to ensure flags exist
+                const sanitizedPlan = data.weeklyPlan.map(day => ({
+                  ...day,
+                  meals: (day.meals || []).map(meal => ({
+                    ...meal,
+                    done: meal.done ?? false,
+                    items: (meal.items || []).map(item => ({...item, used: item.used ?? false}))
+                  }))
+                }));
+
+                this.activeMealPlan = sanitizedPlan;
+                this.presetMealPlan = JSON.parse(JSON.stringify(sanitizedPlan));
+                this.shoppingList = data.shoppingList || [];
+                this.pantry = data.pantry || [];
+                
+                this.status = AppStatus.SUCCESS;
+                this.activeTab = 'daily';
+                this.hasUnsavedChanges = false;
+                this.sentNotifications.clear();
+                this.lastActiveDate = new Date().toLocaleDateString();
+                this.waterIntakeMl = 0;
+                this.currentPlanId = 'imported_' + Date.now().toString();
+
+                this.saveToDB();
+            });
+
+        } catch (err: any) {
+            runInAction(() => {
+                this.status = AppStatus.ERROR;
+                this.error = err.message || 'An unknown error occurred while processing the JSON file.';
+            });
+        }
+    };
+    reader.onerror = () => {
+        runInAction(() => {
+            this.status = AppStatus.ERROR;
+            this.error = 'Failed to read the JSON file.';
+        });
+    };
+    reader.readAsText(file);
   }
 
   processPdf = async (file: File) => {
