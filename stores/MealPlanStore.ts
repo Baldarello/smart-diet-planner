@@ -1,5 +1,6 @@
 import { makeAutoObservable, runInAction, toJS } from 'mobx';
-import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo, HydrationSnackbarInfo, BodyMetrics, ProgressRecord, DailyLog } from '../types';
+// Fix: Import the 'StoredState' type to resolve 'Cannot find name' errors.
+import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo, HydrationSnackbarInfo, BodyMetrics, ProgressRecord, DailyLog, StoredState } from '../types';
 import { parsePdfText, generateShoppingList as generateShoppingListOffline, extractIngredientInfo } from '../services/offlineParser';
 import { parseMealStructure, getNutritionForMeal, getPlanDetailsAndShoppingList, isQuotaError } from '../services/geminiService';
 import { parseQuantity, formatQuantity } from '../utils/quantityParser';
@@ -40,24 +41,26 @@ export class MealPlanStore {
   hasUnsavedChanges = false;
   currentPlanId: string | null = null;
 
-  // New properties for master plan / daily log architecture
+  // Plan dates and daily log
   startDate: string | null = null;
   endDate: string | null = null;
   currentDate: string = getTodayDateString();
   currentDayPlan: DailyLog | null = null;
   planToSet: DayPlan[] | null = null; // Holds a new plan before dates are set
 
+  // Day-specific progress tracking
+  currentDayProgress: ProgressRecord | null = null;
+  
   onlineMode = true;
   recalculating = false;
   recalculatingMeal: { dayIndex: number; mealIndex: number } | null = null;
   recalculatingActualMeal: { dayIndex: number; mealIndex: number } | null = null;
 
+  // Global goals and settings
   hydrationGoalLiters = 3;
-  waterIntakeMl = 0;
-  hydrationSnackbar: HydrationSnackbarInfo | null = null;
   stepGoal = 20000;
-  stepsTaken = 0;
-  bodyMetrics: BodyMetrics = {};
+  bodyMetrics: BodyMetrics = {}; // Holds the LATEST known body metrics for carry-over
+  hydrationSnackbar: HydrationSnackbarInfo | null = null;
   progressHistory: ProgressRecord[] = [];
 
   sentNotifications = new Map<string, boolean>();
@@ -92,10 +95,8 @@ export class MealPlanStore {
                 this.hasUnsavedChanges = data.hasUnsavedChanges || false;
                 this.hydrationGoalLiters = data.hydrationGoalLiters || 3;
                 this.lastActiveDate = data.lastActiveDate || getTodayDateString();
-                this.waterIntakeMl = data.waterIntakeMl || 0;
                 this.currentPlanId = data.currentPlanId || null;
                 this.stepGoal = data.stepGoal || 20000;
-                this.stepsTaken = data.stepsTaken || 0;
                 this.bodyMetrics = data.bodyMetrics || {};
                 this.startDate = data.startDate || null;
                 this.endDate = data.endDate || null;
@@ -149,17 +150,9 @@ export class MealPlanStore {
     }
   }
 
-  setTheme = (theme: Theme) => {
-    this.theme = theme;
-    this.saveToDB();
-  }
-
-  setLocale = (locale: Locale) => {
-    this.locale = locale;
-    this.saveToDB();
-  }
+  setTheme = (theme: Theme) => { this.theme = theme; this.saveToDB(); }
+  setLocale = (locale: Locale) => { this.locale = locale; this.saveToDB(); }
   
-  // New method to set the currently viewed date and load its plan
   setCurrentDate = (dateStr: string) => {
     if (this.startDate && this.endDate) {
         const newDate = new Date(dateStr);
@@ -179,18 +172,6 @@ export class MealPlanStore {
       this.saveToDB();
     }
   }
-
-  logWaterIntake = (amountMl: number) => {
-    this.waterIntakeMl += amountMl;
-    this.saveToDB();
-  }
-
-  setWaterIntake = (amountMl: number) => {
-    if (amountMl >= 0) {
-      this.waterIntakeMl = amountMl;
-      this.saveToDB();
-    }
-  }
   
   setStepGoal = (steps: number) => {
     if (steps > 0 && steps <= 100000) {
@@ -199,16 +180,120 @@ export class MealPlanStore {
     }
   }
 
+  showHydrationSnackbar = (time: string, amount: number) => { this.hydrationSnackbar = { visible: true, time, amount }; }
+  dismissHydrationSnackbar = () => { this.hydrationSnackbar = null; }
+
+  updateMealTime = async (dayIndex: number, mealIndex: number, newTime: string) => {
+    const meal = this.masterMealPlan[dayIndex]?.meals[mealIndex];
+    if (meal) {
+      meal.time = newTime;
+      const dayOfWeek = new Date(this.currentDate).getDay();
+      const masterDayOfWeek = new Date(2024, 0, dayIndex + 1).getDay();
+      if (dayOfWeek === masterDayOfWeek && this.currentDayPlan) {
+        const dailyMeal = this.currentDayPlan.meals[mealIndex];
+        if (dailyMeal) {
+            dailyMeal.time = newTime;
+            await db.dailyLogs.put(toJS(this.currentDayPlan));
+        }
+      }
+      this.saveToDB();
+    }
+  }
+
+  markNotificationSent = (key: string) => { this.sentNotifications.set(key, true); this.saveToDB(); }
+
+  resetSentNotificationsIfNeeded = async () => {
+    const today = getTodayDateString();
+    if (this.lastActiveDate !== today) {
+        if (this.currentPlanId) {
+            await this.recordDailyProgress(this.lastActiveDate);
+        }
+        
+        runInAction(() => {
+            this.sentNotifications.clear();
+            this.lastActiveDate = today;
+            this.setCurrentDate(today);
+            this.saveToDB();
+        });
+    }
+  }
+
+  updateHydrationStatus = () => {
+    this.resetSentNotificationsIfNeeded();
+    const waterIntakeMl = this.currentDayProgress?.waterIntakeMl ?? 0;
+    const now = new Date();
+    const currentHour = now.getHours();
+    if (waterIntakeMl >= this.hydrationGoalLiters * 1000 || currentHour < 9) {
+      this.dismissHydrationSnackbar();
+      return;
+    }
+    const amountPerSlot = Math.round((this.hydrationGoalLiters * 1000) / 10);
+    const slotsPassed = Math.min(10, Math.max(0, currentHour - 8)); 
+    const expectedIntake = slotsPassed * amountPerSlot;
+    const missedAmount = expectedIntake - waterIntakeMl;
+    if (missedAmount > 50) {
+        const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const roundedMissedAmount = Math.ceil(missedAmount / 50) * 50;
+        this.showHydrationSnackbar(currentTime, roundedMissedAmount);
+    } else {
+        this.dismissHydrationSnackbar();
+    }
+  };
+
+  // Day-specific progress methods
+  saveCurrentDayProgress = async () => {
+    if (!this.currentDayProgress) return;
+    try {
+        const progressToSave = toJS(this.currentDayProgress);
+        await db.progressHistory.put(progressToSave, 'date');
+        runInAction(() => {
+            const existingIndex = this.progressHistory.findIndex(p => p.date === progressToSave.date);
+            if (existingIndex > -1) {
+                this.progressHistory[existingIndex] = progressToSave;
+            } else {
+                this.progressHistory.push(progressToSave);
+                this.progressHistory.sort((a, b) => a.date.localeCompare(b.date));
+            }
+        });
+    } catch (error) {
+        console.error("Failed to save progress record to DB", error);
+    }
+  };
+
+  updateCurrentDayProgress = (field: keyof ProgressRecord, value: number | undefined) => {
+    if (!this.currentDayProgress) return;
+    
+    const updatedProgress = { ...this.currentDayProgress, [field]: value };
+    
+    runInAction(() => {
+        this.currentDayProgress = updatedProgress;
+    });
+
+    if (['weightKg', 'bodyFatPercentage', 'leanMassKg', 'bodyWaterPercentage'].includes(field)) {
+        this.setBodyMetric(field as keyof BodyMetrics, value);
+    }
+    
+    this.saveCurrentDayProgress();
+  }
+
+  logWaterIntake = (amountMl: number) => {
+    if (!this.currentDayProgress) return;
+    const currentIntake = this.currentDayProgress.waterIntakeMl || 0;
+    this.updateCurrentDayProgress('waterIntakeMl', currentIntake + amountMl);
+  }
+
+  setWaterIntake = (amountMl: number) => {
+    if (amountMl >= 0) this.updateCurrentDayProgress('waterIntakeMl', amountMl);
+  }
+
   logSteps = (amount: number) => {
-    this.stepsTaken += amount;
-    this.saveToDB();
+    if (!this.currentDayProgress) return;
+    const currentSteps = this.currentDayProgress.stepsTaken || 0;
+    this.updateCurrentDayProgress('stepsTaken', currentSteps + amount);
   }
 
   setSteps = (amount: number) => {
-    if (amount >= 0) {
-        this.stepsTaken = amount;
-        this.saveToDB();
-    }
+    if (amount >= 0) this.updateCurrentDayProgress('stepsTaken', amount);
   }
 
   setBodyMetric = (metric: keyof BodyMetrics, value: number | undefined) => {
@@ -221,39 +306,12 @@ export class MealPlanStore {
             this.bodyMetrics[metric] = value;
         }
     });
-    this.saveToDB();
-  }
 
-  showHydrationSnackbar = (time: string, amount: number) => {
-    this.hydrationSnackbar = { visible: true, time, amount };
-  }
-
-  dismissHydrationSnackbar = () => {
-    this.hydrationSnackbar = null;
-  }
-
-  updateMealTime = async (dayIndex: number, mealIndex: number, newTime: string) => {
-    // This now edits the master plan
-    const meal = this.masterMealPlan[dayIndex]?.meals[mealIndex];
-    if (meal) {
-      meal.time = newTime;
-      // Also update the current day if it's the same day of the week
-      const dayOfWeek = new Date(this.currentDate).getDay();
-      const masterDayOfWeek = new Date(2024, 0, dayIndex + 1).getDay(); // A sample week to get day index
-      if (dayOfWeek === masterDayOfWeek && this.currentDayPlan) {
-        const dailyMeal = this.currentDayPlan.meals[mealIndex];
-        if (dailyMeal) {
-            dailyMeal.time = newTime;
-            await db.dailyLogs.put(toJS(this.currentDayPlan));
-        }
-      }
+    if (['heightCm'].includes(metric)) {
       this.saveToDB();
+    } else if (this.currentDayProgress) {
+        this.updateCurrentDayProgress(metric as keyof ProgressRecord, value);
     }
-  }
-
-  markNotificationSent = (key: string) => {
-    this.sentNotifications.set(key, true);
-    this.saveToDB();
   }
 
   recordDailyProgress = async (date: string) => {
@@ -267,95 +325,50 @@ export class MealPlanStore {
     dayPlan.meals.forEach(meal => {
         if (meal.done) {
             totalDone++;
-            if (meal.actualNutrition) {
-                actualCalories += meal.actualNutrition.calories;
-            } else if (meal.nutrition) {
-                actualCalories += meal.nutrition.calories;
-            }
+            if (meal.actualNutrition) actualCalories += meal.actualNutrition.calories;
+            else if (meal.nutrition) actualCalories += meal.nutrition.calories;
         }
-        if (meal.nutrition) {
-            plannedCalories += meal.nutrition.calories;
-        }
+        if (meal.nutrition) plannedCalories += meal.nutrition.calories;
     });
 
     const adherence = Math.round((totalDone / dayPlan.meals.length) * 100);
 
-    const record: ProgressRecord = {
-        date,
-        adherence: isNaN(adherence) ? 0 : adherence,
-        plannedCalories,
-        actualCalories,
-        weightKg: this.bodyMetrics.weightKg,
-        bodyFatPercentage: this.bodyMetrics.bodyFatPercentage,
-        leanMassKg: this.bodyMetrics.leanMassKg,
-        stepsTaken: this.stepsTaken,
-        waterIntakeMl: this.waterIntakeMl,
-    };
+    let record = await db.progressHistory.get(date);
+    if (!record) {
+        const latestRecord = await db.progressHistory.where('date').below(date).last();
+        record = {
+            date,
+            adherence: 0,
+            plannedCalories: 0,
+            actualCalories: 0,
+            stepsTaken: 0,
+            waterIntakeMl: 0,
+            weightKg: latestRecord?.weightKg,
+        };
+    }
+
+    record.adherence = isNaN(adherence) ? 0 : adherence;
+    record.plannedCalories = plannedCalories;
+    record.actualCalories = actualCalories;
 
     try {
         await db.progressHistory.put(record, 'date');
         runInAction(() => {
             const existingIndex = this.progressHistory.findIndex(p => p.date === date);
-            if (existingIndex > -1) {
-                this.progressHistory[existingIndex] = record;
-            } else {
-                this.progressHistory.push(record);
+            if (existingIndex > -1) this.progressHistory[existingIndex] = record!;
+            else {
+                this.progressHistory.push(record!);
                 this.progressHistory.sort((a, b) => a.date.localeCompare(b.date));
             }
         });
     } catch (error) {
         console.error("Failed to save progress record to DB", error);
     }
-};
-
-  resetSentNotificationsIfNeeded = async () => {
-    const today = getTodayDateString();
-    if (this.lastActiveDate !== today) {
-        if (this.currentPlanId) {
-            await this.recordDailyProgress(this.lastActiveDate);
-        }
-        
-        runInAction(() => {
-            this.sentNotifications.clear();
-            this.waterIntakeMl = 0;
-            this.stepsTaken = 0;
-            this.lastActiveDate = today;
-            this.setCurrentDate(today); // This will also trigger a reload of the day plan
-            this.saveToDB();
-        });
-    }
-  }
-
-  updateHydrationStatus = () => {
-    this.resetSentNotificationsIfNeeded();
-    const now = new Date();
-    const currentHour = now.getHours();
-    if (this.waterIntakeMl >= this.hydrationGoalLiters * 1000 || currentHour < 9) {
-      this.dismissHydrationSnackbar();
-      return;
-    }
-    const amountPerSlot = Math.round((this.hydrationGoalLiters * 1000) / 10);
-    const slotsPassed = Math.min(10, Math.max(0, currentHour - 8)); 
-    const expectedIntake = slotsPassed * amountPerSlot;
-    const missedAmount = expectedIntake - this.waterIntakeMl;
-    if (missedAmount > 50) {
-        const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        const roundedMissedAmount = Math.ceil(missedAmount / 50) * 50;
-        this.showHydrationSnackbar(currentTime, roundedMissedAmount);
-    } else {
-        this.dismissHydrationSnackbar();
-    }
   };
 
-  setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar') => {
-    this.activeTab = tab;
-  }
-  
-  setCurrentPlanName = (name: string) => {
-    this.currentPlanName = name;
-    this.saveToDB();
-  }
-  
+
+  setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar') => { this.activeTab = tab; }
+  setCurrentPlanName = (name: string) => { this.currentPlanName = name; this.saveToDB(); }
   updateArchivedPlanName = (planId: string, newName: string) => {
     const planIndex = this.archivedPlans.findIndex(p => p.id === planId);
     if (planIndex > -1) {
@@ -365,39 +378,25 @@ export class MealPlanStore {
   }
   
   updateItemDescription = (dayIndex: number, mealIndex: number, itemIndex: number, newDescription: string) => {
-      // This now edits the master plan
       const item = this.masterMealPlan[dayIndex]?.meals[mealIndex]?.items[itemIndex];
       if (item && item.fullDescription !== newDescription) {
           item.fullDescription = newDescription;
           const { ingredientName } = extractIngredientInfo(newDescription);
           item.ingredientName = ingredientName;
-          
-          if (this.onlineMode) {
-            this.hasUnsavedChanges = true;
-          }
-
+          if (this.onlineMode) this.hasUnsavedChanges = true;
           this.saveToDB();
       }
   }
 
   recalculateShoppingList = async () => {
     if (!this.hasUnsavedChanges || !this.onlineMode) return;
-
     runInAction(() => { this.recalculating = true; });
-
     try {
         const result = await getPlanDetailsAndShoppingList(this.masterMealPlan);
         if (!result) throw new Error("Failed to get updated plan and list from Gemini.");
 
         runInAction(() => {
-            this.masterMealPlan = result.weeklyPlan.map((day: DayPlan) => ({
-                ...day,
-                meals: day.meals.map((meal: Meal) => ({
-                    ...meal,
-                    done: false,
-                    items: meal.items.map(item => ({ ...item, used: false }))
-                }))
-            }));
+            this.masterMealPlan = result.weeklyPlan.map((day: DayPlan) => ({ ...day, meals: day.meals.map((meal: Meal) => ({ ...meal, done: false, items: meal.items.map(item => ({ ...item, used: false })) })) }));
             this.shoppingList = result.shoppingList;
             this.pantry = [];
         });
@@ -412,16 +411,12 @@ export class MealPlanStore {
             runInAction(() => { this.error = error.message; });
         }
     } finally {
-        runInAction(() => {
-            this.hasUnsavedChanges = false;
-            this.recalculating = false;
-        });
+        runInAction(() => { this.hasUnsavedChanges = false; this.recalculating = false; });
         this.saveToDB();
     }
   }
 
   recalculateMealNutrition = async (dayIndex: number, mealIndex: number) => {
-    // Recalculates for master plan
     if (!this.onlineMode) return;
     const meal = this.masterMealPlan[dayIndex]?.meals[mealIndex];
     if (!meal) return;
@@ -443,19 +438,13 @@ export class MealPlanStore {
   }
 
     recalculateActualMealNutrition = async () => {
-        // Operates on the current day's log
         if (!this.onlineMode || !this.currentDayPlan) return;
-        
         const meal = this.currentDayPlan.meals.find(m => m.done && m.items.some(i => i.used) && m.items.some(i => !i.used));
         if (!meal) return;
-
         const mealIndex = this.currentDayPlan.meals.indexOf(meal);
-        
         const consumedItems = meal.items.filter(item => item.used);
         if (consumedItems.length === 0 || consumedItems.length === meal.items.length) return;
-
         runInAction(() => { this.recalculatingActualMeal = { dayIndex: -1, mealIndex: mealIndex }; });
-
         try {
             const mealWithConsumedItemsOnly = { ...meal, items: consumedItems };
             const newNutrition = await getNutritionForMeal(mealWithConsumedItemsOnly);
@@ -474,7 +463,6 @@ export class MealPlanStore {
     }
 
     resetMealToPreset = (dayIndex: number, mealIndex: number) => {
-        // Resets a meal in the master plan
         if (this.presetMealPlan[dayIndex]?.meals[mealIndex] && this.masterMealPlan[dayIndex]?.meals[mealIndex]) {
             runInAction(() => {
                 const presetMeal = JSON.parse(JSON.stringify(this.presetMealPlan[dayIndex].meals[mealIndex]));
@@ -486,7 +474,7 @@ export class MealPlanStore {
 
   saveToDB = async () => {
     try {
-      const dataToSave = {
+      const dataToSave: Omit<StoredState, 'waterIntakeMl' | 'stepsTaken'> = {
         masterMealPlan: toJS(this.masterMealPlan),
         presetMealPlan: toJS(this.presetMealPlan),
         shoppingList: toJS(this.shoppingList),
@@ -498,16 +486,14 @@ export class MealPlanStore {
         hasUnsavedChanges: this.hasUnsavedChanges,
         hydrationGoalLiters: this.hydrationGoalLiters,
         lastActiveDate: this.lastActiveDate,
-        waterIntakeMl: this.waterIntakeMl,
         currentPlanId: this.currentPlanId,
         sentNotifications: Array.from(this.sentNotifications.entries()),
         stepGoal: this.stepGoal,
-        stepsTaken: this.stepsTaken,
         bodyMetrics: toJS(this.bodyMetrics),
         startDate: this.startDate,
         endDate: this.endDate,
       };
-      await db.appState.put({ key: 'dietPlanData', value: dataToSave });
+      await db.appState.put({ key: 'dietPlanData', value: dataToSave as StoredState });
     } catch (error) {
       console.error("Failed to save data to IndexedDB", error);
     }
@@ -515,7 +501,6 @@ export class MealPlanStore {
 
   archiveCurrentPlan = () => {
     if (this.masterMealPlan.length === 0) return;
-
     runInAction(() => {
         this.masterMealPlan = [];
         this.presetMealPlan = [];
@@ -527,12 +512,11 @@ export class MealPlanStore {
         this.currentPlanName = 'My Diet Plan';
         this.hasUnsavedChanges = false;
         this.sentNotifications.clear();
-        this.waterIntakeMl = 0;
-        this.stepsTaken = 0;
         this.currentPlanId = null;
         this.startDate = null;
         this.endDate = null;
         this.currentDayPlan = null;
+        this.currentDayProgress = null;
         db.dailyLogs.clear();
         this.saveToDB();
     });
@@ -541,17 +525,7 @@ export class MealPlanStore {
   restorePlanFromArchive = (planId: string) => {
     const planToRestore = this.archivedPlans.find(p => p.id === planId);
     if (!planToRestore) return;
-
-    const restoredPlan = planToRestore.plan.map(day => ({
-      ...day,
-      meals: day.meals.map(meal => ({
-          ...meal,
-          done: false,
-          actualNutrition: null,
-          items: meal.items.map(item => ({...item, used: false}))
-      }))
-    }));
-
+    const restoredPlan = planToRestore.plan.map(day => ({ ...day, meals: day.meals.map(meal => ({ ...meal, done: false, actualNutrition: null, items: meal.items.map(item => ({...item, used: false})) })) }));
     runInAction(() => {
         this.planToSet = restoredPlan;
         this.status = AppStatus.AWAITING_DATES;
@@ -610,10 +584,7 @@ export class MealPlanStore {
     this.saveToDB();
   }
 
-  updatePantryItemQuantity = (itemName: string, newQuantity: string) => {
-    const item = this.pantry.find(p => p.item === itemName);
-    if (item) { item.quantity = newQuantity; this.saveToDB(); }
-  }
+  updatePantryItemQuantity = (itemName: string, newQuantity: string) => { const item = this.pantry.find(p => p.item === itemName); if (item) { item.quantity = newQuantity; this.saveToDB(); } }
   addShoppingListItem = (categoryName: string, item: ShoppingListItem) => { /* ... unchanged ... */ }
   deleteShoppingListItem = (categoryName: string, itemIndex: number) => { /* ... unchanged ... */ }
   updateShoppingListItem = (categoryName: string, itemIndex: number, updatedItem: ShoppingListItem) => { /* ... unchanged ... */ }
@@ -624,10 +595,7 @@ export class MealPlanStore {
     const plan = toJS(this.currentDayPlan);
     const mealItem = plan.meals[mealIndex]?.items[itemIndex];
     if (!mealItem) return;
-
     mealItem.used = !mealItem.used;
-    // ... (pantry logic remains the same)
-    
     runInAction(() => { this.currentDayPlan = plan; });
     await db.dailyLogs.put(plan);
   }
@@ -638,23 +606,16 @@ export class MealPlanStore {
     const meal = plan.meals[mealIndex];
     if (meal) {
         meal.done = !meal.done;
-        if (!meal.done) {
-            meal.actualNutrition = null;
-        }
+        if (!meal.done) meal.actualNutrition = null;
     }
     runInAction(() => { this.currentDayPlan = plan; });
     await db.dailyLogs.put(plan);
   }
 
-  get dailyPlan(): DailyLog | null {
-    return this.currentDayPlan;
-  }
+  get dailyPlan(): DailyLog | null { return this.currentDayPlan; }
 
   getDayNutritionSummary(dayPlan: DayPlan | null): NutritionInfo | null {
-    if (!this.onlineMode || !dayPlan) {
-      return null;
-    }
-    
+    if (!this.onlineMode || !dayPlan) return null;
     const summary: NutritionInfo = { carbs: 0, protein: 0, fat: 0, calories: 0 };
     let hasData = false;
     dayPlan.meals.forEach(meal => {
@@ -669,9 +630,7 @@ export class MealPlanStore {
     return hasData ? summary : null;
   }
 
-  get dailyNutritionSummary(): NutritionInfo | null | undefined {
-    return this.getDayNutritionSummary(this.currentDayPlan);
-  }
+  get dailyNutritionSummary(): NutritionInfo | null | undefined { return this.getDayNutritionSummary(this.currentDayPlan); }
 
   private _enrichPlanDataInBackground = async (plan: DayPlan[]) => {
     if (!this.onlineMode) return;
@@ -694,18 +653,8 @@ export class MealPlanStore {
     }
   };
 
-  // Fix: Implemented processManualPlan to resolve undefined variable error.
   processManualPlan = (planData: DayPlan[]) => {
-      const cleanedPlan = planData.map(day => ({
-        ...day,
-        meals: day.meals
-          .map(meal => ({
-            ...meal,
-            items: meal.items.filter(item => item.fullDescription.trim() !== ''),
-          }))
-          .filter(meal => meal.items.length > 0 || (meal.title && meal.title.trim() !== '')),
-      })).filter(day => day.meals.length > 0);
-
+      const cleanedPlan = planData.map(day => ({ ...day, meals: day.meals.map(meal => ({ ...meal, items: meal.items.filter(item => item.fullDescription.trim() !== '') })).filter(meal => meal.items.length > 0 || (meal.title && meal.title.trim() !== '')) })).filter(day => day.meals.length > 0);
       runInAction(() => {
         if (cleanedPlan.length === 0 || cleanedPlan.every(d => d.meals.length === 0)) {
             this.status = AppStatus.ERROR;
@@ -716,24 +665,13 @@ export class MealPlanStore {
         this.status = AppStatus.AWAITING_DATES;
       });
   }
-  // Fix: Implemented processJsonFile to resolve undefined variable errors.
   processJsonFile = (file: File) => {
     const reader = new FileReader();
     reader.onload = (event) => {
         try {
-            if (!event.target?.result) {
-                throw new Error("File could not be read.");
-            }
+            if (!event.target?.result) throw new Error("File could not be read.");
             const data: ImportedJsonData = JSON.parse(event.target.result as string);
-            const sanitizedPlan = data.weeklyPlan.map(day => ({
-                ...day,
-                meals: day.meals.map(meal => ({
-                    ...meal,
-                    done: false,
-                    actualNutrition: null,
-                    items: meal.items.map(item => ({...item, used: false}))
-                }))
-            }));
+            const sanitizedPlan = data.weeklyPlan.map(day => ({ ...day, meals: day.meals.map(meal => ({ ...meal, done: false, actualNutrition: null, items: meal.items.map(item => ({...item, used: false})) })) }));
             runInAction(() => {
                 this.planToSet = sanitizedPlan;
                 this.shoppingList = data.shoppingList;
@@ -743,40 +681,21 @@ export class MealPlanStore {
             });
         } catch (e: any) {
             console.error("Failed to parse JSON file", e);
-            runInAction(() => {
-                this.status = AppStatus.ERROR;
-                this.error = `Failed to parse JSON file: ${e.message}`;
-            });
+            runInAction(() => { this.status = AppStatus.ERROR; this.error = `Failed to parse JSON file: ${e.message}`; });
         }
     };
-    reader.onerror = () => {
-        runInAction(() => {
-            this.status = AppStatus.ERROR;
-            this.error = "An error occurred while reading the file.";
-        });
-    };
+    reader.onerror = () => { runInAction(() => { this.status = AppStatus.ERROR; this.error = "An error occurred while reading the file."; }); };
     reader.readAsText(file);
   }
-  // Fix: Implemented processPdf to resolve undefined variable errors.
   processPdf = async (file: File) => {
-    runInAction(() => {
-        this.status = AppStatus.LOADING;
-        this.pdfParseProgress = 0;
-    });
-
+    runInAction(() => { this.status = AppStatus.LOADING; this.pdfParseProgress = 0; });
     try {
-        // NOTE: This assumes pdf.js can be dynamically imported.
-        // This is the standard way to handle large optional dependencies without adding them to the main bundle.
         const pdfjs = await import('pdfjs-dist/build/pdf');
-        // The worker is needed for pdf.js to run in a separate thread.
         const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
         pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-
         runInAction(() => { this.pdfParseProgress = 10; });
-
         const pageTexts = [];
         for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
@@ -784,18 +703,15 @@ export class MealPlanStore {
             pageTexts.push(textContent.items.map(item => 'str' in item ? item.str : '').join('\n'));
             runInAction(() => { this.pdfParseProgress = 10 + (i / pdf.numPages) * 20; });
         }
-        
         runInAction(() => { this.pdfParseProgress = 31; });
-
         if (this.onlineMode) {
             const fullText = pageTexts.join('\n\n');
             const mealStructure = await parseMealStructure(fullText);
             if (!mealStructure) throw new Error("Online parser failed to structure PDF data.");
-            
             runInAction(() => {
                 this.pdfParseProgress = 80;
                 this.planToSet = mealStructure;
-                this.shoppingList = []; // Will be enriched later
+                this.shoppingList = [];
                 this.status = AppStatus.AWAITING_DATES;
             });
         } else {
@@ -826,32 +742,21 @@ export class MealPlanStore {
     if (!this.planToSet) return;
     runInAction(() => {
         if (this.masterMealPlan.length > 0) {
-            const currentPlanToArchive: ArchivedPlan = {
-                id: this.currentPlanId || Date.now().toString(),
-                name: this.currentPlanName,
-                date: new Date().toLocaleDateString('it-IT'),
-                plan: this.masterMealPlan,
-                shoppingList: this.shoppingList,
-            };
+            const currentPlanToArchive: ArchivedPlan = { id: this.currentPlanId || Date.now().toString(), name: this.currentPlanName, date: new Date().toLocaleDateString('it-IT'), plan: this.masterMealPlan, shoppingList: this.shoppingList };
             this.archivedPlans.push(currentPlanToArchive);
         }
-        
         this.masterMealPlan = this.planToSet!;
         this.presetMealPlan = JSON.parse(JSON.stringify(this.planToSet));
         this.startDate = startDate;
         this.endDate = endDate;
-        
         this.status = AppStatus.SUCCESS;
         this.activeTab = 'daily';
         this.hasUnsavedChanges = false;
         this.sentNotifications.clear();
         this.lastActiveDate = getTodayDateString();
-        this.waterIntakeMl = 0;
-        this.stepsTaken = 0;
         this.pantry = [];
         this.currentPlanId = Date.now().toString();
         this.currentDate = getTodayDateString();
-        
         this.planToSet = null;
     });
 
@@ -869,31 +774,39 @@ export class MealPlanStore {
   }
 
   async loadPlanForDate(dateStr: string) {
+    // Load Progress Record for the day
+    try {
+        const progressRecord = await db.progressHistory.get(dateStr);
+        if (progressRecord) {
+            runInAction(() => { this.currentDayProgress = progressRecord; });
+        } else {
+            const latestRecord = await db.progressHistory.where('date').below(dateStr).last();
+            const newRecord: ProgressRecord = { date: dateStr, adherence: 0, plannedCalories: 0, actualCalories: 0, stepsTaken: 0, waterIntakeMl: 0, weightKg: latestRecord?.weightKg, bodyFatPercentage: latestRecord?.bodyFatPercentage, leanMassKg: latestRecord?.leanMassKg, bodyWaterPercentage: latestRecord?.bodyWaterPercentage };
+            runInAction(() => { this.currentDayProgress = newRecord; });
+        }
+    } catch (e) {
+        console.error("Failed to load progress record", e);
+        runInAction(() => { this.currentDayProgress = null; });
+    }
+
     if (!this.masterMealPlan.length) {
         runInAction(() => { this.currentDayPlan = null; });
         return;
     }
+    
+    // Load Daily Log (meals)
     try {
         let dailyLog: DailyLog | undefined | null = await db.dailyLogs.get(dateStr);
         if (!dailyLog) {
             const date = new Date(dateStr);
-            const dayIndex = (date.getDay() + 6) % 7; // 0=Mon, 1=Tue, ..., 6=Sun
+            const dayIndex = (date.getDay() + 6) % 7;
             const dayMap = ['LUNEDI', 'MARTEDI', 'MERCOLEDI', 'GIOVEDI', 'VENERDI', 'SABATO', 'DOMENICA'];
             const dayName = dayMap[dayIndex];
             const masterDay = this.masterMealPlan.find(d => d.day.toUpperCase() === dayName);
 
             if (masterDay) {
-                const newDailyLog: DailyLog = {
-                    ...JSON.parse(JSON.stringify(masterDay)),
-                    date: dateStr,
-                };
-                
-                // Ensure done status is reset for the new day instance
-                newDailyLog.meals.forEach(meal => {
-                    meal.done = false;
-                    meal.actualNutrition = null;
-                    meal.items.forEach(item => item.used = false);
-                });
+                const newDailyLog: DailyLog = { ...JSON.parse(JSON.stringify(masterDay)), date: dateStr };
+                newDailyLog.meals.forEach(meal => { meal.done = false; meal.actualNutrition = null; meal.items.forEach(item => item.used = false); });
                 await db.dailyLogs.put(newDailyLog);
                 dailyLog = newDailyLog;
             }

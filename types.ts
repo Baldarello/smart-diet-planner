@@ -88,6 +88,7 @@ export interface ProgressRecord {
   leanMassKg?: number;
   stepsTaken: number;
   waterIntakeMl: number;
+  bodyWaterPercentage?: number;
 }
 
 
@@ -111,11 +112,9 @@ export interface StoredState {
     hasUnsavedChanges: boolean;
     hydrationGoalLiters: number;
     lastActiveDate: string;
-    waterIntakeMl: number;
     currentPlanId: string | null;
     sentNotifications: [string, boolean][];
     stepGoal?: number;
-    stepsTaken?: number;
     bodyMetrics?: BodyMetrics;
     startDate: string | null;
     endDate: string | null;

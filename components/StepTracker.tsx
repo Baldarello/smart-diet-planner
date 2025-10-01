@@ -5,12 +5,13 @@ import { t } from '../i18n';
 import { StepsIcon, FlameIcon } from './Icons';
 
 const StepTracker: React.FC = observer(() => {
-    const { stepGoal, setStepGoal, stepsTaken, setSteps, logSteps, bodyMetrics } = mealPlanStore;
+    const { stepGoal, setStepGoal, currentDayProgress, setSteps, logSteps, bodyMetrics } = mealPlanStore;
+    const stepsTaken = currentDayProgress?.stepsTaken ?? 0;
+    
     const [isEditingIntake, setIsEditingIntake] = useState(false);
     const [editableIntake, setEditableIntake] = useState(stepsTaken.toString());
     const [editableGoal, setEditableGoal] = useState(stepGoal.toString());
     
-    // State for calorie estimation
     const [hours, setHours] = useState('1');
     const [caloriesBurned, setCaloriesBurned] = useState<number | null>(null);
 
@@ -25,9 +26,6 @@ const StepTracker: React.FC = observer(() => {
     }, [stepGoal]);
 
     useEffect(() => {
-        // A more continuous and physically-based model for calorie estimation.
-        // The calculation is based on the work done (number of steps) and modified by intensity (pace).
-        // This avoids the paradox of time-based formulas where lower intensity over longer time burns more calories for the same distance.
         const calculateCalories = () => {
             const numericHours = parseFloat(hours.replace(',', '.'));
             if (isNaN(numericHours) || numericHours <= 0 || stepsTaken <= 0) {
@@ -35,34 +33,19 @@ const StepTracker: React.FC = observer(() => {
                 return;
             }
     
-            // Use the user's weight from body metrics, falling back to 70kg.
-            const userWeightKg = bodyMetrics.weightKg && bodyMetrics.weightKg > 0 ? bodyMetrics.weightKg : 70;
-            // The original 0.045 value was an approximation for a 70kg person.
-            // We scale this value based on the user's actual weight for better accuracy.
+            const userWeightKg = currentDayProgress?.weightKg ?? (bodyMetrics.weightKg ?? 70);
             const BASE_CALORIES_PER_STEP = (userWeightKg / 70) * 0.045;
-            
-            // A baseline pace for a moderate walk, in steps per hour.
             const BASELINE_PACE = 5500;
-    
-            // Calculate the user's actual pace.
             const pace = stepsTaken / numericHours;
-    
-            // Calculate a modifier based on how much the user's pace deviates from the baseline.
-            // Faster paces are less efficient and burn more calories per step.
-            // For every 2000 steps/hr faster than baseline, we add a 10% burn modifier.
             const paceDifference = pace - BASELINE_PACE;
             const intensityModifier = 1 + (paceDifference / 2000) * 0.10;
-            
-            // Ensure the modifier doesn't result in an absurdly low or high burn.
-            // Clamp it between 0.8 (very slow) and 1.5 (very fast run).
             const clampedModifier = Math.max(0.8, Math.min(intensityModifier, 1.5));
-    
             const calories = Math.round(stepsTaken * BASE_CALORIES_PER_STEP * clampedModifier);
             setCaloriesBurned(calories);
         };
     
         calculateCalories();
-    }, [hours, stepsTaken, bodyMetrics.weightKg]);
+    }, [hours, stepsTaken, bodyMetrics.weightKg, currentDayProgress?.weightKg]);
 
 
     const goal = parseInt(editableGoal, 10);

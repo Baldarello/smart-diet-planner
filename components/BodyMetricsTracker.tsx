@@ -3,30 +3,30 @@ import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
 import { BodyIcon } from './Icons';
-import { BodyMetrics } from '../types';
+import { BodyMetrics, ProgressRecord } from '../types';
 
 interface MetricInputProps {
     label: string;
-    metricKey: keyof BodyMetrics;
+    value: number | undefined;
+    onSave: (value: number | undefined) => void;
     unit: string;
 }
 
-const MetricInput: React.FC<MetricInputProps> = observer(({ label, metricKey, unit }) => {
-    const { bodyMetrics, setBodyMetric } = mealPlanStore;
-    const [value, setValue] = useState(bodyMetrics[metricKey]?.toString() ?? '');
+const MetricInput: React.FC<MetricInputProps> = ({ label, value: propValue, onSave, unit }) => {
+    const [value, setValue] = useState(propValue?.toString() ?? '');
 
     useEffect(() => {
-        setValue(bodyMetrics[metricKey]?.toString() ?? '');
-    }, [bodyMetrics, metricKey]);
+        setValue(propValue?.toString() ?? '');
+    }, [propValue]);
 
     const handleBlur = () => {
         const numericValue = parseFloat(value.replace(',', '.'));
         if (!isNaN(numericValue)) {
-            setBodyMetric(metricKey, numericValue);
+            onSave(numericValue);
         } else if (value.trim() === '') {
-            setBodyMetric(metricKey, undefined);
+            onSave(undefined);
         } else {
-            setValue(bodyMetrics[metricKey]?.toString() ?? ''); // Revert on invalid input
+            setValue(propValue?.toString() ?? ''); // Revert on invalid input
         }
     };
     
@@ -58,6 +58,8 @@ const MetricInput: React.FC<MetricInputProps> = observer(({ label, metricKey, un
 
 
 const BodyMetricsTracker: React.FC = observer(() => {
+    const { currentDayProgress, updateCurrentDayProgress, bodyMetrics, setBodyMetric } = mealPlanStore;
+
     return (
         <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg mt-6">
             <div className="flex items-center mb-4">
@@ -66,11 +68,36 @@ const BodyMetricsTracker: React.FC = observer(() => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <MetricInput label={t('weight')} metricKey="weightKg" unit={t('unitKg')} />
-                <MetricInput label={t('height')} metricKey="heightCm" unit={t('unitCm')} />
-                <MetricInput label={t('bodyFat')} metricKey="bodyFatPercentage" unit={t('unitPercent')} />
-                <MetricInput label={t('leanMass')} metricKey="leanMassKg" unit={t('unitKg')} />
-                <MetricInput label={t('bodyWater')} metricKey="bodyWaterPercentage" unit={t('unitPercent')} />
+                <MetricInput 
+                    label={t('weight')} 
+                    unit={t('unitKg')}
+                    value={currentDayProgress?.weightKg}
+                    onSave={(val) => updateCurrentDayProgress('weightKg', val)}
+                />
+                 <MetricInput 
+                    label={t('height')} 
+                    unit={t('unitCm')}
+                    value={bodyMetrics.heightCm}
+                    onSave={(val) => setBodyMetric('heightCm', val)}
+                />
+                <MetricInput 
+                    label={t('bodyFat')} 
+                    unit={t('unitPercent')}
+                    value={currentDayProgress?.bodyFatPercentage}
+                    onSave={(val) => updateCurrentDayProgress('bodyFatPercentage', val)}
+                />
+                <MetricInput 
+                    label={t('leanMass')} 
+                    unit={t('unitKg')}
+                    value={currentDayProgress?.leanMassKg}
+                    onSave={(val) => updateCurrentDayProgress('leanMassKg', val)}
+                />
+                <MetricInput 
+                    label={t('bodyWater')} 
+                    unit={t('unitPercent')}
+                    value={currentDayProgress?.bodyWaterPercentage}
+                    onSave={(val) => updateCurrentDayProgress('bodyWaterPercentage', val)}
+                />
             </div>
         </div>
     );

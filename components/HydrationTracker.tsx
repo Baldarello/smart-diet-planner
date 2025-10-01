@@ -5,7 +5,9 @@ import { t } from '../i18n';
 import { WaterDropIcon } from './Icons';
 
 const HydrationTracker: React.FC = observer(() => {
-    const { hydrationGoalLiters, setHydrationGoal, waterIntakeMl, setWaterIntake, logWaterIntake } = mealPlanStore;
+    const { hydrationGoalLiters, setHydrationGoal, currentDayProgress, setWaterIntake, logWaterIntake } = mealPlanStore;
+    const waterIntakeMl = currentDayProgress?.waterIntakeMl ?? 0;
+    
     const [isEditingIntake, setIsEditingIntake] = useState(false);
     const [editableIntake, setEditableIntake] = useState(waterIntakeMl.toString());
     const [editableGoal, setEditableGoal] = useState(hydrationGoalLiters.toString());
