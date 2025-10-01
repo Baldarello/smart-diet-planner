@@ -9,7 +9,7 @@ import {
     ErrorMessage,
     ShoppingListView,
     PantryView,
-    MealPlanView,
+    WeeklyCalendarView,
     DailyPlanView,
     ArchiveView,
     ActivePlanNameEditor,
@@ -215,11 +215,22 @@ const App: React.FC = observer(() => {
                                 {store.theme === 'light' ? <MoonIcon /> : <SunIcon />}
                             </button>
                         </div>
-                        <div className="flex items-center justify-between bg-slate-50 dark:bg-gray-700/50 p-3 rounded-lg">
-                            <span className="font-medium text-gray-700 dark:text-gray-300">{t('language')}</span>
-                            <button onClick={() => store.setLocale(store.locale === 'it' ? 'en' : 'it')} className="w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-md hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors font-bold text-violet-600 dark:text-violet-400">
-                                {store.locale.toUpperCase()}
-                            </button>
+                        <div className="bg-slate-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                            <span className="font-medium text-gray-700 dark:text-gray-300 mb-2 block">{t('language')}</span>
+                            <div className="flex items-center bg-gray-200 dark:bg-gray-800 rounded-full p-1">
+                                <button
+                                    onClick={() => store.setLocale('it')}
+                                    className={`w-full text-center px-3 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 ${store.locale === 'it' ? 'bg-violet-600 text-white shadow-md' : 'bg-transparent text-gray-600 dark:text-gray-300'}`}
+                                >
+                                    Italiano
+                                </button>
+                                <button
+                                    onClick={() => store.setLocale('en')}
+                                    className={`w-full text-center px-3 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 ${store.locale === 'en' ? 'bg-violet-600 text-white shadow-md' : 'bg-transparent text-gray-600 dark:text-gray-300'}`}
+                                >
+                                    English
+                                </button>
+                            </div>
                         </div>
                         <div className="flex items-center justify-between bg-slate-50 dark:bg-gray-700/50 p-3 rounded-lg" title={store.onlineMode ? t('onlineModeTitle') : t('offlineModeTitle')}>
                             <span className="font-medium text-gray-700 dark:text-gray-300">{t('connectionStatus')}</span>
@@ -247,7 +258,7 @@ const App: React.FC = observer(() => {
                 <>
                     <ActivePlanNameEditor />
                     {store.activeTab === 'daily' && <DailyPlanView />}
-                    {store.activeTab === 'plan' && <MealPlanView plan={store.activeMealPlan} />}
+                    {store.activeTab === 'plan' && <WeeklyCalendarView />}
                     {store.activeTab === 'list' && <ShoppingListView />}
                     {store.activeTab === 'pantry' && <PantryView />}
                     {store.activeTab === 'progress' && <ProgressView />}

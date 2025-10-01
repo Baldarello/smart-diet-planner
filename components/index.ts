@@ -4,6 +4,8 @@ export { default as ErrorMessage } from './ErrorMessage';
 export { default as ShoppingListView } from './ShoppingListView';
 export { default as PantryView } from './PantryView';
 export { default as MealPlanView } from './MealPlanView';
+export { default as WeeklyCalendarView } from './WeeklyCalendarView';
+export { default as MealDetailModal } from './MealDetailModal';
 export { default as DailyPlanView } from './DailyPlanView';
 export { default as ArchiveView } from './ArchiveView';
 export { default as ArchivedPlanItem } from './ArchivedPlanItem';
