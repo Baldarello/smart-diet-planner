@@ -257,8 +257,10 @@ const App: React.FC = observer(() => {
                         </button>
                     </div>
                 )}
-                <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('welcomeTitle')}</h2>
-                <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-2xl mx-auto">{t('welcomeSubtitle')}</p>
+                <div className="pt-8">
+                    <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('welcomeTitle')}</h2>
+                    <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-2xl mx-auto">{t('welcomeSubtitle')}</p>
+                </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                     <div>
@@ -295,35 +297,37 @@ const App: React.FC = observer(() => {
     };
 
     return (
-        <div className="min-h-screen p-4 sm:p-6 lg:p-8">
+        <div className="min-h-screen">
             <Drawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)}>
                 {renderDrawerContent()}
             </Drawer>
-            <header className="mb-10">
-                <div className="max-w-4xl mx-auto flex items-center justify-between">
-                    {/* Left: Menu Button */}
-                    <div className="flex-1 flex justify-start">
-                        <button
-                            onClick={() => setIsDrawerOpen(true)}
-                            className="p-2 rounded-full bg-white dark:bg-gray-800 shadow-md hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
-                            aria-label="Open menu"
-                        >
-                            <MenuIcon />
-                        </button>
-                    </div>
+            <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-30 shadow-sm border-b border-slate-200 dark:border-gray-800">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid grid-cols-3 items-center h-16">
+                        {/* Left side: Menu button */}
+                        <div className="justify-self-start">
+                            <button
+                                onClick={() => setIsDrawerOpen(true)}
+                                className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
+                                aria-label="Open menu"
+                            >
+                                <MenuIcon />
+                            </button>
+                        </div>
+                        
+                        {/* Center: Title */}
+                        <div className="text-center">
+                            <h1 className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600">{t('mainTitle')}</h1>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">{t('mainSubtitle')}</p>
+                        </div>
 
-                    {/* Center: Title */}
-                    <div className="text-center">
-                        <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600">{t('mainTitle')}</h1>
-                        <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">{t('mainSubtitle')}</p>
+                        {/* Right side: Empty placeholder for balance */}
+                        <div />
                     </div>
-                    
-                    {/* Right: Spacer */}
-                    <div className="flex-1"></div>
                 </div>
             </header>
-            <main>{renderMainContent()}</main>
-            <footer className="text-center mt-12 text-sm text-gray-400 dark:text-gray-500"><p>{t('footer')}</p></footer>
+            <main className="pt-8 p-4 sm:p-6 lg:p-8">{renderMainContent()}</main>
+            <footer className="text-center mt-12 text-sm text-gray-400 dark:text-gray-500 p-4"><p>{t('footer')}</p></footer>
             {installPrompt && <InstallPwaSnackbar onInstall={handleInstallClick} onDismiss={handleDismissInstall} />}
         </div>
     );

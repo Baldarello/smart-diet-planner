@@ -3,7 +3,7 @@ import { mealPlanStore } from '../stores/MealPlanStore';
 const translations = {
   it: {
     // App.tsx
-    mainTitle: "Smart Diet Planner",
+    mainTitle: "LifePulse",
     mainSubtitle: "Il tuo assistente intelligente per la pianificazione dei pasti.",
     changeDiet: "Nuovo Piano",
     changeDietTitle: "Crea o ripristina un piano",
@@ -179,7 +179,7 @@ const translations = {
   },
   en: {
     // App.tsx
-    mainTitle: "Smart Diet Planner",
+    mainTitle: "LifePulse",
     mainSubtitle: "Your intelligent meal planning assistant.",
     changeDiet: "New Plan",
     changeDietTitle: "Create or restore a plan",

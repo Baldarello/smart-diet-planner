@@ -1,6 +1,6 @@
 {
-  "name": "Smart Diet Planner",
-  "short_name": "Diet Planner",
+  "name": "LifePulse",
+  "short_name": "LifePulse",
   "description": "An intelligent meal plan assistant that reads a diet PDF, organizes it into a weekly calendar, and automatically generates a complete, aggregated shopping list.",
   "start_url": "/",
   "scope": "/",
