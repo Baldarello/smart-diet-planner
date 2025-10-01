@@ -1,7 +1,7 @@
 import { makeAutoObservable, runInAction, toJS } from 'mobx';
 // Fix: Import the 'StoredState' type to resolve 'Cannot find name' errors.
-import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo, HydrationSnackbarInfo, BodyMetrics, ProgressRecord, DailyLog, StoredState } from '../types';
-import { parsePdfText, generateShoppingList as generateShoppingListOffline, extractIngredientInfo } from '../services/offlineParser';
+import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo, HydrationSnackbarInfo, BodyMetrics, ProgressRecord, DailyLog, StoredState, MealItem } from '../types';
+import { parsePdfText, generateShoppingList as generateShoppingListOffline, extractIngredientInfo, singularize, categorizeIngredient } from '../services/offlineParser';
 import { parseMealStructure, getNutritionForMeal, getPlanDetailsAndShoppingList, isQuotaError } from '../services/geminiService';
 import { parseQuantity, formatQuantity } from '../utils/quantityParser';
 import { db } from '../services/db';
@@ -590,13 +590,71 @@ export class MealPlanStore {
   updateShoppingListItem = (categoryName: string, itemIndex: number, updatedItem: ShoppingListItem) => { /* ... unchanged ... */ }
   addShoppingListCategory = (categoryName: string) => { /* ... unchanged ... */ }
   
+  private _updatePantryOnItemToggle = (mealItem: MealItem, isConsumed: boolean) => {
+    const consumedQty = parseQuantity(mealItem.fullDescription);
+    if (!consumedQty) {
+      console.warn(`Could not parse quantity for "${mealItem.fullDescription}", skipping pantry update.`);
+      return;
+    }
+
+    const singularConsumedName = singularize(mealItem.ingredientName);
+    const pantryIndex = this.pantry.findIndex(p => singularize(p.item.toLowerCase()) === singularConsumedName);
+    const pantryItem = pantryIndex > -1 ? this.pantry[pantryIndex] : null;
+
+    runInAction(() => {
+        if (isConsumed) { // Deduct from pantry
+            if (pantryItem) {
+                const pantryQty = parseQuantity(pantryItem.quantity);
+                if (pantryQty && singularize(pantryQty.unit) === singularize(consumedQty.unit)) {
+                    const newPantryValue = pantryQty.value - consumedQty.value;
+                    if (newPantryValue <= 0.01) { // Use tolerance for float comparison
+                        this.pantry.splice(pantryIndex, 1);
+                    } else {
+                        pantryItem.quantity = formatQuantity({ value: newPantryValue, unit: pantryQty.unit });
+                    }
+                } else {
+                    console.warn(`Cannot deduct from pantry: Units mismatch or unparsable quantity for "${pantryItem.item}". Pantry: "${pantryItem.quantity}", Consumed: "${mealItem.fullDescription}"`);
+                }
+            } else {
+                 console.warn(`Item "${mealItem.ingredientName}" consumed but not found in pantry.`);
+            }
+        } else { // Add back to pantry
+            if (pantryItem) {
+                const pantryQty = parseQuantity(pantryItem.quantity);
+                if (pantryQty && singularize(pantryQty.unit) === singularize(consumedQty.unit)) {
+                     const newPantryValue = pantryQty.value + consumedQty.value;
+                     pantryItem.quantity = formatQuantity({ value: newPantryValue, unit: pantryQty.unit });
+                } else {
+                    // Fallback for complex units: append. This is a safe but potentially messy way to handle it.
+                    pantryItem.quantity += `, ${formatQuantity(consumedQty)}`;
+                }
+            } else {
+                // Item wasn't in pantry, add it back.
+                const category = categorizeIngredient(mealItem.ingredientName);
+                this.pantry.push({
+                    item: mealItem.ingredientName,
+                    quantity: formatQuantity(consumedQty),
+                    originalCategory: category
+                });
+            }
+        }
+    });
+    this.saveToDB(); // Save changes to pantry
+  }
+
   toggleMealItem = async (mealIndex: number, itemIndex: number) => {
     if (!this.currentDayPlan) return;
     const plan = toJS(this.currentDayPlan);
     const mealItem = plan.meals[mealIndex]?.items[itemIndex];
     if (!mealItem) return;
+
+    const originalMealItemState = { ...mealItem };
     mealItem.used = !mealItem.used;
+    
     runInAction(() => { this.currentDayPlan = plan; });
+    
+    this._updatePantryOnItemToggle(originalMealItemState, mealItem.used);
+
     await db.dailyLogs.put(plan);
   }
 

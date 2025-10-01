@@ -42,7 +42,7 @@ export function extractIngredientInfo(description: string): Pick<MealItem, 'ingr
  * @param name The clean ingredient name.
  * @returns A category name string.
  */
-function categorizeIngredient(name: string): string {
+export function categorizeIngredient(name: string): string {
     const lowerName = name.toLowerCase();
     
     if (['frutta', 'mela', 'banana', 'arancia', 'pera', 'fragole', 'kiwi', 'pesca', 'limone', 'frutti'].some(k => lowerName.includes(k))) return 'Frutta';
@@ -62,7 +62,7 @@ function categorizeIngredient(name: string): string {
  * @param word The word to singularize.
  * @returns The singular form of the word.
  */
-function singularize(word: string): string {
+export function singularize(word: string): string {
     const s = word.toLowerCase().trim();
 
     if (['g', 'kg', 'ml', 'l'].includes(s)) {
