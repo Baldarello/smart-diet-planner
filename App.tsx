@@ -19,9 +19,10 @@ import {
     InstallPwaSnackbar,
     GoogleLogin,
     Drawer,
-    MenuIcon
+    MenuIcon,
+    ProgressView,
 } from './components';
-import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon, ExportIcon, ChangeDietIcon, EditIcon } from './components/Icons';
+import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon } from './components/Icons';
 
 const App: React.FC = observer(() => {
     const store = mealPlanStore;
@@ -77,8 +78,6 @@ const App: React.FC = observer(() => {
     }, [store.theme]);
     
     useEffect(() => {
-        // When a new plan is created or an old one is cleared/restored,
-        // ensure we exit the "new plan" flow.
         if (store.currentPlanId) {
             setShowNewPlanFlow(false);
             setShowManualForm(false);
@@ -92,7 +91,6 @@ const App: React.FC = observer(() => {
             });
         }
 
-        // Timer for MEALS (checks every minute)
         const mealTimer = setInterval(() => {
             if (!store.currentPlanId) return;
 
@@ -117,14 +115,12 @@ const App: React.FC = observer(() => {
             }
         }, 60 * 1000);
         
-        // Timer for HYDRATION (checks every minute)
         const hydrationTimer = setInterval(() => {
              if (store.currentPlanId) {
                 store.updateHydrationStatus();
             }
         }, 60 * 1000);
 
-        // Initial check on load
         if (store.currentPlanId) {
             store.updateHydrationStatus();
         }
@@ -158,12 +154,10 @@ const App: React.FC = observer(() => {
 
     const renderDrawerContent = () => (
         <div className="flex flex-col h-full space-y-6">
-            {/* User Profile / Login */}
             <div className="border-b dark:border-gray-700 pb-6">
                 <GoogleLogin />
             </div>
 
-            {/* Plan Management */}
             <div className="flex flex-col space-y-4">
                 <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t('planManagement')}</h3>
                 <button onClick={() => { setShowNewPlanFlow(true); setShowManualForm(false); setIsDrawerOpen(false); }} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
@@ -179,7 +173,6 @@ const App: React.FC = observer(() => {
                 )}
             </div>
             
-            {/* Settings */}
             <div className="flex-grow flex flex-col justify-end">
                 <div className="border-t dark:border-gray-700 pt-6 space-y-4">
                     <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t('settings')}</h3>
@@ -221,12 +214,13 @@ const App: React.FC = observer(() => {
                 { id: 'plan', icon: <CalendarIcon />, label: t('tabWeekly') },
                 { id: 'list', icon: <ListIcon />, label: t('tabShopping') },
                 { id: 'pantry', icon: <PantryIcon />, label: t('tabPantry') },
+                { id: 'progress', icon: <ProgressIcon />, label: t('tabProgress') },
                 { id: 'archive', icon: <ArchiveIcon />, label: t('tabArchive') },
             ];
             return (
                 <>
                     <ActivePlanNameEditor />
-                    <div className="mb-8 flex justify-center flex-wrap gap-2 bg-white dark:bg-gray-800 p-2 rounded-full shadow-md max-w-2xl mx-auto">
+                    <div className="mb-8 flex justify-center flex-wrap gap-2 bg-white dark:bg-gray-800 p-2 rounded-full shadow-md max-w-3xl mx-auto">
                         {tabs.map(tab => (
                             <button key={tab.id} onClick={() => store.setActiveTab(tab.id as any)} className={`flex items-center justify-center flex-grow px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${store.activeTab === tab.id ? 'bg-violet-600 text-white shadow-md' : 'bg-transparent text-gray-600 dark:text-gray-300 hover:bg-violet-100 dark:hover:bg-gray-700'}`}>
                                 {tab.icon} {tab.label}
@@ -237,12 +231,12 @@ const App: React.FC = observer(() => {
                     {store.activeTab === 'plan' && <MealPlanView plan={store.activeMealPlan} />}
                     {store.activeTab === 'list' && <ShoppingListView />}
                     {store.activeTab === 'pantry' && <PantryView />}
+                    {store.activeTab === 'progress' && <ProgressView />}
                     {store.activeTab === 'archive' && <ArchiveView />}
                 </>
             );
         }
 
-        // New Plan View / Initial View
         if (showManualForm) {
             return <ManualPlanEntryForm onCancel={() => { setShowManualForm(false); if (store.currentPlanId) setShowNewPlanFlow(false); }} />;
         }
@@ -292,7 +286,6 @@ const App: React.FC = observer(() => {
             <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-30 shadow-sm border-b border-slate-200 dark:border-gray-800">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-3 items-center h-16">
-                        {/* Left side: Menu button */}
                         <div className="justify-self-start">
                             <button
                                 onClick={() => setIsDrawerOpen(true)}
@@ -303,13 +296,11 @@ const App: React.FC = observer(() => {
                             </button>
                         </div>
                         
-                        {/* Center: Title */}
                         <div className="text-center">
                             <h1 className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600">{t('mainTitle')}</h1>
                             <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">{t('mainSubtitle')}</p>
                         </div>
 
-                        {/* Right side: Empty placeholder for balance */}
                         <div />
                     </div>
                 </div>

@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import observable from 'dexie-observable';
-import { ArchivedPlan, DayPlan, PantryItem, ShoppingListCategory, Theme, Locale, BodyMetrics } from '../types';
+import { ArchivedPlan, DayPlan, PantryItem, ShoppingListCategory, Theme, Locale, BodyMetrics, ProgressRecord } from '../types';
 import { authStore } from '../stores/AuthStore';
 import { saveStateToDrive } from './driveService';
 
@@ -32,28 +32,20 @@ export interface AppState {
 }
 
 export class MySubClassedDexie extends Dexie {
-  appState!: Table<AppState, string>; // The second type parameter is the primary key type.
+  appState!: Table<AppState, string>;
+  progressHistory!: Table<ProgressRecord, string>; // Primary key is the 'date' string
 
   constructor() {
-    // Fix: For Dexie v4, addons should be passed explicitly to the constructor
-    // to ensure they are properly initialized. The old side-effect import
-    // is deprecated and can be unreliable in some module setups, leading to
-    // runtime errors like 'cannot read property of undefined'.
     super('dietPlanDatabase', { addons: [observable] });
-    // Fix: Use a type assertion to work around a TypeScript error where the 'version'
-    // method is not found on the subclassed type, likely due to addon interference.
-    (this as any).version(1).stores({
-      appState: 'key', // Primary key is 'key'
+    (this as any).version(2).stores({
+      appState: 'key',
+      progressHistory: 'date', // Primary key is 'date'
     });
   }
 }
 
 export const db = new MySubClassedDexie();
 
-// Fix: Correctly type the change objects from dexie-observable. The original types
-// (CreateRequest, etc.) were incorrect for this context and caused import errors
-// because they are not top-level exports from Dexie and don't match the
-// observable change object structure.
 interface DexieObservableChange {
   table: string;
   type: 1 | 2 | 3; // 1-create, 2-update, 3-delete
@@ -69,10 +61,6 @@ const debounceSync = (callback: () => void, delay: number) => {
     syncTimeout = window.setTimeout(callback, delay);
 };
 
-/**
- * Handles database changes for syncing with Google Drive.
- * @param changes - An array of change objects from dexie-observable.
- */
 async function handleDatabaseChangeForSync(changes: DexieObservableChange[]) {
     if (!authStore.isLoggedIn || !authStore.accessToken) {
         console.log("User not logged in, skipping sync.");
@@ -93,14 +81,8 @@ async function handleDatabaseChangeForSync(changes: DexieObservableChange[]) {
             } catch (error) {
                 console.error('Failed to sync state to Google Drive:', error);
             }
-        }, 5000); // Wait 5 seconds after the last change before syncing
+        }, 5000);
     }
 }
 
-
-// Subscribe to database changes.
-// The subscription will be triggered after any successful database modification.
-// FIX: A type assertion is used to resolve a TypeScript error where the 'on' property,
-// added by the dexie-observable addon, is not recognized on the subclassed type. This
-// is consistent with other typing workarounds in this class.
 (db as any).on('changes', handleDatabaseChangeForSync);

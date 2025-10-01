@@ -1,5 +1,5 @@
 import { makeAutoObservable, runInAction, toJS } from 'mobx';
-import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo, HydrationSnackbarInfo, BodyMetrics } from '../types';
+import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo, HydrationSnackbarInfo, BodyMetrics, ProgressRecord } from '../types';
 import { parsePdfText, generateShoppingList as generateShoppingListOffline, extractIngredientInfo } from '../services/offlineParser';
 import { parseMealStructure, getNutritionForMeal, getPlanDetailsAndShoppingList, isQuotaError } from '../services/geminiService';
 import { parseQuantity, formatQuantity } from '../utils/quantityParser';
@@ -28,7 +28,7 @@ export class MealPlanStore {
   shoppingList: ShoppingListCategory[] = [];
   pantry: PantryItem[] = [];
   archivedPlans: ArchivedPlan[] = [];
-  activeTab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' = 'plan';
+  activeTab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' = 'daily';
   pdfParseProgress = 0;
   currentPlanName = 'My Diet Plan';
   theme: Theme = 'light';
@@ -47,9 +47,10 @@ export class MealPlanStore {
   stepGoal = 20000;
   stepsTaken = 0;
   bodyMetrics: BodyMetrics = {};
+  progressHistory: ProgressRecord[] = [];
 
   sentNotifications = new Map<string, boolean>();
-  lastActiveDate: string = new Date().toLocaleDateString();
+  lastActiveDate: string = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
 
   constructor() {
     makeAutoObservable(this);
@@ -59,15 +60,18 @@ export class MealPlanStore {
 
   init = async () => {
     try {
-        const savedState = await db.appState.get('dietPlanData');
+        const [savedState, progressHistory] = await Promise.all([
+            db.appState.get('dietPlanData'),
+            db.progressHistory.orderBy('date').toArray()
+        ]);
         
         runInAction(() => {
+            this.progressHistory = progressHistory;
+
             if (savedState) {
                 const data = savedState.value;
-                // Fix: Removed reference to 'mealPlan', which does not exist on the StoredState type.
                 const loadedPlan = data.activeMealPlan || [];
                 
-                // Defensively map the loaded plan to prevent errors from malformed data
                 this.activeMealPlan = loadedPlan.map((day: DayPlan) => ({
                     ...day,
                     meals: (day.meals || []).map((meal: Meal) => ({
@@ -94,7 +98,7 @@ export class MealPlanStore {
                 this.locale = data.locale || 'it';
                 this.hasUnsavedChanges = data.hasUnsavedChanges || false;
                 this.hydrationGoalLiters = data.hydrationGoalLiters || 3;
-                this.lastActiveDate = data.lastActiveDate || new Date().toLocaleDateString();
+                this.lastActiveDate = data.lastActiveDate || new Date().toLocaleDateString('en-CA');
                 this.waterIntakeMl = data.waterIntakeMl || 0;
                 this.currentPlanId = data.currentPlanId || null;
                 this.stepGoal = data.stepGoal || 20000;
@@ -105,21 +109,18 @@ export class MealPlanStore {
                     this.sentNotifications = new Map(data.sentNotifications);
                 }
 
-                // Migration: Ensure an ID exists if a plan exists
                 if (this.activeMealPlan.length > 0 && !this.currentPlanId) {
                     this.currentPlanId = 'migrated_' + Date.now().toString();
                 }
 
                 this.resetSentNotificationsIfNeeded();
 
-                // Final status check: A plan is only successful if both the plan array and ID exist.
                 if (this.activeMealPlan.length > 0 && this.currentPlanId) {
                     this.status = AppStatus.SUCCESS;
                 } else {
                     this.status = AppStatus.INITIAL;
                 }
             } else {
-                // No saved state found
                 this.status = AppStatus.INITIAL;
             }
         });
@@ -235,14 +236,77 @@ export class MealPlanStore {
     this.saveToDB();
   }
 
-  resetSentNotificationsIfNeeded = () => {
-    const today = new Date().toLocaleDateString();
+  recordDailyProgress = async (date: string) => {
+    const dayOfWeek = new Date(date).getDay();
+    const dayMap: { [key: number]: string } = { 0: 'DOMENICA', 1: 'LUNEDI', 2: 'MARTEDI', 3: 'MERCOLEDI', 4: 'GIOVEDI', 5: 'VENERDI', 6: 'SABATO' };
+    const dayName = dayMap[dayOfWeek];
+    
+    const dayPlan = this.activeMealPlan.find(d => d.day.toUpperCase() === dayName);
+    
+    if (!dayPlan || dayPlan.meals.length === 0) return;
+
+    let totalDone = 0;
+    let plannedCalories = 0;
+    let actualCalories = 0;
+
+    dayPlan.meals.forEach(meal => {
+        if (meal.done) {
+            totalDone++;
+            if (meal.actualNutrition) {
+                actualCalories += meal.actualNutrition.calories;
+            } else if (meal.nutrition) {
+                actualCalories += meal.nutrition.calories;
+            }
+        }
+        if (meal.nutrition) {
+            plannedCalories += meal.nutrition.calories;
+        }
+    });
+
+    const adherence = Math.round((totalDone / dayPlan.meals.length) * 100);
+
+    const record: ProgressRecord = {
+        date,
+        adherence: isNaN(adherence) ? 0 : adherence,
+        plannedCalories,
+        actualCalories,
+        weightKg: this.bodyMetrics.weightKg,
+        bodyFatPercentage: this.bodyMetrics.bodyFatPercentage,
+        leanMassKg: this.bodyMetrics.leanMassKg,
+        stepsTaken: this.stepsTaken,
+        waterIntakeMl: this.waterIntakeMl,
+    };
+
+    try {
+        await db.progressHistory.put(record, 'date');
+        runInAction(() => {
+            const existingIndex = this.progressHistory.findIndex(p => p.date === date);
+            if (existingIndex > -1) {
+                this.progressHistory[existingIndex] = record;
+            } else {
+                this.progressHistory.push(record);
+                this.progressHistory.sort((a, b) => a.date.localeCompare(b.date));
+            }
+        });
+    } catch (error) {
+        console.error("Failed to save progress record to DB", error);
+    }
+};
+
+  resetSentNotificationsIfNeeded = async () => {
+    const today = new Date().toLocaleDateString('en-CA');
     if (this.lastActiveDate !== today) {
-      this.sentNotifications.clear();
-      this.waterIntakeMl = 0;
-      this.stepsTaken = 0;
-      this.lastActiveDate = today;
-      this.saveToDB();
+        if (this.currentPlanId) {
+            await this.recordDailyProgress(this.lastActiveDate);
+        }
+        
+        runInAction(() => {
+            this.sentNotifications.clear();
+            this.waterIntakeMl = 0;
+            this.stepsTaken = 0;
+            this.lastActiveDate = today;
+            this.saveToDB();
+        });
     }
   }
 
@@ -252,43 +316,32 @@ export class MealPlanStore {
     const now = new Date();
     const currentHour = now.getHours();
     
-    // If the user has already met their goal, no need to show a reminder.
     if (this.waterIntakeMl >= this.hydrationGoalLiters * 1000) {
       this.dismissHydrationSnackbar();
       return;
     }
 
-    // The hydration window is from 9:00 to 18:00 (10 hours/slots)
     if (currentHour < 9) {
-      // Before the window starts, ensure there's no snackbar
       this.dismissHydrationSnackbar();
       return;
     }
 
-    // Amount to drink per one-hour slot
     const amountPerSlot = Math.round((this.hydrationGoalLiters * 1000) / 10);
-    
-    // Calculate how many slots should have passed by now.
-    // At 9:xx, 1 slot passed. At 18:xx, 10 slots have passed.
     const slotsPassed = Math.min(10, Math.max(0, currentHour - 8)); 
-    
     const expectedIntake = slotsPassed * amountPerSlot;
     const missedAmount = expectedIntake - this.waterIntakeMl;
 
-    if (missedAmount > 50) { // Use a 50ml threshold to avoid tiny reminders
+    if (missedAmount > 50) {
         const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        // Round up to the nearest 50ml for a cleaner number
         const roundedMissedAmount = Math.ceil(missedAmount / 50) * 50;
         
-        // Show or update the snackbar
         this.showHydrationSnackbar(currentTime, roundedMissedAmount);
     } else {
-        // If caught up, dismiss the snackbar
         this.dismissHydrationSnackbar();
     }
   };
 
-  setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry') => {
+  setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress') => {
     this.activeTab = tab;
   }
   
@@ -603,7 +656,6 @@ export class MealPlanStore {
     }
   }
 
-  // New methods for manual shopping list editing
   addShoppingListItem = (categoryName: string, item: ShoppingListItem) => {
     const category = this.shoppingList.find(c => c.category === categoryName);
     if (category && item.item.trim() && item.quantity.trim()) {
@@ -756,7 +808,6 @@ export class MealPlanStore {
 
         if (result) {
             runInAction(() => {
-                // Create maps of the current state to preserve user interactions (done/used flags)
                 const oldPlanMap = new Map(this.activeMealPlan.map(day => [day.day, day]));
 
                 this.activeMealPlan = result.weeklyPlan.map(newDay => {
@@ -846,7 +897,7 @@ export class MealPlanStore {
             this.activeTab = 'daily';
             this.hasUnsavedChanges = false;
             this.sentNotifications.clear();
-            this.lastActiveDate = new Date().toLocaleDateString();
+            this.lastActiveDate = new Date().toLocaleDateString('en-CA');
             this.waterIntakeMl = 0;
             this.stepsTaken = 0;
             this.pantry = [];
@@ -869,7 +920,7 @@ export class MealPlanStore {
   processJsonFile = (file: File) => {
     this.status = AppStatus.LOADING;
     this.error = null;
-    this.pdfParseProgress = 0; // Not really a progress, but sets the loading state.
+    this.pdfParseProgress = 0;
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -878,7 +929,6 @@ export class MealPlanStore {
             const text = event.target.result as string;
             const data = JSON.parse(text) as ImportedJsonData;
 
-            // More robust validation
             if (typeof data.planName !== 'string' || !Array.isArray(data.weeklyPlan) || !Array.isArray(data.shoppingList)) {
                 throw new Error("Invalid JSON format. Required fields 'planName', 'weeklyPlan', or 'shoppingList' are missing or have the wrong type.");
             }
@@ -897,7 +947,6 @@ export class MealPlanStore {
 
                 this.currentPlanName = data.planName;
                 
-                // Defensively map over the loaded data to ensure flags exist
                 const sanitizedPlan = data.weeklyPlan.map(day => ({
                   ...day,
                   meals: (day.meals || []).map(meal => ({
@@ -917,7 +966,7 @@ export class MealPlanStore {
                 this.activeTab = 'daily';
                 this.hasUnsavedChanges = false;
                 this.sentNotifications.clear();
-                this.lastActiveDate = new Date().toLocaleDateString();
+                this.lastActiveDate = new Date().toLocaleDateString('en-CA');
                 this.waterIntakeMl = 0;
                 this.stepsTaken = 0;
                 this.currentPlanId = 'imported_' + Date.now().toString();
@@ -1003,7 +1052,6 @@ export class MealPlanStore {
                      } else { throw error; }
                  }
             } else {
-                // Fix: Corrected function call from `parsePdf.parse` to `parsePdfText`
                 const offlineData = parsePdfText(pageTexts);
                 mealStructure = offlineData.weeklyPlan;
                 shoppingList = offlineData.shoppingList;
@@ -1032,7 +1080,7 @@ export class MealPlanStore {
                 this.activeTab = 'daily';
                 this.hasUnsavedChanges = false;
                 this.sentNotifications.clear();
-                this.lastActiveDate = new Date().toLocaleDateString();
+                this.lastActiveDate = new Date().toLocaleDateString('en-CA');
                 this.waterIntakeMl = 0;
                 this.stepsTaken = 0;
                 this.pantry = [];

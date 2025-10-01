@@ -5,7 +5,7 @@ import { t } from '../i18n';
 import { StepsIcon, FlameIcon } from './Icons';
 
 const StepTracker: React.FC = observer(() => {
-    const { stepGoal, setStepGoal, stepsTaken, setSteps, logSteps } = mealPlanStore;
+    const { stepGoal, setStepGoal, stepsTaken, setSteps, logSteps, bodyMetrics } = mealPlanStore;
     const [isEditingIntake, setIsEditingIntake] = useState(false);
     const [editableIntake, setEditableIntake] = useState(stepsTaken.toString());
     const [editableGoal, setEditableGoal] = useState(stepGoal.toString());
@@ -35,8 +35,12 @@ const StepTracker: React.FC = observer(() => {
                 return;
             }
     
-            // Base calorie expenditure per step, approximating a 70kg person.
-            const BASE_CALORIES_PER_STEP = 0.045;
+            // Use the user's weight from body metrics, falling back to 70kg.
+            const userWeightKg = bodyMetrics.weightKg && bodyMetrics.weightKg > 0 ? bodyMetrics.weightKg : 70;
+            // The original 0.045 value was an approximation for a 70kg person.
+            // We scale this value based on the user's actual weight for better accuracy.
+            const BASE_CALORIES_PER_STEP = (userWeightKg / 70) * 0.045;
+            
             // A baseline pace for a moderate walk, in steps per hour.
             const BASELINE_PACE = 5500;
     
@@ -58,7 +62,7 @@ const StepTracker: React.FC = observer(() => {
         };
     
         calculateCalories();
-    }, [hours, stepsTaken]);
+    }, [hours, stepsTaken, bodyMetrics.weightKg]);
 
 
     const goal = parseInt(editableGoal, 10);

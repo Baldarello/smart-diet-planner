@@ -25,4 +25,6 @@ export { default as ActualNutrition } from './ActualNutrition';
 export { default as Drawer } from './Drawer';
 export { default as StepTracker } from './StepTracker';
 export { default as BodyMetricsTracker } from './BodyMetricsTracker';
+export { default as ProgressView } from './ProgressView';
+export { default as ProgressChart } from './ProgressChart';
 export * from './Icons';

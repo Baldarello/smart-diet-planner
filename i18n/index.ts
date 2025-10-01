@@ -14,6 +14,7 @@ const translations = {
     tabShopping: "Spesa",
     tabPantry: "Dispensa",
     tabArchive: "Archivio",
+    tabProgress: "Progressi",
     welcomeTitle: "Inizia un Nuovo Piano Dietetico",
     welcomeSubtitle: "Carica un file PDF o JSON del tuo piano per iniziare.",
     uploadPdfTitle: "Carica il tuo Piano",
@@ -198,6 +199,21 @@ const translations = {
     unitKg: "kg",
     unitCm: "cm",
     unitPercent: "%",
+    
+    // Progress View
+    progressTitle: "I Tuoi Progressi",
+    dateRange: "Intervallo di Tempo",
+    last7Days: "Ultimi 7 Giorni",
+    last30Days: "Ultimi 30 Giorni",
+    last90Days: "Ultimi 90 Giorni",
+    weightAndFatChartTitle: "Andamento Peso e Massa Grassa",
+    adherenceChartTitle: "Aderenza al Piano Pasti",
+    calorieIntakeChartTitle: "Introito Calorico (Pianificato vs. Effettivo)",
+    noProgressDataTitle: "Nessun dato sui progressi ancora",
+    noProgressDataSubtitle: "Completa i tuoi pasti giornalieri e inserisci i dati corporei per iniziare a tracciare i tuoi progressi qui.",
+    adherence: "Aderenza",
+    planned: "Pianificato",
+    actual: "Effettivo",
   },
   en: {
     // App.tsx
@@ -212,6 +228,7 @@ const translations = {
     tabShopping: "Shopping",
     tabPantry: "Pantry",
     tabArchive: "Archive",
+    tabProgress: "Progress",
     welcomeTitle: "Start a New Diet Plan",
     welcomeSubtitle: "Upload a PDF or JSON file of your plan to get started.",
     uploadPdfTitle: "Upload Your Plan",
@@ -395,15 +412,24 @@ const translations = {
     unitKg: "kg",
     unitCm: "cm",
     unitPercent: "%",
+    
+    // Progress View
+    progressTitle: "Your Progress",
+    dateRange: "Time Range",
+    last7Days: "Last 7 Days",
+    last30Days: "Last 30 Days",
+    last90Days: "Last 90 Days",
+    weightAndFatChartTitle: "Weight & Body Fat Trend",
+    adherenceChartTitle: "Meal Plan Adherence",
+    calorieIntakeChartTitle: "Calorie Intake (Planned vs. Actual)",
+    noProgressDataTitle: "No Progress Data Yet",
+    noProgressDataSubtitle: "Complete your daily meals and enter body metrics to start tracking your progress here.",
+    adherence: "Adherence",
+    planned: "Planned",
+    actual: "Actual",
   },
 };
 
-// Fix: The `t` function was incorrectly typed to return `string | string[]`, causing widespread
-// type errors in components that require a `string` prop (like `title` or `aria-label`).
-// It also contained a runtime bug where it would attempt to call `.replace()` on an array.
-// The function is now corrected to always return a `string`. If a key resolves to an
-// array (which is incorrect usage for this function), it logs a warning and returns the
-// first element to prevent the app from crashing.
 export const t = (key: keyof typeof translations.it, options?: { [key: string]: string }): string => {
     const locale = mealPlanStore.locale;
     const translationValue = translations[locale][key] || translations.it[key];

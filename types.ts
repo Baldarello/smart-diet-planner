@@ -73,6 +73,20 @@ export interface BodyMetrics {
   bodyWaterPercentage?: number;
 }
 
+export interface ProgressRecord {
+  id?: number;
+  date: string; // YYYY-MM-DD
+  adherence: number; // 0-100
+  plannedCalories: number;
+  actualCalories: number;
+  weightKg?: number;
+  bodyFatPercentage?: number;
+  leanMassKg?: number;
+  stepsTaken: number;
+  waterIntakeMl: number;
+}
+
+
 export interface UserProfile {
   id: string;
   name: string;

@@ -1,0 +1,144 @@
+import React, { useState, useMemo } from 'react';
+import { observer } from 'mobx-react-lite';
+import { mealPlanStore } from '../stores/MealPlanStore';
+import { t } from '../i18n';
+import ProgressChart from './ProgressChart';
+import { ProgressRecord } from '../types';
+import { ProgressIcon } from './Icons';
+
+type DateRange = 7 | 30 | 90;
+
+const ProgressView: React.FC = observer(() => {
+    const { progressHistory } = mealPlanStore;
+    const [dateRange, setDateRange] = useState<DateRange>(30);
+
+    const filteredData = useMemo(() => {
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(endDate.getDate() - dateRange);
+        
+        return progressHistory.filter(record => {
+            const recordDate = new Date(record.date);
+            return recordDate >= startDate && recordDate <= endDate;
+        });
+    }, [progressHistory, dateRange]);
+
+    if (progressHistory.length < 2) {
+        return (
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg text-center max-w-2xl mx-auto">
+                <div className="flex justify-center mb-4">
+                    <ProgressIcon />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('noProgressDataTitle')}</h2>
+                <p className="text-gray-500 dark:text-gray-400">{t('noProgressDataSubtitle')}</p>
+            </div>
+        );
+    }
+
+    const chartData = {
+        labels: filteredData.map(d => new Date(d.date).toLocaleDateString(mealPlanStore.locale, { month: 'short', day: 'numeric' })),
+        weight: filteredData.map(d => ({ value: d.weightKg, date: d.date })).filter(d => d.value != null) as { value: number, date: string }[],
+        fat: filteredData.map(d => ({ value: d.bodyFatPercentage, date: d.date })).filter(d => d.value != null) as { value: number, date: string }[],
+        adherence: filteredData.map(d => d.adherence),
+        plannedCalories: filteredData.map(d => d.plannedCalories),
+        actualCalories: filteredData.map(d => d.actualCalories),
+    };
+
+    const getMatchingLabels = (data: { date: string }[]) => {
+        const dataDates = new Set(data.map(d => d.date));
+        return filteredData
+            .filter(record => dataDates.has(record.date))
+            .map(d => new Date(d.date).toLocaleDateString(mealPlanStore.locale, { month: 'short', day: 'numeric' }));
+    };
+
+    return (
+        <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-6xl mx-auto">
+            <div className="flex flex-col sm:flex-row justify-between items-center border-b dark:border-gray-700 pb-4 mb-6">
+                <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{t('progressTitle')}</h2>
+                <div className="flex items-center gap-2 mt-4 sm:mt-0">
+                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('dateRange')}:</span>
+                    <div>
+                        {( [7, 30, 90] as DateRange[]).map(range => (
+                            <button
+                                key={range}
+                                onClick={() => setDateRange(range)}
+                                className={`px-3 py-1 text-sm font-semibold rounded-full transition-colors ${dateRange === range ? 'bg-violet-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                            >
+                                {t(range === 7 ? 'last7Days' : range === 30 ? 'last30Days' : 'last90Days')}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className="space-y-8">
+                {chartData.weight.length > 1 && (
+                     <div>
+                        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('weightAndFatChartTitle')}</h3>
+                        <ProgressChart
+                            type="line"
+                            labels={getMatchingLabels(chartData.weight)}
+                            datasets={[
+                                {
+                                    label: t('weight'),
+                                    data: chartData.weight.map(d => d.value),
+                                    color: 'rgba(139, 92, 246, 1)',
+                                    unit: t('unitKg'),
+                                },
+                                ...(chartData.fat.length > 1 ? [{
+                                    label: t('bodyFat'),
+                                    data: chartData.fat.map(d => d.value),
+                                    color: 'rgba(236, 72, 153, 1)',
+                                    unit: t('unitPercent'),
+                                }] : [])
+                            ]}
+                        />
+                    </div>
+                )}
+
+                {chartData.adherence.length > 1 && (
+                     <div>
+                        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('adherenceChartTitle')}</h3>
+                        <ProgressChart
+                            type="area"
+                            labels={chartData.labels}
+                            datasets={[{
+                                label: t('adherence'),
+                                data: chartData.adherence,
+                                color: 'rgba(16, 185, 129, 1)',
+                                unit: '%',
+                            }]}
+                        />
+                    </div>
+                )}
+                
+                {chartData.plannedCalories.some(c => c > 0) && (
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('calorieIntakeChartTitle')}</h3>
+                        <ProgressChart
+                            type="bar"
+                            labels={chartData.labels}
+                            datasets={[
+                                {
+                                    label: t('planned'),
+                                    data: chartData.plannedCalories,
+                                    color: 'rgba(167, 139, 250, 0.6)',
+                                    unit: t('nutritionUnitKcal'),
+                                },
+                                {
+                                    label: t('actual'),
+                                    data: chartData.actualCalories,
+                                    color: 'rgba(59, 130, 246, 0.8)',
+                                    unit: t('nutritionUnitKcal'),
+                                }
+                            ]}
+                        />
+                    </div>
+                )}
+
+            </div>
+        </div>
+    );
+});
+
+export default ProgressView;
