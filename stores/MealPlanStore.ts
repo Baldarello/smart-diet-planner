@@ -650,13 +650,11 @@ export class MealPlanStore {
     return this.currentDayPlan;
   }
 
-  getDayNutritionSummary(dayPlan: DayPlan | null): NutritionInfo | null | undefined {
+  getDayNutritionSummary(dayPlan: DayPlan | null): NutritionInfo | null {
     if (!this.onlineMode || !dayPlan) {
       return null;
     }
-    if (dayPlan.meals.some(meal => meal.nutrition === undefined)) {
-      return undefined;
-    }
+    
     const summary: NutritionInfo = { carbs: 0, protein: 0, fat: 0, calories: 0 };
     let hasData = false;
     dayPlan.meals.forEach(meal => {
