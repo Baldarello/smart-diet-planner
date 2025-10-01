@@ -21,6 +21,8 @@ export interface StoredState {
     waterIntakeMl: number;
     currentPlanId: string | null;
     sentNotifications: [string, boolean][];
+    stepGoal?: number;
+    stepsTaken?: number;
 }
 
 export interface AppState {

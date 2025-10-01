@@ -44,6 +44,8 @@ export class MealPlanStore {
   hydrationGoalLiters = 3;
   waterIntakeMl = 0;
   hydrationSnackbar: HydrationSnackbarInfo | null = null;
+  stepGoal = 20000;
+  stepsTaken = 0;
 
   sentNotifications = new Map<string, boolean>();
   lastActiveDate: string = new Date().toLocaleDateString();
@@ -94,6 +96,8 @@ export class MealPlanStore {
                 this.lastActiveDate = data.lastActiveDate || new Date().toLocaleDateString();
                 this.waterIntakeMl = data.waterIntakeMl || 0;
                 this.currentPlanId = data.currentPlanId || null;
+                this.stepGoal = data.stepGoal || 20000;
+                this.stepsTaken = data.stepsTaken || 0;
 
                 if (data.sentNotifications) {
                     this.sentNotifications = new Map(data.sentNotifications);
@@ -175,6 +179,25 @@ export class MealPlanStore {
       this.saveToDB();
     }
   }
+  
+  setStepGoal = (steps: number) => {
+    if (steps > 0 && steps <= 100000) {
+        this.stepGoal = steps;
+        this.saveToDB();
+    }
+  }
+
+  logSteps = (amount: number) => {
+    this.stepsTaken += amount;
+    this.saveToDB();
+  }
+
+  setSteps = (amount: number) => {
+    if (amount >= 0) {
+        this.stepsTaken = amount;
+        this.saveToDB();
+    }
+  }
 
   showHydrationSnackbar = (time: string, amount: number) => {
     this.hydrationSnackbar = { visible: true, time, amount };
@@ -202,6 +225,7 @@ export class MealPlanStore {
     if (this.lastActiveDate !== today) {
       this.sentNotifications.clear();
       this.waterIntakeMl = 0;
+      this.stepsTaken = 0;
       this.lastActiveDate = today;
       this.saveToDB();
     }
@@ -422,6 +446,8 @@ export class MealPlanStore {
         waterIntakeMl: this.waterIntakeMl,
         currentPlanId: this.currentPlanId,
         sentNotifications: Array.from(this.sentNotifications.entries()),
+        stepGoal: this.stepGoal,
+        stepsTaken: this.stepsTaken,
       };
       await db.appState.put({ key: 'dietPlanData', value: dataToSave });
     } catch (error) {
@@ -444,6 +470,7 @@ export class MealPlanStore {
         this.hasUnsavedChanges = false;
         this.sentNotifications.clear();
         this.waterIntakeMl = 0;
+        this.stepsTaken = 0;
         this.currentPlanId = null;
         this.saveToDB();
     });
@@ -482,6 +509,7 @@ export class MealPlanStore {
         this.pantry = [];
         this.sentNotifications.clear();
         this.waterIntakeMl = 0;
+        this.stepsTaken = 0;
 
         this.archivedPlans = this.archivedPlans.filter(p => p.id !== planId);
         
@@ -804,6 +832,7 @@ export class MealPlanStore {
             this.sentNotifications.clear();
             this.lastActiveDate = new Date().toLocaleDateString();
             this.waterIntakeMl = 0;
+            this.stepsTaken = 0;
             this.pantry = [];
             this.currentPlanId = Date.now().toString();
             this.currentPlanName = `Manual Plan - ${new Date().toLocaleDateString('it-IT')}`;
@@ -874,6 +903,7 @@ export class MealPlanStore {
                 this.sentNotifications.clear();
                 this.lastActiveDate = new Date().toLocaleDateString();
                 this.waterIntakeMl = 0;
+                this.stepsTaken = 0;
                 this.currentPlanId = 'imported_' + Date.now().toString();
 
                 this.saveToDB();
@@ -988,6 +1018,7 @@ export class MealPlanStore {
                 this.sentNotifications.clear();
                 this.lastActiveDate = new Date().toLocaleDateString();
                 this.waterIntakeMl = 0;
+                this.stepsTaken = 0;
                 this.pantry = [];
                 this.currentPlanId = Date.now().toString();
                 this.currentPlanName = `Diet Plan - ${new Date().toLocaleDateString('it-IT')}`;

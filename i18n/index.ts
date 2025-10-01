@@ -175,15 +175,216 @@ const translations = {
     signOutTitle: "Esci dall'account",
     syncDisabled: "Accesso non configurato. La sincronizzazione è disabilitata.",
 
+    // Steps
+    stepTrackerTitle: "Tracciamento Passi",
+    stepGoal: "Obiettivo giornaliero:",
+    stepsUnit: "passi",
+    stepsTaken: "Passi di oggi:",
+    editStepsTitle: "Clicca per modificare",
+    quickAddStepsTitle: "Aggiunta Rapida",
   },
   en: {
     // App.tsx
+    mainTitle: "LifePulse",
+    mainSubtitle: "Your intelligent meal planning assistant.",
+    changeDiet: "New Plan",
+    changeDietTitle: "Create or restore a plan",
+    exportPlan: "Export",
+    exportPlanTitle: "Export plan data to a JSON file",
+    tabDaily: "Today",
+    tabWeekly: "Week",
+    tabShopping: "Shopping",
+    tabPantry: "Pantry",
+    tabArchive: "Archive",
+    welcomeTitle: "Start a New Diet Plan",
+    welcomeSubtitle: "Upload a PDF or JSON file of your plan to get started.",
+    uploadPdfTitle: "Upload Your Plan",
+    viewArchived: "View Archived Plans",
+    uploadNew: "Upload a New Diet Plan",
+    footer: "Made with React & MobX. Offline-first parsing.",
+    errorAndUpload: "Please try uploading a new file",
+    onlineModeTitle: "Online Mode: AI analysis and nutrition are active.",
+    offlineModeTitle: "Offline Mode: API quota exceeded. Basic functionality is active.",
+    createManually: "Create Manually",
+    cancelAndReturn: "Cancel and return to plan",
+    restoreFromArchiveTitle: "Or, restore an archived plan",
+    planManagement: "Plan Management",
+    settings: "Settings",
+    theme: "Theme",
+    language: "Language",
+    connectionStatus: "Connection Status",
+
+    // ManualPlanEntryForm.tsx
+    manualEntryTitle: "Create Your Diet Plan",
+    mealTitleLabel: "Dish name (optional)",
+    ingredientsLabel: "Ingredients",
+    addIngredient: "Add Ingredient",
+    removeIngredient: "Remove Ingredient",
+    savePlan: "Generate Plan",
+    cancel: "Cancel",
+    planEmptyError: "The submitted plan is empty. Please add at least one ingredient.",
+    ingredientPlaceholder: "e.g. 60g of brown rice",
+    
+    // FileUpload.tsx
+    clickToUpload: "Click to upload",
+    dragAndDrop: "or drag and drop",
+    pdfOrJsonFile: "PDF or JSON file of your diet plan",
+    
+    // JsonImportButton.tsx
+    clickToImport: "Click to import",
+    jsonFile: "JSON file",
+
+    // Loader.tsx
+    loadingPlanTitle: "Loading your plan...",
+    loadingPlanMessage: "Just a moment while we retrieve your data.",
+    readingPdfTitle: "Reading your PDF...",
+    structuringPlanTitle: "Structuring Your Plan...",
+    analyzingNutritionTitle: "Analyzing Nutrition...",
+    generatingListTitle: "Creating Shopping List...",
+    progressComplete: "% Complete",
+    readingMessages: [ "Scanning pages...", "Extracting text...", "Recognizing structure...", ],
+    structuringPlanMessages: [ "Organizing your week's meals...", "Identifying ingredients...", "Assigning meal times...", "Building the daily schedule...", ],
+    analyzingNutritionMessages: [ "Estimating nutritional values...", "Calculating calories per meal...", "Analyzing macronutrients...", "This will take a moment...", ],
+    generatingListMessages: [ "Aggregating ingredients...", "Calculating total quantities...", "Categorizing items...", "Almost ready...", ],
+
+    // ErrorMessage.tsx
+    errorOccurred: "An error occurred",
+
+    // ActivePlanNameEditor.tsx
+    editPlanNameLabel: "Edit diet plan name",
+    
+    // DailyPlanView.tsx
+    noPlanToday: "No Plan for Today",
+    noPlanTodaySubtitle: "No meals are scheduled for today in your current plan.",
+    todaysPlan: "Today's Plan:",
+    markAsDone: "Mark as done",
+    markAsToDo: "Mark as to-do",
+
+    // ShoppingListView.tsx
+    shoppingListTitle: "Shopping List",
+    moveToPantry: "Move to Pantry",
+    shoppingListEmpty: "Your shopping list is empty. Good job!",
+    shoppingListStaleTitle: "Changes Detected!",
+    shoppingListStaleMessage: "Your meal plan has changed. The list and pantry may not be accurate.",
+    recalculateList: "Recalculate List",
+    recalculating: "Recalculating...",
+    addItem: "Add Item",
+    addCategory: "Add Category",
+    newCategoryPrompt: "New category name",
+    save: "Save",
+    deleteItemTitle: "Delete Item",
+    editItemTitle: "Edit Item",
+    quantityPlaceholder: "Quantity",
+
+    // PantryView.tsx
+    pantryTitle: "My Pantry",
+    pantryEmpty: "Your pantry is empty. Time to go shopping!",
+    moveToShoppingListTitle: "Move back to Shopping List",
+
+    // ArchiveView.tsx
+    archiveEmpty: "Archive is Empty",
+    archiveEmptySubtitle: "When you use the 'Change Diet' button, your old plan will be saved here.",
+    archiveTitle: "Archived Diet Plans",
+
+    // ArchivedPlanItem.tsx
+    restorePlanTitle: "Restore this plan",
+    restore: "Restore",
+
+    // ExamplePdf.tsx
+    exampleTitle: "Example PDF Format",
+    exampleSubtitle: "For best results, ensure your PDF is structured similarly, with clearly defined days and meals.",
+    exampleDay: "MONDAY",
+    exampleMealBreakfast: "BREAKFAST",
+    exampleItem1: "1 tub of soy yogurt (125g)",
+    exampleItem2: "30g of whole grain cereal",
+    exampleMealLunch: "LUNCH",
+    exampleItem3: "60g of brown rice",
+    exampleItem4: "90g of canned chickpeas",
+    exampleMealDinner: "DINNER",
+    exampleItem5: "Veggie ricotta meatballs",
+    exampleItem6: "100g of grilled eggplant",
+    
+    // Hydration & Alarms
+    hydrationTrackerTitle: "Hydration Tracking",
+    hydrationGoal: "Daily goal:",
+    hydrationUnit: "Liters",
+    hydrationIntake: "Today's intake:",
+    hydrationUnitMl: "ml",
+    editIntakeTitle: "Click to edit",
+    mealTime: "Meal time",
+    notificationMealTitle: "It's time for {mealName}!",
+    notificationMealBody: "Time to eat: {mealTitle}",
+    notificationHydrationTitle: "Hydration Reminder!",
+    notificationHydrationBody: "It's time to drink some water. Have about {amount}ml to stay on track.",
+    snackbarReminder: "You're behind on hydration! Drink {amount}ml to catch up.",
+    snackbarDone: "Done!",
+    quickAddWaterTitle: "Quick Add",
+
+    // Nutrition
+    dailySummaryTitle: "Daily Nutrition Summary",
+    nutritionCarbs: "Carbs",
+    nutritionProtein: "Protein",
+    nutritionFat: "Fat",
+    nutritionCalories: "Calories",
+    nutritionUnitG: "g",
+    nutritionUnitKcal: "kcal",
+    recalculateNutrition: "Recalculate Nutrition",
+    recalculateNutritionTitle: "Recalculate nutritional values for this meal",
+    recalcModalTitle: "Confirm Recalculation",
+    recalcModalContent: "Nutritional values are AI-generated estimates and may not be scientifically accurate. They are intended as a guideline. Do you want to proceed?",
+    confirm: "Confirm",
+    actualIntakeTitle: "Actual Intake",
+    recalculatingActuals: "Calculating actual intake...",
+    recalculateActualsButton: "Calculate Actual Intake",
+    plannedShort: "Plan.",
+    nutritionDisclaimer: "Values are AI estimates and intended as a guideline, not medical advice.",
+
+    // Meal Modification
+    resetMealToPresetTitle: "Reset Meal",
+    resetMealModalTitle: "Confirm Reset",
+    resetMealModalContent: "All changes to this meal (ingredients, time, 'used' status) will be reverted to the original version. Are you sure?",
+
+    // PWA
+    installPwaPrompt: "Install this app for a better experience and offline access.",
+    install: "Install",
+    dismiss: "Dismiss",
+
+    // Google Login & Sync
+    signIn: "Sign In",
+    signOut: "Sign Out",
+    signInTitle: "Sign in with Google to sync data",
+    signOutTitle: "Sign out of your account",
+    syncDisabled: "Login not configured. Sync is disabled.",
+
+    // Steps
+    stepTrackerTitle: "Step Tracking",
+    stepGoal: "Daily goal:",
+    stepsUnit: "steps",
+    stepsTaken: "Today's steps:",
+    editStepsTitle: "Click to edit",
+    quickAddStepsTitle: "Quick Add",
   },
 };
 
-export const t = (key: keyof typeof translations.it, options?: { [key: string]: string }) => {
+// Fix: The `t` function was incorrectly typed to return `string | string[]`, causing widespread
+// type errors in components that require a `string` prop (like `title` or `aria-label`).
+// It also contained a runtime bug where it would attempt to call `.replace()` on an array.
+// The function is now corrected to always return a `string`. If a key resolves to an
+// array (which is incorrect usage for this function), it logs a warning and returns the
+// first element to prevent the app from crashing.
+export const t = (key: keyof typeof translations.it, options?: { [key: string]: string }): string => {
     const locale = mealPlanStore.locale;
-    let text = translations[locale][key] || translations.it[key];
+    const translationValue = translations[locale][key] || translations.it[key];
+
+    let text: string;
+
+    if (Array.isArray(translationValue)) {
+        console.warn(`Translation key '${key}' returned an array for t(), which expects a string. Using the first element.`);
+        text = translationValue[0] || '';
+    } else {
+        text = translationValue;
+    }
+    
     if (options) {
         Object.keys(options).forEach(k => {
             text = text.replace(`{${k}}`, options[k]);

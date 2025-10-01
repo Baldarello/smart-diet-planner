@@ -23,4 +23,5 @@ export { default as InstallPwaSnackbar } from './InstallPwaSnackbar';
 export { default as GoogleLogin } from './GoogleLogin';
 export { default as ActualNutrition } from './ActualNutrition';
 export { default as Drawer } from './Drawer';
+export { default as StepTracker } from './StepTracker';
 export * from './Icons';
