@@ -9,6 +9,7 @@ export enum AppStatus {
   INITIAL,
   HYDRATING,
   LOADING,
+  SYNCING,
   SUCCESS,
   ERROR,
 }

@@ -234,7 +234,7 @@ const App: React.FC = observer(() => {
     }
 
     const renderMainContent = () => {
-        if (store.status === AppStatus.HYDRATING) return <Loader />;
+        if (store.status === AppStatus.HYDRATING || store.status === AppStatus.SYNCING) return <Loader />;
         if (store.status === AppStatus.LOADING) return <Loader />;
         if (store.status === AppStatus.ERROR) {
             return ( <div className="text-center"><ErrorMessage message={store.error!} /><div className="mt-8"><h2 className="text-2xl font-bold dark:text-gray-200 text-gray-800 mb-4">{t('errorAndUpload')}</h2><FileUpload /></div></div> );

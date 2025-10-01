@@ -93,3 +93,29 @@ export interface UserProfile {
   email: string;
   picture: string;
 }
+
+// From db.ts StoredState definition
+export interface StoredState {
+    activeMealPlan: DayPlan[];
+    presetMealPlan: DayPlan[];
+    shoppingList: ShoppingListCategory[];
+    pantry: PantryItem[];
+    archivedPlans: ArchivedPlan[];
+    currentPlanName: string;
+    theme: Theme;
+    locale: Locale;
+    hasUnsavedChanges: boolean;
+    hydrationGoalLiters: number;
+    lastActiveDate: string;
+    waterIntakeMl: number;
+    currentPlanId: string | null;
+    sentNotifications: [string, boolean][];
+    stepGoal?: number;
+    stepsTaken?: number;
+    bodyMetrics?: BodyMetrics;
+}
+
+export interface SyncedData {
+  appState: StoredState;
+  progressHistory: ProgressRecord[];
+}

@@ -58,6 +58,8 @@ const translations = {
     // Loader.tsx
     loadingPlanTitle: "Caricamento del piano...",
     loadingPlanMessage: "Un momento, stiamo recuperando i tuoi dati.",
+    syncingTitle: "Sincronizzazione con Google Drive...",
+    syncingMessage: "Attendi mentre sincronizziamo i tuoi dati.",
     readingPdfTitle: "Lettura del PDF in corso...",
     structuringPlanTitle: "Strutturazione del Piano...",
     analyzingNutritionTitle: "Analisi Nutrizionale...",
@@ -272,6 +274,8 @@ const translations = {
     // Loader.tsx
     loadingPlanTitle: "Loading your plan...",
     loadingPlanMessage: "Just a moment while we retrieve your data.",
+    syncingTitle: "Syncing with Google Drive...",
+    syncingMessage: "Please wait while we sync your data.",
     readingPdfTitle: "Reading your PDF...",
     structuringPlanTitle: "Structuring Your Plan...",
     analyzingNutritionTitle: "Analyzing Nutrition...",

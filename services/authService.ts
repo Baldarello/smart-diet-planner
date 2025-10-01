@@ -1,6 +1,10 @@
 import { jwtDecode } from 'jwt-decode';
 import { authStore } from '../stores/AuthStore';
-import { UserProfile } from '../types';
+import { UserProfile, SyncedData } from '../types';
+import { runInAction } from 'mobx';
+import { mealPlanStore, AppStatus } from '../stores/MealPlanStore';
+import { loadStateFromDrive, saveStateToDrive } from './driveService';
+import { db } from './db';
 
 // Fix: Add type declarations for the Google Identity Services (GSI) library
 // to resolve "Cannot find namespace 'google'" errors. This provides TypeScript
@@ -44,6 +48,41 @@ const API_KEY = process.env.GOOGLE_API_KEY;
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 
 let tokenClient: google.accounts.oauth2.TokenClient | null = null;
+
+async function syncWithDriveOnLogin(accessToken: string) {
+    runInAction(() => mealPlanStore.status = AppStatus.SYNCING);
+    try {
+        const remoteData = await loadStateFromDrive(accessToken);
+
+        if (remoteData && remoteData.appState) {
+            console.log("Remote data found, overwriting local database.");
+            await db.transaction('rw', db.appState, db.progressHistory, async () => {
+                await db.progressHistory.clear();
+                await db.appState.put({ key: 'dietPlanData', value: remoteData.appState });
+                if (remoteData.progressHistory?.length) {
+                    await db.progressHistory.bulkPut(remoteData.progressHistory);
+                }
+            });
+             console.log("Local database overwritten successfully.");
+        } else {
+            console.log("No remote data found. Checking for local data to upload.");
+            const appState = await db.appState.get('dietPlanData');
+            if (appState) {
+                const progressHistory = await db.progressHistory.toArray();
+                const dataToSave: SyncedData = { appState: appState.value, progressHistory };
+                await saveStateToDrive(dataToSave, accessToken);
+                console.log("Local data uploaded to Google Drive.");
+            } else {
+                 console.log("No local data to upload.");
+            }
+        }
+    } catch (error) {
+        console.error("Error during Google Drive sync:", error);
+        // Let the store init with whatever is local
+    } finally {
+        await mealPlanStore.init();
+    }
+}
 
 export const initGoogleAuth = () => {
     if (typeof google === 'undefined' || !CLIENT_ID) {
@@ -106,7 +145,9 @@ export const handleSignIn = () => {
                                 return;
                             }
                             if (tokenResponse.access_token) {
-                                authStore.setLoggedIn(userProfile, tokenResponse.access_token);
+                                const accessToken = tokenResponse.access_token;
+                                authStore.setLoggedIn(userProfile, accessToken);
+                                syncWithDriveOnLogin(accessToken);
                             }
                         }
                     });

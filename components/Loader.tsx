@@ -6,12 +6,14 @@ import { t, t_dynamic } from '../i18n';
 const Loader: React.FC = observer(() => {
     const { pdfParseProgress, status, locale } = mealPlanStore;
 
-    if (status === AppStatus.HYDRATING) {
+    if (status === AppStatus.HYDRATING || status === AppStatus.SYNCING) {
+        const title = status === AppStatus.SYNCING ? t('syncingTitle') : t('loadingPlanTitle');
+        const message = status === AppStatus.SYNCING ? t('syncingMessage') : t('loadingPlanMessage');
         return (
             <div className="flex flex-col items-center justify-center text-center p-8 max-w-md mx-auto">
                 <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-violet-600 dark:border-violet-500 mb-4"></div>
-                <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300">{t('loadingPlanTitle')}</h2>
-                <p className="text-gray-500 dark:text-gray-400 mb-4 h-10 flex items-center justify-center">{t('loadingPlanMessage')}</p>
+                <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300">{title}</h2>
+                <p className="text-gray-500 dark:text-gray-400 mb-4 h-10 flex items-center justify-center">{message}</p>
             </div>
         );
     }

@@ -1,30 +1,13 @@
 import Dexie, { type Table } from 'dexie';
 import observable from 'dexie-observable';
-import { ArchivedPlan, DayPlan, PantryItem, ShoppingListCategory, Theme, Locale, BodyMetrics, ProgressRecord } from '../types';
+import { ArchivedPlan, DayPlan, PantryItem, ShoppingListCategory, Theme, Locale, BodyMetrics, ProgressRecord, StoredState, SyncedData } from '../types';
 import { authStore } from '../stores/AuthStore';
 import { saveStateToDrive } from './driveService';
 
 // Define the structure of the object we are storing.
 // This is based on MealPlanStore.saveToDB
-export interface StoredState {
-    activeMealPlan: DayPlan[];
-    presetMealPlan: DayPlan[];
-    shoppingList: ShoppingListCategory[];
-    pantry: PantryItem[];
-    archivedPlans: ArchivedPlan[];
-    currentPlanName: string;
-    theme: Theme;
-    locale: Locale;
-    hasUnsavedChanges: boolean;
-    hydrationGoalLiters: number;
-    lastActiveDate: string;
-    waterIntakeMl: number;
-    currentPlanId: string | null;
-    sentNotifications: [string, boolean][];
-    stepGoal?: number;
-    stepsTaken?: number;
-    bodyMetrics?: BodyMetrics;
-}
+export type { StoredState } from '../types';
+
 
 export interface AppState {
   key: string;
@@ -67,15 +50,20 @@ async function handleDatabaseChangeForSync(changes: DexieObservableChange[]) {
         return;
     }
     
-    const appStateChange = changes.find(c => c.table === 'appState' && c.key === 'dietPlanData' && (c.type === 1 || c.type === 2));
+    const isAppStateChange = changes.some(c => c.table === 'appState' && c.key === 'dietPlanData');
+    const isProgressChange = changes.some(c => c.table === 'progressHistory');
 
-    if (appStateChange) {
+
+    if (isAppStateChange || isProgressChange) {
         debounceSync(async () => {
             console.log('Database state changed. Debouncing sync with Google Drive.');
             try {
-                const latestState = await db.appState.get('dietPlanData');
-                if (latestState && authStore.accessToken) {
-                    await saveStateToDrive(latestState.value, authStore.accessToken);
+                const appState = await db.appState.get('dietPlanData');
+                const progressHistory = await db.progressHistory.toArray();
+
+                if (appState && authStore.accessToken) {
+                    const dataToSave: SyncedData = { appState: appState.value, progressHistory };
+                    await saveStateToDrive(dataToSave, authStore.accessToken);
                     console.log('Successfully synced state to Google Drive.');
                 }
             } catch (error) {

@@ -1,4 +1,4 @@
-import { StoredState } from './db';
+import { SyncedData } from '../types';
 
 const DRIVE_API_URL = 'https://www.googleapis.com/drive/v3/files';
 const FILENAME = 'diet-plan-data.json';
@@ -23,10 +23,10 @@ async function findFileId(accessToken: string): Promise<string | null> {
 /**
  * Saves the application state to a file in the user's Google Drive AppData folder.
  * This will create the file if it doesn't exist, or update it if it does.
- * @param state The entire application state to save.
+ * @param data The entire application state and progress history to save.
  * @param accessToken The user's OAuth2 access token.
  */
-export async function saveStateToDrive(state: StoredState, accessToken: string): Promise<void> {
+export async function saveStateToDrive(data: SyncedData, accessToken: string): Promise<void> {
     const fileId = await findFileId(accessToken);
     
     const metadata = {
@@ -37,7 +37,7 @@ export async function saveStateToDrive(state: StoredState, accessToken: string):
 
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-    form.append('file', new Blob([JSON.stringify(state)], { type: 'application/json' }));
+    form.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
 
     const uploadUrl = fileId 
         ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
@@ -63,7 +63,7 @@ export async function saveStateToDrive(state: StoredState, accessToken: string):
  * @param accessToken The user's OAuth2 access token.
  * @returns The stored state or null if not found or on error.
  */
-export async function loadStateFromDrive(accessToken: string): Promise<StoredState | null> {
+export async function loadStateFromDrive(accessToken: string): Promise<SyncedData | null> {
     const fileId = await findFileId(accessToken);
     if (!fileId) {
         console.log("No data file found in Google Drive.");
@@ -78,5 +78,5 @@ export async function loadStateFromDrive(accessToken: string): Promise<StoredSta
         throw new Error('Failed to load data from Google Drive.');
     }
     
-    return await response.json() as StoredState;
+    return await response.json() as SyncedData;
 }
