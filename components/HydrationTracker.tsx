@@ -8,21 +8,27 @@ const HydrationTracker: React.FC = observer(() => {
     const { hydrationGoalLiters, setHydrationGoal, waterIntakeMl, setWaterIntake, logWaterIntake } = mealPlanStore;
     const [isEditingIntake, setIsEditingIntake] = useState(false);
     const [editableIntake, setEditableIntake] = useState(waterIntakeMl.toString());
+    const [editableGoal, setEditableGoal] = useState(hydrationGoalLiters.toString());
 
-    // Sync local state with store state when not editing
     useEffect(() => {
         if (!isEditingIntake) {
             setEditableIntake(waterIntakeMl.toString());
         }
     }, [waterIntakeMl, isEditingIntake]);
     
-    const goalMl = hydrationGoalLiters * 1000;
+    useEffect(() => {
+        setEditableGoal(hydrationGoalLiters.toString());
+    }, [hydrationGoalLiters]);
+
+    const goalMl = parseFloat(editableGoal) * 1000;
     const progressPercentage = goalMl > 0 ? Math.min((waterIntakeMl / goalMl) * 100, 100) : 0;
 
-    const handleGoalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = parseFloat(e.target.value);
-        if (!isNaN(value)) {
+    const handleGoalSave = () => {
+        const value = parseFloat(editableGoal);
+        if (!isNaN(value) && value > 0) {
             setHydrationGoal(value);
+        } else {
+            setEditableGoal(hydrationGoalLiters.toString());
         }
     };
 
@@ -38,7 +44,7 @@ const HydrationTracker: React.FC = observer(() => {
 
     const handleIntakeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
-            e.currentTarget.blur(); // this will trigger onBlur which saves
+            e.currentTarget.blur();
         } else if (e.key === 'Escape') {
             setEditableIntake(waterIntakeMl.toString());
             setIsEditingIntake(false);
@@ -55,12 +61,11 @@ const HydrationTracker: React.FC = observer(() => {
                  <div className="flex items-center self-end sm:self-center">
                     <label className="text-sm text-blue-600 dark:text-blue-400 mr-2 whitespace-nowrap">{t('hydrationGoal')}</label>
                     <input
-                        type="number"
-                        value={hydrationGoalLiters}
-                        onChange={handleGoalChange}
-                        step="0.1"
-                        min="0"
-                        max="10"
+                        type="text"
+                        inputMode="decimal"
+                        value={editableGoal}
+                        onChange={(e) => setEditableGoal(e.target.value)}
+                        onBlur={handleGoalSave}
                         className="w-16 text-right font-bold bg-transparent border-b-2 border-blue-200 dark:border-blue-700 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-blue-700 dark:text-blue-200"
                         aria-label={t('hydrationGoal')}
                     />
@@ -73,7 +78,8 @@ const HydrationTracker: React.FC = observer(() => {
                     <span className="text-sm font-bold text-blue-800 dark:text-blue-200 self-end sm:self-auto">
                         {isEditingIntake ? (
                             <input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
                                 value={editableIntake}
                                 onChange={(e) => setEditableIntake(e.target.value)}
                                 onBlur={handleIntakeSave}
@@ -91,7 +97,7 @@ const HydrationTracker: React.FC = observer(() => {
                                 {waterIntakeMl}
                             </span>
                         )}
-                        &nbsp;/ {goalMl} {t('hydrationUnitMl')}
+                        &nbsp;/ {isNaN(goalMl) ? '...' : goalMl} {t('hydrationUnitMl')}
                     </span>
                 </div>
                 <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2.5">

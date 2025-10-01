@@ -157,6 +157,7 @@ export class MealPlanStore {
   setHydrationGoal = (liters: number) => {
     if (liters > 0 && liters <= 10) {
       this.hydrationGoalLiters = liters;
+      this.updateHydrationStatus();
       this.saveToDB();
     }
   }
@@ -209,6 +210,12 @@ export class MealPlanStore {
 
     const now = new Date();
     const currentHour = now.getHours();
+    
+    // If the user has already met their goal, no need to show a reminder.
+    if (this.waterIntakeMl >= this.hydrationGoalLiters * 1000) {
+      this.dismissHydrationSnackbar();
+      return;
+    }
 
     // The hydration window is from 9:00 to 18:00 (10 hours/slots)
     if (currentHour < 9) {
