@@ -605,7 +605,12 @@ export class MealPlanStore {
         if (isConsumed) { // Deduct from pantry
             if (pantryItem) {
                 const pantryQty = parseQuantity(pantryItem.quantity);
-                if (pantryQty && singularize(pantryQty.unit) === singularize(consumedQty.unit)) {
+                const unitsMatch = pantryQty && consumedQty && (
+                    singularize(pantryQty.unit) === singularize(consumedQty.unit) ||
+                    pantryQty.unit === 'units' || consumedQty.unit === 'units'
+                );
+
+                if (unitsMatch) {
                     const newPantryValue = pantryQty.value - consumedQty.value;
                     if (newPantryValue <= 0.01) { // Use tolerance for float comparison
                         this.pantry.splice(pantryIndex, 1);
@@ -621,7 +626,12 @@ export class MealPlanStore {
         } else { // Add back to pantry
             if (pantryItem) {
                 const pantryQty = parseQuantity(pantryItem.quantity);
-                if (pantryQty && singularize(pantryQty.unit) === singularize(consumedQty.unit)) {
+                const unitsMatch = pantryQty && consumedQty && (
+                    singularize(pantryQty.unit) === singularize(consumedQty.unit) ||
+                    pantryQty.unit === 'units' || consumedQty.unit === 'units'
+                );
+
+                if (unitsMatch) {
                      const newPantryValue = pantryQty.value + consumedQty.value;
                      pantryItem.quantity = formatQuantity({ value: newPantryValue, unit: pantryQty.unit });
                 } else {

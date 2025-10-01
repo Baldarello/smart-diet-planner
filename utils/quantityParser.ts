@@ -17,40 +17,37 @@ function normalizeString(s: string): string {
 
 /**
  * Parses a quantity string (e.g., "100g", "1 banana") into a value and unit.
- * It will return null for complex strings with separators or ranges (e.g., "1-2 noci", "120g - Petto di Pollo")
- * to ensure they are treated as a single, un-parsable description.
+ * It intelligently extracts the number and the word immediately following it as the unit.
+ * Returns null for complex strings with ranges or if no parsable number is found at the start.
  */
 export function parseQuantity(description: string): ParsedQuantity | null {
     if (!description) return null;
     const desc = normalizeString(description);
 
-    // Overhauled check for ranges or hyphenated descriptions to prevent splitting.
-    // This will catch: "1-2", "1 - 2", "120g - item", "1 - item".
-    // It checks if a line starting with a number contains a hyphen anywhere after it.
-    // This is a clear indicator that it's a range or a description, not a simple quantity.
+    // Skip ranges or hyphenated descriptions to avoid incorrect parsing.
     if (/^\d+.*-/.test(desc)) {
         return null;
     }
 
     // Handle number words like "un vasetto", "mezza cipolla"
-    const words = desc.split(' ');
+    const words = desc.split(/\s+/);
     if (numberWords[words[0]]) {
         return {
             value: numberWords[words[0]],
-            unit: words.slice(1).join(' ') || words[0]
+            unit: words.length > 1 ? words[1] : words[0]
         };
     }
 
-    // Regex to capture a leading number and the rest of the string.
-    const standardMatch = desc.match(/^(\d+[\.,]?\d*)\s*(.*)/);
+    // Regex to capture a leading number and the optional word immediately after it.
+    const standardMatch = desc.match(/^(\d+[\.,]?\d*)\s*([a-zA-ZÀ-ú]+)?/);
     
     if (standardMatch) {
         const value = parseFloat(standardMatch[1].replace(',', '.'));
-        const unit = (standardMatch[2] || '').trim() || 'units';
+        // The unit is the word following the number, or 'units' if it's just a number.
+        const unit = (standardMatch[2] || 'units').trim();
         return { value, unit };
     }
 
-    // If no quantity found, assume it's a non-quantifiable item
     return null;
 }
 
@@ -61,12 +58,14 @@ export function formatQuantity(pq: ParsedQuantity): string {
     // Round to 2 decimal places to avoid floating point issues
     const value = Math.round(pq.value * 100) / 100;
     
-    if (pq.unit === 'units') return `${value}`;
+    // For generic counts, just return the number.
+    if (pq.unit === 'units' || !isNaN(Number(pq.unit))) return `${value}`;
     
-    // Handles cases like "100g" vs "1 banana"
+    // For units that are words (e.g., 'mela', 'vasetto'), add a space.
     if (/^[a-zA-ZÀ-ú]/.test(pq.unit)) {
         return `${value} ${pq.unit}`;
     }
     
+    // For standard units like 'g', 'ml', don't add a space.
     return `${value}${pq.unit}`;
 }
