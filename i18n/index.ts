@@ -182,6 +182,22 @@ const translations = {
     stepsTaken: "Passi di oggi:",
     editStepsTitle: "Clicca per modificare",
     quickAddStepsTitle: "Aggiunta Rapida",
+    activityHours: "Ore di attività:",
+    estimatedCalories: "Calorie Bruciate Stimate:",
+    caloriesUnit: "kcal",
+    hoursUnit: "h",
+    quickAddDurationTitle: "Aggiunta Rapida",
+
+    // Body Metrics
+    bodyMetricsTitle: "Dati Corporei",
+    weight: "Peso",
+    height: "Altezza",
+    bodyFat: "Massa Grassa",
+    leanMass: "Massa Magra",
+    bodyWater: "Acqua Corporea",
+    unitKg: "kg",
+    unitCm: "cm",
+    unitPercent: "%",
   },
   en: {
     // App.tsx
@@ -363,6 +379,22 @@ const translations = {
     stepsTaken: "Today's steps:",
     editStepsTitle: "Click to edit",
     quickAddStepsTitle: "Quick Add",
+    activityHours: "Hours of activity:",
+    estimatedCalories: "Estimated Calories Burned:",
+    caloriesUnit: "kcal",
+    hoursUnit: "h",
+    quickAddDurationTitle: "Quick Add",
+
+    // Body Metrics
+    bodyMetricsTitle: "Body Metrics",
+    weight: "Weight",
+    height: "Height",
+    bodyFat: "Body Fat",
+    leanMass: "Lean Mass",
+    bodyWater: "Body Water",
+    unitKg: "kg",
+    unitCm: "cm",
+    unitPercent: "%",
   },
 };
 

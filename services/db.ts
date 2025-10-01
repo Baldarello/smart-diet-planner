@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import observable from 'dexie-observable';
-import { ArchivedPlan, DayPlan, PantryItem, ShoppingListCategory, Theme, Locale } from '../types';
+import { ArchivedPlan, DayPlan, PantryItem, ShoppingListCategory, Theme, Locale, BodyMetrics } from '../types';
 import { authStore } from '../stores/AuthStore';
 import { saveStateToDrive } from './driveService';
 
@@ -23,6 +23,7 @@ export interface StoredState {
     sentNotifications: [string, boolean][];
     stepGoal?: number;
     stepsTaken?: number;
+    bodyMetrics?: BodyMetrics;
 }
 
 export interface AppState {

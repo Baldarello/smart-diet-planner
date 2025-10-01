@@ -65,6 +65,14 @@ export interface HydrationSnackbarInfo {
   amount: number;
 }
 
+export interface BodyMetrics {
+  weightKg?: number;
+  heightCm?: number;
+  bodyFatPercentage?: number;
+  leanMassKg?: number;
+  bodyWaterPercentage?: number;
+}
+
 export interface UserProfile {
   id: string;
   name: string;

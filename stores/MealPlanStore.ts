@@ -1,5 +1,5 @@
 import { makeAutoObservable, runInAction, toJS } from 'mobx';
-import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo, HydrationSnackbarInfo } from '../types';
+import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo, HydrationSnackbarInfo, BodyMetrics } from '../types';
 import { parsePdfText, generateShoppingList as generateShoppingListOffline, extractIngredientInfo } from '../services/offlineParser';
 import { parseMealStructure, getNutritionForMeal, getPlanDetailsAndShoppingList, isQuotaError } from '../services/geminiService';
 import { parseQuantity, formatQuantity } from '../utils/quantityParser';
@@ -46,6 +46,7 @@ export class MealPlanStore {
   hydrationSnackbar: HydrationSnackbarInfo | null = null;
   stepGoal = 20000;
   stepsTaken = 0;
+  bodyMetrics: BodyMetrics = {};
 
   sentNotifications = new Map<string, boolean>();
   lastActiveDate: string = new Date().toLocaleDateString();
@@ -98,6 +99,7 @@ export class MealPlanStore {
                 this.currentPlanId = data.currentPlanId || null;
                 this.stepGoal = data.stepGoal || 20000;
                 this.stepsTaken = data.stepsTaken || 0;
+                this.bodyMetrics = data.bodyMetrics || {};
 
                 if (data.sentNotifications) {
                     this.sentNotifications = new Map(data.sentNotifications);
@@ -197,6 +199,19 @@ export class MealPlanStore {
         this.stepsTaken = amount;
         this.saveToDB();
     }
+  }
+
+  setBodyMetric = (metric: keyof BodyMetrics, value: number | undefined) => {
+    if (value !== undefined && (isNaN(value) || value < 0)) return;
+    
+    runInAction(() => {
+        if (value === undefined) {
+            delete this.bodyMetrics[metric];
+        } else {
+            this.bodyMetrics[metric] = value;
+        }
+    });
+    this.saveToDB();
   }
 
   showHydrationSnackbar = (time: string, amount: number) => {
@@ -448,6 +463,7 @@ export class MealPlanStore {
         sentNotifications: Array.from(this.sentNotifications.entries()),
         stepGoal: this.stepGoal,
         stepsTaken: this.stepsTaken,
+        bodyMetrics: toJS(this.bodyMetrics),
       };
       await db.appState.put({ key: 'dietPlanData', value: dataToSave });
     } catch (error) {
