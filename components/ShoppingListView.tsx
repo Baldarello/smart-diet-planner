@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
-import { ShoppingListItem } from '../types';
+import { ShoppingListItem, ShoppingListCategory } from '../types';
 import { PantryIcon, EditIcon, TrashIcon, CheckIcon, CloseIcon, PlusCircleIcon } from './Icons';
 import { t } from '../i18n';
 
@@ -16,6 +16,8 @@ const ShoppingListView: React.FC = observer(() => {
     const [newCategoryName, setNewCategoryName] = useState('');
     const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
 
+    const totalItemsCount = shoppingList.reduce((acc, cat) => acc + cat.items.length, 0);
+
     const handleCheck = (item: ShoppingListItem, category: string) => {
         const key = `${category}-${item.item}`;
         const newCheckedItems = new Map(checkedItems);
@@ -23,6 +25,35 @@ const ShoppingListView: React.FC = observer(() => {
             newCheckedItems.delete(key);
         } else {
             newCheckedItems.set(key, { item, category });
+        }
+        setCheckedItems(newCheckedItems);
+    };
+    
+    const handleSelectAllToggle = () => {
+        const newCheckedItems = new Map<string, { item: ShoppingListItem, category: string }>();
+        if (checkedItems.size < totalItemsCount) {
+            shoppingList.forEach(category => {
+                category.items.forEach(item => {
+                    const key = `${category.category}-${item.item}`;
+                    newCheckedItems.set(key, { item, category: category.category });
+                });
+            });
+        }
+        setCheckedItems(newCheckedItems);
+    };
+
+    const handleCategoryToggle = (category: ShoppingListCategory) => {
+        const newCheckedItems = new Map(checkedItems);
+        const categoryItemsKeys = category.items.map(item => `${category.category}-${item.item}`);
+        const allInCategoryChecked = categoryItemsKeys.every(key => newCheckedItems.has(key));
+
+        if (allInCategoryChecked) {
+            categoryItemsKeys.forEach(key => newCheckedItems.delete(key));
+        } else {
+            category.items.forEach(item => {
+                const key = `${category.category}-${item.item}`;
+                newCheckedItems.set(key, { item, category: category.category });
+            });
         }
         setCheckedItems(newCheckedItems);
     };
@@ -91,14 +122,48 @@ const ShoppingListView: React.FC = observer(() => {
                     </button>
                 )}
             </div>
+            {shoppingList.length > 0 && (
+                <div className="mb-4 flex items-center p-2 bg-slate-50 dark:bg-gray-700/50 rounded-lg">
+                    <input
+                        type="checkbox"
+                        id="select-all"
+                        className="h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                        onChange={handleSelectAllToggle}
+                        checked={totalItemsCount > 0 && checkedItems.size === totalItemsCount}
+                        ref={el => {
+                            if (el) {
+                                el.indeterminate = checkedItems.size > 0 && checkedItems.size < totalItemsCount;
+                            }
+                        }}
+                    />
+                    <label htmlFor="select-all" className="ml-3 font-semibold text-gray-700 dark:text-gray-300 cursor-pointer">
+                        {t('selectAll')}
+                    </label>
+                </div>
+            )}
             {shoppingList.length === 0 ? (
                 <p className="text-gray-500 dark:text-gray-400 text-center py-8">{t('shoppingListEmpty')}</p>
             ) : (
                 <div className="space-y-6">
-                    {shoppingList.map((category, catIndex) => (
+                    {shoppingList.map((category, catIndex) => {
+                        const categoryItemsKeys = category.items.map(item => `${category.category}-${item.item}`);
+                        const checkedInCategoryCount = categoryItemsKeys.filter(key => checkedItems.has(key)).length;
+                        const isCategoryChecked = category.items.length > 0 && checkedInCategoryCount === category.items.length;
+                        const isCategoryIndeterminate = checkedInCategoryCount > 0 && checkedInCategoryCount < category.items.length;
+
+                        return (
                         <details key={catIndex} className="group" open>
                             <summary className="font-bold text-xl text-violet-700 dark:text-violet-400 cursor-pointer list-none flex items-center">
-                                 <span className="transform transition-transform duration-200 group-open:rotate-90 text-violet-400 dark:text-violet-500">&#9656;</span>
+                                 <input
+                                    type="checkbox"
+                                    className="h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    onChange={() => handleCategoryToggle(category)}
+                                    checked={isCategoryChecked}
+                                    ref={el => { if (el) { el.indeterminate = isCategoryIndeterminate; } }}
+                                    aria-label={`Select all items in ${category.category}`}
+                                 />
+                                 <span className="transform transition-transform duration-200 group-open:rotate-90 text-violet-400 dark:text-violet-500 ml-2">&#9656;</span>
                                  <span className="ml-2">{category.category}</span>
                             </summary>
                             <ul className="mt-4 pl-6 border-l-2 border-violet-100 dark:border-gray-700 space-y-3">
@@ -147,7 +212,8 @@ const ShoppingListView: React.FC = observer(() => {
                                 )}
                             </ul>
                         </details>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
              <div className="mt-8 border-t dark:border-gray-700 pt-6">

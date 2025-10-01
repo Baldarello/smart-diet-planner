@@ -107,6 +107,7 @@ const translations = {
     deleteItemTitle: "Elimina Voce",
     editItemTitle: "Modifica Voce",
     quantityPlaceholder: "Quantità",
+    selectAll: "Seleziona Tutto",
 
     // PantryView.tsx
     pantryTitle: "La Mia Dispensa",
@@ -332,6 +333,7 @@ const translations = {
     deleteItemTitle: "Delete Item",
     editItemTitle: "Edit Item",
     quantityPlaceholder: "Quantity",
+    selectAll: "Select All",
 
     // PantryView.tsx
     pantryTitle: "My Pantry",
