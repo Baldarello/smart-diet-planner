@@ -32,6 +32,7 @@ const translations = {
     theme: "Tema",
     language: "Lingua",
     connectionStatus: "Stato Connessione",
+    navigation: "Navigazione",
 
     // ManualPlanEntryForm.tsx
     manualEntryTitle: "Crea il Tuo Piano Dietetico",
@@ -246,6 +247,7 @@ const translations = {
     theme: "Theme",
     language: "Language",
     connectionStatus: "Connection Status",
+    navigation: "Navigation",
 
     // ManualPlanEntryForm.tsx
     manualEntryTitle: "Create Your Diet Plan",
