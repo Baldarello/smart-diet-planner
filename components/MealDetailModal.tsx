@@ -16,8 +16,9 @@ interface MealDetailModalProps {
 }
 
 const MealDetailModal: React.FC<MealDetailModalProps> = observer(({ dayIndex, mealIndex, onClose }) => {
-    const { activeMealPlan, toggleMealDone, onlineMode } = mealPlanStore;
-    const meal = activeMealPlan[dayIndex]?.meals[mealIndex];
+    // Fix: Replaced non-existent 'activeMealPlan' with 'masterMealPlan'.
+    const { masterMealPlan, toggleMealDone, onlineMode } = mealPlanStore;
+    const meal = masterMealPlan[dayIndex]?.meals[mealIndex];
 
     if (!meal) return null;
 
@@ -58,7 +59,8 @@ const MealDetailModal: React.FC<MealDetailModalProps> = observer(({ dayIndex, me
 
                 <div className="mt-6 border-t dark:border-gray-700 pt-4 flex-shrink-0">
                      <button
-                        onClick={() => toggleMealDone(dayIndex, mealIndex)}
+                        // Fix: Corrected function call to match signature 'toggleMealDone(mealIndex: number)'.
+                        onClick={() => toggleMealDone(mealIndex)}
                         title={meal.done ? t('markAsToDo') : t('markAsDone')}
                         className={`w-full flex items-center justify-center font-semibold px-6 py-3 rounded-full transition-colors ${meal.done ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 hover:bg-yellow-200' : 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 hover:bg-green-200'}`}
                         aria-label={meal.done ? t('markAsToDo') : t('markAsDone')}

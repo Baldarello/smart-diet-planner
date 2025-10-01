@@ -10,11 +10,12 @@ const translations = {
     exportPlan: "Esporta",
     exportPlanTitle: "Esporta i dati del piano in formato JSON",
     tabDaily: "Oggi",
-    tabWeekly: "Settimana",
+    tabWeekly: "Piano Principale",
     tabShopping: "Spesa",
     tabPantry: "Dispensa",
     tabArchive: "Archivio",
     tabProgress: "Progressi",
+    tabCalendar: "Calendario",
     welcomeTitle: "Inizia un Nuovo Piano Dietetico",
     welcomeSubtitle: "Carica un file PDF o JSON del tuo piano per iniziare.",
     uploadPdfTitle: "Carica il tuo Piano",
@@ -33,6 +34,14 @@ const translations = {
     language: "Lingua",
     connectionStatus: "Stato Connessione",
     navigation: "Navigazione",
+
+    // SetPlanDatesModal.tsx
+    setPlanDatesTitle: "Imposta Durata del Piano",
+    setPlanDatesSubtitle: "Seleziona una data di inizio e di fine per il tuo nuovo piano dietetico.",
+    startDateLabel: "Data di Inizio",
+    endDateLabel: "Data di Fine",
+    startPlanButton: "Inizia Piano",
+    dateValidationError: "La data di fine deve essere successiva alla data di inizio.",
 
     // ManualPlanEntryForm.tsx
     manualEntryTitle: "Crea il Tuo Piano Dietetico",
@@ -227,11 +236,12 @@ const translations = {
     exportPlan: "Export",
     exportPlanTitle: "Export plan data to a JSON file",
     tabDaily: "Today",
-    tabWeekly: "Week",
+    tabWeekly: "Master Plan",
     tabShopping: "Shopping",
     tabPantry: "Pantry",
     tabArchive: "Archive",
     tabProgress: "Progress",
+    tabCalendar: "Calendar",
     welcomeTitle: "Start a New Diet Plan",
     welcomeSubtitle: "Upload a PDF or JSON file of your plan to get started.",
     uploadPdfTitle: "Upload Your Plan",
@@ -250,6 +260,14 @@ const translations = {
     language: "Language",
     connectionStatus: "Connection Status",
     navigation: "Navigation",
+
+    // SetPlanDatesModal.tsx
+    setPlanDatesTitle: "Set Plan Duration",
+    setPlanDatesSubtitle: "Select a start and end date for your new diet plan.",
+    startDateLabel: "Start Date",
+    endDateLabel: "End Date",
+    startPlanButton: "Start Plan",
+    dateValidationError: "End date must be after the start date.",
 
     // ManualPlanEntryForm.tsx
     manualEntryTitle: "Create Your Diet Plan",

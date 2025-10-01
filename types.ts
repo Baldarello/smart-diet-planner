@@ -27,6 +27,10 @@ export interface DayPlan {
   meals: Meal[];
 }
 
+export interface DailyLog extends DayPlan {
+    date: string; // YYYY-MM-DD
+}
+
 export interface ShoppingListItem {
   item: string;
   quantity: string;
@@ -96,7 +100,7 @@ export interface UserProfile {
 
 // From db.ts StoredState definition
 export interface StoredState {
-    activeMealPlan: DayPlan[];
+    masterMealPlan: DayPlan[];
     presetMealPlan: DayPlan[];
     shoppingList: ShoppingListCategory[];
     pantry: PantryItem[];
@@ -113,6 +117,8 @@ export interface StoredState {
     stepGoal?: number;
     stepsTaken?: number;
     bodyMetrics?: BodyMetrics;
+    startDate: string | null;
+    endDate: string | null;
 }
 
 export interface SyncedData {

@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import observable from 'dexie-observable';
-import { ArchivedPlan, DayPlan, PantryItem, ShoppingListCategory, Theme, Locale, BodyMetrics, ProgressRecord, StoredState, SyncedData } from '../types';
+import { StoredState, ProgressRecord, SyncedData, DailyLog } from '../types';
 import { authStore } from '../stores/AuthStore';
 import { saveStateToDrive } from './driveService';
 
@@ -17,12 +17,14 @@ export interface AppState {
 export class MySubClassedDexie extends Dexie {
   appState!: Table<AppState, string>;
   progressHistory!: Table<ProgressRecord, string>; // Primary key is the 'date' string
+  dailyLogs!: Table<DailyLog, string>; // Primary key is date string 'YYYY-MM-DD'
 
   constructor() {
     super('dietPlanDatabase', { addons: [observable] });
-    (this as any).version(2).stores({
+    (this as any).version(3).stores({
       appState: 'key',
       progressHistory: 'date', // Primary key is 'date'
+      dailyLogs: 'date', // To store daily instances of the meal plan
     });
   }
 }

@@ -9,7 +9,7 @@ import {
     ErrorMessage,
     ShoppingListView,
     PantryView,
-    WeeklyCalendarView,
+    MealPlanView,
     DailyPlanView,
     ArchiveView,
     ActivePlanNameEditor,
@@ -21,6 +21,8 @@ import {
     Drawer,
     MenuIcon,
     ProgressView,
+    SetPlanDatesModal,
+    CalendarView,
 } from './components';
 import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon } from './components/Icons';
 
@@ -92,7 +94,7 @@ const App: React.FC = observer(() => {
         }
 
         const mealTimer = setInterval(() => {
-            if (!store.currentPlanId) return;
+            if (!store.currentPlanId || !store.dailyPlan) return;
 
             const now = new Date();
             const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -102,7 +104,7 @@ const App: React.FC = observer(() => {
             if (notificationPermission.current === 'granted') {
                 store.dailyPlan?.meals.forEach((meal, mealIndex) => {
                     if (meal.time === currentTime) {
-                        const dayIndex = store.activeMealPlan.findIndex(d => d.day === store.dailyPlan?.day);
+                        const dayIndex = store.masterMealPlan.findIndex(d => d.day === store.dailyPlan?.day);
                         const key = `meal-${dayIndex}-${mealIndex}`;
                         if (!store.sentNotifications.has(key)) {
                             new Notification(t('notificationMealTitle', { mealName: meal.name }), {
@@ -129,12 +131,12 @@ const App: React.FC = observer(() => {
             clearInterval(mealTimer);
             clearInterval(hydrationTimer);
         };
-    }, [store.currentPlanId]);
+    }, [store, store.currentPlanId]);
 
     const handleExport = () => {
         const dataToExport = {
             planName: store.currentPlanName,
-            weeklyPlan: store.activeMealPlan,
+            weeklyPlan: store.masterMealPlan,
             shoppingList: store.shoppingList,
             pantry: store.pantry,
         };
@@ -155,7 +157,8 @@ const App: React.FC = observer(() => {
     const renderDrawerContent = () => {
         const tabs = [
             { id: 'daily', icon: <TodayIcon />, label: t('tabDaily') },
-            { id: 'plan', icon: <CalendarIcon />, label: t('tabWeekly') },
+            { id: 'calendar', icon: <CalendarIcon />, label: t('tabCalendar') },
+            { id: 'plan', icon: <EditIcon />, label: t('tabWeekly') },
             { id: 'list', icon: <ListIcon />, label: t('tabShopping') },
             { id: 'pantry', icon: <PantryIcon />, label: t('tabPantry') },
             { id: 'progress', icon: <ProgressIcon />, label: t('tabProgress') },
@@ -247,6 +250,7 @@ const App: React.FC = observer(() => {
     const renderMainContent = () => {
         if (store.status === AppStatus.HYDRATING || store.status === AppStatus.SYNCING) return <Loader />;
         if (store.status === AppStatus.LOADING) return <Loader />;
+        if (store.status === AppStatus.AWAITING_DATES) return <SetPlanDatesModal />;
         if (store.status === AppStatus.ERROR) {
             return ( <div className="text-center"><ErrorMessage message={store.error!} /><div className="mt-8"><h2 className="text-2xl font-bold dark:text-gray-200 text-gray-800 mb-4">{t('errorAndUpload')}</h2><FileUpload /></div></div> );
         }
@@ -258,7 +262,8 @@ const App: React.FC = observer(() => {
                 <>
                     <ActivePlanNameEditor />
                     {store.activeTab === 'daily' && <DailyPlanView />}
-                    {store.activeTab === 'plan' && <WeeklyCalendarView />}
+                    {store.activeTab === 'calendar' && <CalendarView />}
+                    {store.activeTab === 'plan' && <MealPlanView plan={store.masterMealPlan} isMasterPlanView={true} />}
                     {store.activeTab === 'list' && <ShoppingListView />}
                     {store.activeTab === 'pantry' && <PantryView />}
                     {store.activeTab === 'progress' && <ProgressView />}

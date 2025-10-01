@@ -1,0 +1,71 @@
+import React, { useState } from 'react';
+import { observer } from 'mobx-react-lite';
+import { mealPlanStore } from '../stores/MealPlanStore';
+import { t } from '../i18n';
+
+const SetPlanDatesModal: React.FC = observer(() => {
+    const { commitNewPlan, cancelNewPlan } = mealPlanStore;
+    const today = new Date().toISOString().split('T')[0];
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const nextMonthStr = nextMonth.toISOString().split('T')[0];
+
+    const [startDate, setStartDate] = useState(today);
+    const [endDate, setEndDate] = useState(nextMonthStr);
+    const [error, setError] = useState('');
+
+    const handleSubmit = () => {
+        if (new Date(endDate) <= new Date(startDate)) {
+            setError(t('dateValidationError'));
+            return;
+        }
+        setError('');
+        commitNewPlan(startDate, endDate);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6 animate-slide-in-up">
+                <h2 id="modal-title" className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('setPlanDatesTitle')}</h2>
+                <p className="text-gray-500 dark:text-gray-400 mb-6">{t('setPlanDatesSubtitle')}</p>
+                
+                <div className="space-y-4">
+                    <div>
+                        <label htmlFor="start-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('startDateLabel')}</label>
+                        <input
+                            type="date"
+                            id="start-date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm"
+                        />
+                    </div>
+                     <div>
+                        <label htmlFor="end-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('endDateLabel')}</label>
+                        <input
+                            type="date"
+                            id="end-date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            min={startDate}
+                            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm"
+                        />
+                    </div>
+                </div>
+
+                {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
+
+                <div className="flex justify-end gap-4 mt-8">
+                    <button onClick={cancelNewPlan} className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold px-6 py-2 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                        {t('cancel')}
+                    </button>
+                    <button onClick={handleSubmit} className="bg-violet-600 text-white font-semibold px-6 py-2 rounded-full hover:bg-violet-700 transition-colors">
+                        {t('startPlanButton')}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+});
+
+export default SetPlanDatesModal;

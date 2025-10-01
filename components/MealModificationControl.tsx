@@ -11,11 +11,12 @@ interface MealModificationControlProps {
 }
 
 const MealModificationControl: React.FC<MealModificationControlProps> = observer(({ dayIndex, mealIndex }) => {
-    const { activeMealPlan, presetMealPlan, resetMealToPreset } = mealPlanStore;
+    // Fix: Replaced non-existent 'activeMealPlan' with 'masterMealPlan'.
+    const { masterMealPlan, presetMealPlan, resetMealToPreset } = mealPlanStore;
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const isModified = useMemo(() => {
-        const activeMeal = activeMealPlan[dayIndex]?.meals[mealIndex];
+        const activeMeal = masterMealPlan[dayIndex]?.meals[mealIndex];
         const presetMeal = presetMealPlan[dayIndex]?.meals[mealIndex];
         if (!activeMeal || !presetMeal) return false;
         
@@ -26,7 +27,7 @@ const MealModificationControl: React.FC<MealModificationControlProps> = observer
             return false;
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeMealPlan[dayIndex]?.meals[mealIndex], presetMealPlan[dayIndex]?.meals[mealIndex], dayIndex, mealIndex]);
+    }, [masterMealPlan[dayIndex]?.meals[mealIndex], presetMealPlan[dayIndex]?.meals[mealIndex], dayIndex, mealIndex]);
 
     if (!isModified) {
         return null;

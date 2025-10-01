@@ -6,16 +6,17 @@ import MealDetailModal from './MealDetailModal';
 import { DayPlan } from '../types';
 
 const WeeklyCalendarView: React.FC = observer(() => {
-    const { activeMealPlan } = mealPlanStore;
+    // Fix: Replaced non-existent 'activeMealPlan' with 'masterMealPlan'.
+    const { masterMealPlan } = mealPlanStore;
     const [selectedMeal, setSelectedMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
 
     const planMap = new Map<string, DayPlan>();
-    activeMealPlan.forEach(dayPlan => {
+    masterMealPlan.forEach(dayPlan => {
         planMap.set(dayPlan.day.toUpperCase(), dayPlan);
     });
 
     const getDayIndex = (dayName: string) => {
-        return activeMealPlan.findIndex(d => d.day.toUpperCase() === dayName.toUpperCase());
+        return masterMealPlan.findIndex(d => d.day.toUpperCase() === dayName.toUpperCase());
     };
 
     return (

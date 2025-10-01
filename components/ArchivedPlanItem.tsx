@@ -27,7 +27,8 @@ const ArchivedPlanItem: React.FC<{ archive: ArchivedPlan }> = observer(({ archiv
                     <RestoreIcon/><span className="ml-2 hidden sm:inline">{t('restore')}</span>
                 </button>
             </summary>
-            <div className="mt-4 border-t dark:border-gray-700 pt-4"> <MealPlanView plan={archive.plan} isArchiveView={true} /> </div>
+            {/* Fix: Removed non-existent 'isArchiveView' prop. The default behavior is correct for a read-only archive view. */}
+            <div className="mt-4 border-t dark:border-gray-700 pt-4"> <MealPlanView plan={archive.plan} /> </div>
         </details>
     );
 });

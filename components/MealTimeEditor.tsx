@@ -10,8 +10,8 @@ interface MealTimeEditorProps {
 }
 
 const MealTimeEditor: React.FC<MealTimeEditorProps> = observer(({ dayIndex, mealIndex }) => {
-    // Fix: Corrected property access from `mealPlan` to `activeMealPlan`
-    const meal = mealPlanStore.activeMealPlan[dayIndex]?.meals[mealIndex];
+    // Fix: Corrected property access to use 'masterMealPlan' as 'activeMealPlan' does not exist.
+    const meal = mealPlanStore.masterMealPlan[dayIndex]?.meals[mealIndex];
     const [isEditing, setIsEditing] = useState(false);
 
     if (!meal?.time) return null;

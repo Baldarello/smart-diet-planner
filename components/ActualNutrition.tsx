@@ -48,8 +48,8 @@ const NutritionComparison: React.FC<{ planned: NutritionInfo | null | undefined,
 
 
 const ActualNutrition: React.FC<{ dayIndex: number, mealIndex: number }> = observer(({ dayIndex, mealIndex }) => {
-    const { activeMealPlan, recalculateActualMealNutrition, recalculatingActualMeal } = mealPlanStore;
-    const meal = activeMealPlan[dayIndex]?.meals[mealIndex];
+    const { dailyPlan, recalculateActualMealNutrition, recalculatingActualMeal } = mealPlanStore;
+    const meal = dailyPlan?.meals[mealIndex];
 
     if (!meal) return null;
 
@@ -57,7 +57,7 @@ const ActualNutrition: React.FC<{ dayIndex: number, mealIndex: number }> = obser
     const totalItemsCount = meal.items.length;
     
     const shouldShow = meal.done && usedItemsCount > 0 && usedItemsCount < totalItemsCount;
-    const isRecalculating = recalculatingActualMeal?.dayIndex === dayIndex && recalculatingActualMeal?.mealIndex === mealIndex;
+    const isRecalculating = recalculatingActualMeal?.mealIndex === mealIndex;
 
     if (!shouldShow) return null;
 
@@ -77,7 +77,7 @@ const ActualNutrition: React.FC<{ dayIndex: number, mealIndex: number }> = obser
     return (
         <div className="mt-3 text-center">
             <button
-                onClick={() => recalculateActualMealNutrition(dayIndex, mealIndex)}
+                onClick={() => recalculateActualMealNutrition()}
                 className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200 font-semibold px-4 py-2 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800/60 transition-colors text-sm flex items-center mx-auto"
             >
                 <RefreshIcon />
