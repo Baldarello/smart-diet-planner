@@ -9,6 +9,7 @@ import MealTimeEditor from './MealTimeEditor';
 import NutritionInfoDisplay from './NutritionInfoDisplay';
 import DailyNutritionSummary from './DailyNutritionSummary';
 import MealModificationControl from './MealModificationControl';
+import ActualNutrition from './ActualNutrition';
 
 const MealPlanView: React.FC<{ plan: DayPlan[], isArchiveView?: boolean }> = observer(({ plan, isArchiveView = false }) => (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -55,6 +56,7 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isArchiveView?: boolean }> = obs
                                 </div>
                                 <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} isArchiveView={isArchiveView} />
                                 {mealPlanStore.onlineMode && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} isArchiveView={isArchiveView} />}
+                                {mealPlanStore.onlineMode && !isArchiveView && <ActualNutrition dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
                             </div>
                         ))}
                     </div>

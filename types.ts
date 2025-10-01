@@ -19,6 +19,7 @@ export interface Meal {
   done: boolean;
   time?: string; // e.g., "08:30"
   nutrition?: NutritionInfo | null;
+  actualNutrition?: NutritionInfo | null;
 }
 
 export interface DayPlan {

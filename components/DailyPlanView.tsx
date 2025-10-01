@@ -11,6 +11,7 @@ import NutritionInfoDisplay from './NutritionInfoDisplay';
 import { Meal } from '../types';
 import MealModificationControl from './MealModificationControl';
 import Snackbar from './Snackbar';
+import ActualNutrition from './ActualNutrition';
 
 const DailyPlanView: React.FC = observer(() => {
     const { dailyPlan, toggleMealDone, dailyNutritionSummary, onlineMode } = mealPlanStore;
@@ -65,6 +66,7 @@ const DailyPlanView: React.FC = observer(() => {
 
                         <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} />
                         {onlineMode && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
+                        {onlineMode && <ActualNutrition dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
                     </div>
                 ))}
             </div>

@@ -39,6 +39,7 @@ export class MealPlanStore {
   onlineMode = true;
   recalculating = false;
   recalculatingMeal: { dayIndex: number; mealIndex: number } | null = null;
+  recalculatingActualMeal: { dayIndex: number; mealIndex: number } | null = null;
 
   hydrationGoalLiters = 3;
   waterIntakeMl = 0;
@@ -69,6 +70,7 @@ export class MealPlanStore {
                     meals: (day.meals || []).map((meal: Meal) => ({
                         ...meal,
                         done: meal.done ?? false,
+                        actualNutrition: meal.actualNutrition ?? null,
                         items: (meal.items || []).map(item => ({ ...item, used: item.used ?? false }))
                     }))
                 }));
@@ -355,10 +357,49 @@ export class MealPlanStore {
     }
   }
 
+    recalculateActualMealNutrition = async (dayIndex: number, mealIndex: number) => {
+        if (!this.onlineMode) return;
+
+        const meal = this.activeMealPlan[dayIndex]?.meals[mealIndex];
+        if (!meal) return;
+        
+        const consumedItems = meal.items.filter(item => item.used);
+        if (consumedItems.length === 0 || consumedItems.length === meal.items.length) {
+            return;
+        }
+
+        runInAction(() => {
+            this.recalculatingActualMeal = { dayIndex, mealIndex };
+        });
+
+        try {
+            const mealWithConsumedItemsOnly = { ...meal, items: consumedItems };
+            const newNutrition = await getNutritionForMeal(mealWithConsumedItemsOnly);
+            runInAction(() => {
+                if (this.activeMealPlan[dayIndex]?.meals[mealIndex]) {
+                    this.activeMealPlan[dayIndex].meals[mealIndex].actualNutrition = newNutrition;
+                }
+            });
+        } catch (error) {
+            console.error(`Failed to recalculate actual nutrition for meal: ${meal.name}`, error);
+            if (isQuotaError(error)) {
+                runInAction(() => { this.onlineMode = false });
+                this.saveSessionState();
+            }
+        } finally {
+            runInAction(() => {
+                this.recalculatingActualMeal = null;
+            });
+            this.saveToDB();
+        }
+    }
+
     resetMealToPreset = (dayIndex: number, mealIndex: number) => {
         if (this.presetMealPlan[dayIndex]?.meals[mealIndex] && this.activeMealPlan[dayIndex]?.meals[mealIndex]) {
             runInAction(() => {
-                this.activeMealPlan[dayIndex].meals[mealIndex] = JSON.parse(JSON.stringify(this.presetMealPlan[dayIndex].meals[mealIndex]));
+                const presetMeal = JSON.parse(JSON.stringify(this.presetMealPlan[dayIndex].meals[mealIndex]));
+                presetMeal.actualNutrition = null;
+                this.activeMealPlan[dayIndex].meals[mealIndex] = presetMeal;
             });
             this.saveToDB();
         }
@@ -429,6 +470,7 @@ export class MealPlanStore {
           meals: day.meals.map(meal => ({
               ...meal,
               done: false,
+              actualNutrition: null,
               items: meal.items.map(item => ({...item, used: false}))
           }))
         }));
@@ -616,6 +658,9 @@ export class MealPlanStore {
     const meal = this.activeMealPlan[dayIndex]?.meals[mealIndex];
     if (meal) {
         meal.done = !meal.done;
+        if (!meal.done) {
+            meal.actualNutrition = null;
+        }
         this.saveToDB();
     }
   }
@@ -683,6 +728,7 @@ export class MealPlanStore {
                             return {
                                 ...newMeal,
                                 done: oldMeal?.done ?? false,
+                                actualNutrition: oldMeal?.actualNutrition ?? null,
                                 items: newMeal.items.map(newItem => ({
                                     ...newItem,
                                     used: oldItemsMap.get(newItem.fullDescription)?.used ?? false,
@@ -812,6 +858,7 @@ export class MealPlanStore {
                   meals: (day.meals || []).map(meal => ({
                     ...meal,
                     done: meal.done ?? false,
+                    actualNutrition: meal.actualNutrition ?? null,
                     items: (meal.items || []).map(item => ({...item, used: item.used ?? false}))
                   }))
                 }));

@@ -60,7 +60,12 @@ const DailyNutritionSummary: React.FC<DailyNutritionSummaryProps> = ({ summary, 
 
     return (
         <div className={className}>
-            {showTitle && <h4 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">{t('dailySummaryTitle')}</h4>}
+            {showTitle && (
+                <div className="text-center mb-4">
+                    <h4 className="text-xl font-bold text-gray-800 dark:text-gray-200">{t('dailySummaryTitle')}</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t('nutritionDisclaimer')}</p>
+                </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <SummaryItem
                     icon={<CarbsIcon />}
@@ -91,6 +96,7 @@ const DailyNutritionSummary: React.FC<DailyNutritionSummaryProps> = ({ summary, 
                     colorClasses="bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200"
                 />
             </div>
+             {!showTitle && <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-3">{t('nutritionDisclaimer')}</p>}
         </div>
     );
 };

@@ -22,4 +22,6 @@ export { default as MealModificationControl } from './MealModificationControl';
 export { default as InstallPwaSnackbar } from './InstallPwaSnackbar';
 export { default as GoogleLogin } from './GoogleLogin';
 export { default as JsonImportButton } from './JsonImportButton';
+export { default as ActualNutrition } from './ActualNutrition';
+export { default as Drawer } from './Drawer';
 export * from './Icons';

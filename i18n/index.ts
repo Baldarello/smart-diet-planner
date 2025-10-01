@@ -28,6 +28,11 @@ const translations = {
     orCreateManually: "crea un piano manualmente",
     cancelAndReturn: "Annulla e torna al piano",
     restoreFromArchiveTitle: "Oppure, ripristina un piano archiviato",
+    planManagement: "Gestione Piano",
+    settings: "Impostazioni",
+    theme: "Tema",
+    language: "Lingua",
+    connectionStatus: "Stato Connessione",
 
     // ManualPlanEntryForm.tsx
     manualEntryTitle: "Crea il Tuo Piano Dietetico",
@@ -148,6 +153,11 @@ const translations = {
     recalcModalTitle: "Conferma Ricalcolo",
     recalcModalContent: "I valori nutrizionali sono stime generate da un'IA e potrebbero non essere scientificamente accurati. Sono intesi come linee guida. Vuoi procedere?",
     confirm: "Conferma",
+    actualIntakeTitle: "Assunzione Effettiva",
+    recalculatingActuals: "Calcolo assunzione effettiva in corso...",
+    recalculateActualsButton: "Calcola Assunzione Effettiva",
+    plannedShort: "Pian.",
+    nutritionDisclaimer: "I valori sono stime AI e da intendersi come guida, non come parere medico.",
 
     // Meal Modification
     resetMealToPresetTitle: "Ripristina Pasto",
@@ -194,6 +204,11 @@ const translations = {
     orCreateManually: "create a plan manually",
     cancelAndReturn: "Cancel and return to plan",
     restoreFromArchiveTitle: "Or, restore an archived plan",
+    planManagement: "Plan Management",
+    settings: "Settings",
+    theme: "Theme",
+    language: "Language",
+    connectionStatus: "Connection Status",
     
     // ManualPlanEntryForm.tsx
     manualEntryTitle: "Create Your Diet Plan",
@@ -314,7 +329,12 @@ const translations = {
     recalcModalTitle: "Confirm Recalculation",
     recalcModalContent: "Nutritional values are AI-generated estimates and may not be scientifically accurate. They are intended as a guideline. Do you want to proceed?",
     confirm: "Confirm",
-    
+    actualIntakeTitle: "Actual Intake",
+    recalculatingActuals: "Calculating actual intake...",
+    recalculateActualsButton: "Calculate Actual Intake",
+    plannedShort: "Plan.",
+    nutritionDisclaimer: "Values are AI estimates intended as a guideline, not as medical advice.",
+
     // Meal Modification
     resetMealToPresetTitle: "Reset Meal",
     resetMealModalTitle: "Confirm Reset",

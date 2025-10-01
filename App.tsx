@@ -18,7 +18,9 @@ import {
     ArchivedPlanItem,
     InstallPwaSnackbar,
     GoogleLogin,
-    JsonImportButton
+    JsonImportButton,
+    Drawer,
+    MenuIcon
 } from './components';
 import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon, ExportIcon, ChangeDietIcon } from './components/Icons';
 
@@ -29,6 +31,7 @@ const App: React.FC = observer(() => {
     const [showNewPlanFlow, setShowNewPlanFlow] = useState(false);
     const [showManualForm, setShowManualForm] = useState(false);
     const [installPrompt, setInstallPrompt] = useState<any>(null);
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
     useEffect(() => {
         authStore.init();
@@ -44,6 +47,17 @@ const App: React.FC = observer(() => {
             window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         };
     }, []);
+
+    useEffect(() => {
+        if (isDrawerOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isDrawerOpen]);
 
     const handleInstallClick = async () => {
         if (!installPrompt) return;
@@ -143,6 +157,53 @@ const App: React.FC = observer(() => {
         URL.revokeObjectURL(url);
     };
 
+    const renderDrawerContent = () => (
+        <div className="flex flex-col h-full space-y-6">
+            {/* User Profile / Login */}
+            <div className="border-b dark:border-gray-700 pb-6">
+                <GoogleLogin />
+            </div>
+
+            {/* Plan Management */}
+            {store.status === AppStatus.SUCCESS && store.currentPlanId && (
+                <div className="flex flex-col space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t('planManagement')}</h3>
+                    <button onClick={() => { setShowNewPlanFlow(true); setIsDrawerOpen(false); }} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
+                        <ChangeDietIcon /> <span className="ml-3">{t('changeDiet')}</span>
+                    </button>
+                    <button onClick={handleExport} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
+                        <ExportIcon /> <span className="ml-3">{t('exportPlan')}</span>
+                    </button>
+                </div>
+            )}
+            
+            {/* Settings */}
+            <div className="flex-grow flex flex-col justify-end">
+                <div className="border-t dark:border-gray-700 pt-6 space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t('settings')}</h3>
+                    <div className="flex items-center justify-between bg-slate-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">{t('theme')}</span>
+                        <button onClick={() => store.setTheme(store.theme === 'light' ? 'dark' : 'light')} className="p-2 rounded-full bg-white dark:bg-gray-800 shadow-md hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors">
+                            {store.theme === 'light' ? <MoonIcon /> : <SunIcon />}
+                        </button>
+                    </div>
+                    <div className="flex items-center justify-between bg-slate-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">{t('language')}</span>
+                        <button onClick={() => store.setLocale(store.locale === 'it' ? 'en' : 'it')} className="w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-md hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors font-bold text-violet-600 dark:text-violet-400">
+                            {store.locale.toUpperCase()}
+                        </button>
+                    </div>
+                    <div className="flex items-center justify-between bg-slate-50 dark:bg-gray-700/50 p-3 rounded-lg" title={store.onlineMode ? t('onlineModeTitle') : t('offlineModeTitle')}>
+                        <span className="font-medium text-gray-700 dark:text-gray-300">{t('connectionStatus')}</span>
+                        <div className="p-2 rounded-full bg-white dark:bg-gray-800 shadow-md">
+                            {store.onlineMode ? <CloudOnlineIcon /> : <CloudOfflineIcon />}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     const renderMainContent = () => {
         if (store.status === AppStatus.HYDRATING) return <Loader />;
         if (store.status === AppStatus.LOADING) return <Loader />;
@@ -235,41 +296,30 @@ const App: React.FC = observer(() => {
 
     return (
         <div className="min-h-screen p-4 sm:p-6 lg:p-8">
+            <Drawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)}>
+                {renderDrawerContent()}
+            </Drawer>
             <header className="mb-10">
-                <div className="max-w-4xl mx-auto flex flex-col sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-4">
-                    {/* Left Controls */}
-                    <div className="flex items-center gap-2 justify-center sm:justify-start">
-                        <button onClick={() => store.setTheme(store.theme === 'light' ? 'dark' : 'light')} className="p-2 rounded-full bg-white dark:bg-gray-800 shadow-md hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors">
-                           {store.theme === 'light' ? <MoonIcon/> : <SunIcon/>}
+                <div className="max-w-4xl mx-auto flex items-center justify-between">
+                    {/* Left: Menu Button */}
+                    <div className="flex-1 flex justify-start">
+                        <button
+                            onClick={() => setIsDrawerOpen(true)}
+                            className="p-2 rounded-full bg-white dark:bg-gray-800 shadow-md hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
+                            aria-label="Open menu"
+                        >
+                            <MenuIcon />
                         </button>
-                         <button onClick={() => store.setLocale(store.locale === 'it' ? 'en' : 'it')} className="w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-md hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors font-bold text-violet-600 dark:text-violet-400">
-                           {store.locale.toUpperCase()}
-                        </button>
-                        <div className="p-2 rounded-full bg-white dark:bg-gray-800 shadow-md" title={store.onlineMode ? t('onlineModeTitle') : t('offlineModeTitle')}>
-                           {store.onlineMode ? <CloudOnlineIcon/> : <CloudOfflineIcon/>}
-                        </div>
                     </div>
 
-                    {/* Title */}
-                    <div className="text-center my-4 sm:my-0">
+                    {/* Center: Title */}
+                    <div className="text-center">
                         <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600">{t('mainTitle')}</h1>
                         <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">{t('mainSubtitle')}</p>
                     </div>
-
-                    {/* Right Controls */}
-                    <div className="flex justify-center sm:justify-end items-center gap-4">
-                        {store.status === AppStatus.SUCCESS && store.currentPlanId && !showNewPlanFlow && (
-                             <>
-                                <button onClick={() => setShowNewPlanFlow(true)} className="bg-white dark:bg-gray-800 text-violet-700 dark:text-violet-400 font-semibold px-4 py-2 rounded-full shadow-md hover:bg-violet-100 dark:hover:bg-gray-700 transition-colors flex items-center" title={t('changeDietTitle')}>
-                                    <ChangeDietIcon/><span className="sm:inline ml-2">{t('changeDiet')}</span>
-                                </button>
-                                <button onClick={handleExport} className="bg-white dark:bg-gray-800 text-violet-700 dark:text-violet-400 font-semibold px-4 py-2 rounded-full shadow-md hover:bg-violet-100 dark:hover:bg-gray-700 transition-colors flex items-center" title={t('exportPlanTitle')}>
-                                    <ExportIcon /><span className="sm:inline ml-2">{t('exportPlan')}</span>
-                                </button>
-                             </>
-                        )}
-                        <GoogleLogin />
-                    </div>
+                    
+                    {/* Right: Spacer */}
+                    <div className="flex-1"></div>
                 </div>
             </header>
             <main>{renderMainContent()}</main>
