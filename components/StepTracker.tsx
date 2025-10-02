@@ -5,15 +5,15 @@ import { t } from '../i18n';
 import { StepsIcon, FlameIcon } from './Icons';
 
 const StepTracker: React.FC = observer(() => {
-    const { stepGoal, setStepGoal, currentDayProgress, setSteps, logSteps, bodyMetrics } = mealPlanStore;
+    const { stepGoal, setStepGoal, currentDayProgress, setSteps, logSteps, setActivityHours } = mealPlanStore;
     const stepsTaken = currentDayProgress?.stepsTaken ?? 0;
+    const activityHours = currentDayProgress?.activityHours ?? 1;
+    const caloriesBurned = currentDayProgress?.estimatedCaloriesBurned;
     
     const [isEditingIntake, setIsEditingIntake] = useState(false);
     const [editableIntake, setEditableIntake] = useState(stepsTaken.toString());
     const [editableGoal, setEditableGoal] = useState(stepGoal.toString());
-    
-    const [hours, setHours] = useState('1');
-    const [caloriesBurned, setCaloriesBurned] = useState<number | null>(null);
+    const [editableHours, setEditableHours] = useState(activityHours.toString());
 
     useEffect(() => {
         if (!isEditingIntake) {
@@ -26,26 +26,8 @@ const StepTracker: React.FC = observer(() => {
     }, [stepGoal]);
 
     useEffect(() => {
-        const calculateCalories = () => {
-            const numericHours = parseFloat(hours.replace(',', '.'));
-            if (isNaN(numericHours) || numericHours <= 0 || stepsTaken <= 0) {
-                setCaloriesBurned(null);
-                return;
-            }
-    
-            const userWeightKg = currentDayProgress?.weightKg ?? (bodyMetrics.weightKg ?? 70);
-            const BASE_CALORIES_PER_STEP = (userWeightKg / 70) * 0.045;
-            const BASELINE_PACE = 5500;
-            const pace = stepsTaken / numericHours;
-            const paceDifference = pace - BASELINE_PACE;
-            const intensityModifier = 1 + (paceDifference / 2000) * 0.10;
-            const clampedModifier = Math.max(0.8, Math.min(intensityModifier, 1.5));
-            const calories = Math.round(stepsTaken * BASE_CALORIES_PER_STEP * clampedModifier);
-            setCaloriesBurned(calories);
-        };
-    
-        calculateCalories();
-    }, [hours, stepsTaken, bodyMetrics.weightKg, currentDayProgress?.weightKg]);
+        setEditableHours(activityHours.toString());
+    }, [activityHours]);
 
 
     const goal = parseInt(editableGoal, 10);
@@ -80,10 +62,20 @@ const StepTracker: React.FC = observer(() => {
     };
     
     const handleAddDuration = (minutes: number) => {
-        const currentHours = parseFloat(hours.replace(',', '.')) || 0;
+        const currentHours = activityHours || 0;
         const newTotalHours = Math.round((currentHours + (minutes / 60)) * 100) / 100;
-        setHours(String(newTotalHours).replace('.', ','));
+        setActivityHours(newTotalHours);
     };
+
+    const handleHoursSave = () => {
+        const numericHours = parseFloat(editableHours.replace(',', '.'));
+        if (!isNaN(numericHours) && numericHours >= 0) {
+            setActivityHours(numericHours);
+        } else {
+            setEditableHours(activityHours.toString());
+        }
+    };
+
 
     return (
         <div className="bg-teal-50 dark:bg-teal-900/20 p-4 rounded-lg mt-6">
@@ -164,8 +156,9 @@ const StepTracker: React.FC = observer(() => {
                             id="activity-hours"
                             type="text"
                             inputMode="decimal"
-                            value={hours}
-                            onChange={(e) => setHours(e.target.value)}
+                            value={editableHours}
+                            onChange={(e) => setEditableHours(e.target.value)}
+                            onBlur={handleHoursSave}
                             className="w-16 text-right font-bold bg-transparent border-b-2 border-teal-200 dark:border-teal-700 focus:border-teal-500 dark:focus:border-teal-400 outline-none text-teal-700 dark:text-teal-200"
                             aria-label={t('activityHours')}
                         />
@@ -192,7 +185,7 @@ const StepTracker: React.FC = observer(() => {
 
 
                 {/* Estimated Calories Display */}
-                {caloriesBurned !== null && (
+                {caloriesBurned !== null && caloriesBurned > 0 && (
                     <div className="!mt-4 flex items-center justify-center bg-teal-100 dark:bg-teal-800/60 p-3 rounded-lg">
                         <FlameIcon />
                         <span className="ml-2 font-semibold text-teal-800 dark:text-teal-200">{t('estimatedCalories')}</span>

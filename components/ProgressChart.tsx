@@ -5,7 +5,7 @@ type ChartType = 'line' | 'bar' | 'area';
 
 interface Dataset {
     label: string;
-    data: number[];
+    data: (number | null | undefined | number[])[];
     color: string;
     unit: string;
 }
@@ -37,7 +37,7 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
 
     if (width === 0) return <div ref={containerRef} style={{ height: `${height}px` }} />;
 
-    const allData = datasets.flatMap(d => d.data);
+    const allData = datasets.flatMap(d => d.data).filter(d => typeof d === 'number' && !isNaN(d)) as number[];
     const yMin = Math.min(...allData) * 0.9;
     const yMax = Math.max(...allData) * 1.1;
 
@@ -50,15 +50,25 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
         const index = Math.round(((mouseX - padding.left) / (width - padding.left - padding.right)) * (labels.length - 1));
 
         if (index >= 0 && index < labels.length) {
+            const hasDataAtIndex = datasets.some(d => d.data[index] != null && !isNaN(d.data[index] as number));
+            if (!hasDataAtIndex) {
+                setTooltip(null);
+                return;
+            }
+
             const content = (
                 <>
                     <div className="font-bold mb-1">{labels[index]}</div>
-                    {datasets.map((dataset, i) => (
-                        <div key={i} className="flex items-center">
-                            <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: dataset.color }}></span>
-                            <span>{dataset.label}: <strong>{dataset.data[index]} {dataset.unit}</strong></span>
-                        </div>
-                    ))}
+                    {datasets.map((dataset, i) => {
+                        const value = dataset.data[index];
+                         if (value == null || isNaN(value as number)) return null;
+                         return (
+                            <div key={i} className="flex items-center">
+                                <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: dataset.color }}></span>
+                                <span>{dataset.label}: <strong>{value} {dataset.unit}</strong></span>
+                            </div>
+                        )
+                    })}
                 </>
             );
             setTooltip({
@@ -80,7 +90,7 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
             const value = yMin + (i / (ticks - 1)) * (yMax - yMin);
             const yPos = y(value);
             return (
-                <g key={i} className="text-xs text-gray-500 dark:text-gray-400">
+                <g key={i} className="text-xs text-gray-500 dark:text-gray-300">
                     <line x1={padding.left} x2={width - padding.right} y1={yPos} y2={yPos} stroke="currentColor" strokeDasharray="2,2" className="text-gray-200 dark:text-gray-700" />
                     <text x={padding.left - 8} y={yPos + 4} textAnchor="end">{Math.round(value)}</text>
                 </g>
@@ -96,7 +106,7 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
             if (i % tickStep !== 0) return null;
             const xPos = x(i);
             return (
-                <text key={i} x={xPos} y={height - padding.bottom + 16} textAnchor="middle" className="text-xs text-gray-500 dark:text-gray-400">
+                <text key={i} x={xPos} y={height - padding.bottom + 16} textAnchor="middle" className="text-xs text-gray-500 dark:text-gray-300">
                     {label}
                 </text>
             );
@@ -105,12 +115,21 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
 
     const renderPaths = () => {
         return datasets.map((dataset, i) => {
-            const pathData = dataset.data.map((d, j) => `${j === 0 ? 'M' : 'L'} ${x(j)} ${y(d)}`).join(' ');
+             const pathData = dataset.data.reduce((path, d, j) => {
+                const value = d as number;
+                if (value == null || isNaN(value)) return path; 
+                
+                const point = `${x(j)} ${y(value)}`;
+                const prevIsNaN = j > 0 && (dataset.data[j - 1] == null || isNaN(dataset.data[j-1] as number));
+                
+                return `${path} ${path === '' || prevIsNaN ? 'M' : 'L'} ${point}`;
+            }, '');
+
             if (type === 'line') {
                 return <path key={i} d={pathData} fill="none" stroke={dataset.color} strokeWidth="2" />;
             }
             if (type === 'area') {
-                const areaPathData = `${pathData} V ${height - padding.bottom} H ${padding.left} Z`;
+                const areaPathData = `${pathData} V ${height - padding.bottom} H ${padding.left} Z`; // This needs adjustment for gaps
                 const color = dataset.color.replace('1)', '0.2)');
                 return (
                      <g key={i}>
@@ -130,8 +149,11 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
         return labels.map((_, i) => (
              <g key={i}>
                 {datasets.map((dataset, j) => {
+                    const value = dataset.data[i] as number;
+                    if (value == null || isNaN(value)) return null;
+
                     const xPos = x(i) - barWidth / 2 + j * groupWidth;
-                    const yPos = y(dataset.data[i]);
+                    const yPos = y(value);
                     const barHeight = height - padding.bottom - yPos;
                     return (
                         <rect key={`${i}-${j}`} x={xPos} y={yPos} width={groupWidth} height={barHeight} fill={dataset.color} />

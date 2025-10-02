@@ -17,7 +17,7 @@ import BodyMetricsTracker from './BodyMetricsTracker';
 import SkeletonLoader from './SkeletonLoader';
 
 const DailyPlanView: React.FC = observer(() => {
-    const { dailyPlan, toggleMealDone, dailyNutritionSummary, onlineMode, currentDate, setCurrentDate, startDate, endDate } = mealPlanStore;
+    const { dailyPlan, toggleMealDone, dailyNutritionSummary, onlineMode, currentDate, setCurrentDate, startDate, endDate, toggleAllItemsInMeal } = mealPlanStore;
 
     if (!dailyPlan) {
         return ( 
@@ -79,32 +79,46 @@ const DailyPlanView: React.FC = observer(() => {
             <Snackbar />
 
             <div className="space-y-5 mt-6">
-                {sortedMeals.map((meal) => (
-                    <div key={meal.originalIndex} className={`bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg transition-all duration-500 ease-in-out ${meal.done ? 'opacity-60' : 'opacity-100'}`}>
-                        <div className="flex justify-between items-start">
-                             <div>
-                                <div className="flex items-center gap-x-2">
-                                    <h4 className={`text-xl font-semibold text-gray-800 dark:text-gray-200 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.name}</h4>
-                                    <MealTimeEditor dayIndex={dayIndex} mealIndex={meal.originalIndex} />
-                                    <MealModificationControl dayIndex={dayIndex} mealIndex={meal.originalIndex} />
-                                </div>
-                                {meal.title && <p className={`text-md font-medium text-violet-600 dark:text-violet-400 mt-1 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.title}</p>}
-                             </div>
-                             <button
-                                onClick={() => toggleMealDone(meal.originalIndex)}
-                                title={meal.done ? t('markAsToDo') : t('markAsDone')}
-                                className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0"
-                                aria-label={meal.done ? t('markAsToDo') : t('markAsDone')}
-                             >
-                                {meal.done ? <UndoIcon /> : <CheckCircleIcon />}
-                             </button>
-                        </div>
+                {sortedMeals.map((meal) => {
+                    const allItemsUsed = meal.items.length > 0 && meal.items.every(item => item.used);
+                    const someItemsUsed = meal.items.some(item => item.used) && !allItemsUsed;
 
-                        <MealItemChecklist items={meal.items} mealIndex={meal.originalIndex} mealIsDone={meal.done} />
-                        {onlineMode && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
-                        {onlineMode && <ActualNutrition dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
-                    </div>
-                ))}
+                    return (
+                        <div key={meal.originalIndex} className={`bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg transition-all duration-500 ease-in-out ${meal.done ? 'opacity-60' : 'opacity-100'}`}>
+                            <div className="flex justify-between items-start">
+                                 <div>
+                                    <div className="flex items-center gap-x-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={allItemsUsed}
+                                            onChange={() => toggleAllItemsInMeal(meal.originalIndex)}
+                                            ref={el => { if (el) el.indeterminate = someItemsUsed; }}
+                                            className="h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500 cursor-pointer bg-transparent dark:bg-gray-600 flex-shrink-0"
+                                            title={t('toggleAllMealItemsTitle')}
+                                            aria-label={t('toggleAllMealItemsTitle')}
+                                        />
+                                        <h4 className={`text-xl font-semibold text-gray-800 dark:text-gray-200 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.name}</h4>
+                                        <MealTimeEditor dayIndex={dayIndex} mealIndex={meal.originalIndex} />
+                                        <MealModificationControl dayIndex={dayIndex} mealIndex={meal.originalIndex} />
+                                    </div>
+                                    {meal.title && <p className={`text-md font-medium text-violet-600 dark:text-violet-400 mt-1 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.title}</p>}
+                                 </div>
+                                 <button
+                                    onClick={() => toggleMealDone(meal.originalIndex)}
+                                    title={meal.done ? t('markAsToDo') : t('markAsDone')}
+                                    className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0"
+                                    aria-label={meal.done ? t('markAsToDo') : t('markAsDone')}
+                                 >
+                                    {meal.done ? <UndoIcon /> : <CheckCircleIcon />}
+                                 </button>
+                            </div>
+
+                            <MealItemChecklist items={meal.items} mealIndex={meal.originalIndex} mealIsDone={meal.done} />
+                            {onlineMode && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
+                            {onlineMode && <ActualNutrition dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

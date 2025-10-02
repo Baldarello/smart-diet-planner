@@ -45,19 +45,19 @@ const ProgressView: React.FC = observer(() => {
 
     const chartData = {
         labels: filteredData.map(d => formatDateForChart(d.date)),
-        weight: filteredData.map(d => ({ value: d.weightKg, date: d.date })).filter(d => d.value != null) as { value: number, date: string }[],
-        fat: filteredData.map(d => ({ value: d.bodyFatPercentage, date: d.date })).filter(d => d.value != null) as { value: number, date: string }[],
+        weight: filteredData.map(d => d.weightKg),
+        fat: filteredData.map(d => d.bodyFatPercentage),
         adherence: filteredData.map(d => d.adherence),
         plannedCalories: filteredData.map(d => d.plannedCalories),
         actualCalories: filteredData.map(d => d.actualCalories),
+        waterIntake: filteredData.map(d => d.waterIntakeMl),
+        bodyWater: filteredData.map(d => d.bodyWaterPercentage),
+        steps: filteredData.map(d => d.stepsTaken),
+        caloriesBurned: filteredData.map(d => d.estimatedCaloriesBurned),
     };
+    
+    const hasData = (data: (number | null | undefined)[]) => data.some(d => d != null && d > 0);
 
-    const getMatchingLabels = (data: { value: number, date: string }[]) => {
-        const dataDates = new Set(data.map(d => d.date));
-        return filteredData
-            .filter(record => dataDates.has(record.date))
-            .map(d => formatDateForChart(d.date));
-    };
 
     return (
         <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-6xl mx-auto">
@@ -88,28 +88,28 @@ const ProgressView: React.FC = observer(() => {
                             ? <div className="animate-spin h-5 w-5 border-b-2 border-white rounded-full"></div>
                             : <RefreshIcon className="h-5 w-5" />
                         }
-                        <span>{t('recalculateProgressButtonText')}</span>
+                        <span>{recalculatingProgress ? t('recalculatingProgressButtonTextLoading') : t('recalculateProgressButtonText')}</span>
                     </button>
                 </div>
             </div>
 
             <div className="space-y-8">
-                {chartData.weight.length > 1 && (
+                {hasData(chartData.weight) && (
                      <div>
                         <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('weightAndFatChartTitle')}</h3>
                         <ProgressChart
                             type="line"
-                            labels={getMatchingLabels(chartData.weight)}
+                            labels={chartData.labels}
                             datasets={[
                                 {
                                     label: t('weight'),
-                                    data: chartData.weight.map(d => d.value),
+                                    data: chartData.weight,
                                     color: 'rgba(139, 92, 246, 1)',
                                     unit: t('unitKg'),
                                 },
-                                ...(chartData.fat.length > 1 ? [{
+                                ...(hasData(chartData.fat) ? [{
                                     label: t('bodyFat'),
-                                    data: chartData.fat.map(d => d.value),
+                                    data: chartData.fat,
                                     color: 'rgba(236, 72, 153, 1)',
                                     unit: t('unitPercent'),
                                 }] : [])
@@ -117,8 +117,56 @@ const ProgressView: React.FC = observer(() => {
                         />
                     </div>
                 )}
+                
+                {hasData(chartData.steps) && (
+                     <div>
+                        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('stepsChartTitle')}</h3>
+                        <ProgressChart
+                            type="bar"
+                            labels={chartData.labels}
+                            datasets={[
+                                {
+                                    label: t('steps'),
+                                    data: chartData.steps,
+                                    color: 'rgba(22, 163, 74, 0.8)',
+                                    unit: t('stepsUnit'),
+                                },
+                                ...(hasData(chartData.caloriesBurned) ? [{
+                                    label: t('caloriesBurned'),
+                                    data: chartData.caloriesBurned,
+                                    color: 'rgba(249, 115, 22, 0.8)',
+                                    unit: t('caloriesUnit'),
+                                }] : [])
+                            ]}
+                        />
+                    </div>
+                )}
 
-                {chartData.adherence.length > 1 && (
+                {hasData(chartData.waterIntake) && (
+                     <div>
+                        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('hydrationChartTitle')}</h3>
+                        <ProgressChart
+                            type="line"
+                            labels={chartData.labels}
+                            datasets={[
+                                {
+                                    label: t('waterIntake'),
+                                    data: chartData.waterIntake,
+                                    color: 'rgba(59, 130, 246, 1)',
+                                    unit: t('hydrationUnitMl'),
+                                },
+                                ...(hasData(chartData.bodyWater) ? [{
+                                    label: t('bodyWater'),
+                                    data: chartData.bodyWater,
+                                    color: 'rgba(20, 184, 166, 1)',
+                                    unit: t('unitPercent'),
+                                }] : [])
+                            ]}
+                        />
+                    </div>
+                )}
+
+                {hasData(chartData.adherence) && (
                      <div>
                         <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('adherenceChartTitle')}</h3>
                         <ProgressChart
@@ -134,7 +182,7 @@ const ProgressView: React.FC = observer(() => {
                     </div>
                 )}
                 
-                {chartData.plannedCalories.some(c => c > 0) && (
+                {hasData(chartData.plannedCalories) && (
                     <div>
                         <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('calorieIntakeChartTitle')}</h3>
                         <ProgressChart

@@ -1,4 +1,5 @@
 
+
 import type { Locale } from '../types';
 
 const translations = {
@@ -92,6 +93,7 @@ const translations = {
     todaysPlan: "Piano di Oggi:",
     markAsDone: "Segna come completato",
     markAsToDo: "Segna come da fare",
+    toggleAllMealItemsTitle: "Seleziona/Deseleziona tutti gli alimenti",
 
     // ShoppingListView.tsx
     shoppingListTitle: "Lista della Spesa",
@@ -223,13 +225,19 @@ const translations = {
     weightAndFatChartTitle: "Andamento Peso e Massa Grassa",
     adherenceChartTitle: "Aderenza al Piano Pasti",
     calorieIntakeChartTitle: "Introito Calorico (Pianificato vs. Effettivo)",
+    hydrationChartTitle: "Andamento Idratazione e Acqua Corporea",
+    stepsChartTitle: "Andamento Passi e Calorie Bruciate",
     noProgressDataTitle: "Nessun dato sui progressi ancora",
-    noProgressDataSubtitle: "Completa i tuoi pasti giornalieri e inserisci i dati corporei per iniziare a tracciare i tuoi progressi qui.",
+    noProgressDataSubtitle: "Servono almeno due giorni di dati registrati per visualizzare i grafici. Continua a registrare i tuoi pasti e le tue misurazioni!",
     adherence: "Aderenza",
     planned: "Pianificato",
     actual: "Effettivo",
     recalculateProgressTitle: "Ricalcola tutti i dati di progresso dall'inizio del piano",
     recalculateProgressButtonText: "Aggiorna Ora",
+    recalculatingProgressButtonTextLoading: "Aggiornando...",
+    waterIntake: "Idratazione",
+    steps: "Passi",
+    caloriesBurned: "Calorie Bruciate",
   },
   en: {
     // App.tsx
@@ -320,6 +328,7 @@ const translations = {
     todaysPlan: "Today's Plan:",
     markAsDone: "Mark as done",
     markAsToDo: "Mark as to-do",
+    toggleAllMealItemsTitle: "Select/Deselect all items",
 
     // ShoppingListView.tsx
     shoppingListTitle: "Shopping List",
@@ -451,13 +460,19 @@ const translations = {
     weightAndFatChartTitle: "Weight & Body Fat Trend",
     adherenceChartTitle: "Meal Plan Adherence",
     calorieIntakeChartTitle: "Calorie Intake (Planned vs. Actual)",
+    hydrationChartTitle: "Hydration & Body Water Trend",
+    stepsChartTitle: "Steps & Calories Burned Trend",
     noProgressDataTitle: "No Progress Data Yet",
-    noProgressDataSubtitle: "Complete your daily meals and enter body metrics to start tracking your progress here.",
+    noProgressDataSubtitle: "At least two days of data are required to display charts. Keep logging your meals and metrics!",
     adherence: "Adherence",
     planned: "Planned",
     actual: "Actual",
     recalculateProgressTitle: "Recalculate all progress data since the plan started",
     recalculateProgressButtonText: "Update Now",
+    recalculatingProgressButtonTextLoading: "Updating...",
+    waterIntake: "Hydration",
+    steps: "Steps",
+    caloriesBurned: "Calories Burned",
   },
 };
 

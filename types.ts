@@ -89,6 +89,8 @@ export interface ProgressRecord {
   stepsTaken: number;
   waterIntakeMl: number;
   bodyWaterPercentage?: number;
+  activityHours?: number;
+  estimatedCaloriesBurned?: number;
 }
 
 

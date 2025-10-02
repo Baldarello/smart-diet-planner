@@ -5,6 +5,7 @@ import { parsePdfText, generateShoppingList as generateShoppingListOffline, extr
 import { parseMealStructure, getNutritionForMeal, getPlanDetailsAndShoppingList, isQuotaError } from '../services/geminiService';
 import { parseQuantity, formatQuantity } from '../utils/quantityParser';
 import { db } from '../services/db';
+import { calculateCaloriesBurned } from '../utils/calories';
 
 export enum AppStatus {
   INITIAL,
@@ -265,6 +266,12 @@ export class MealPlanStore {
     if (!this.currentDayProgress) return;
     
     const updatedProgress = { ...this.currentDayProgress, [field]: value };
+
+    if (['stepsTaken', 'activityHours', 'weightKg'].includes(field)) {
+        const { stepsTaken = 0, activityHours = 1, weightKg } = updatedProgress;
+        const weightToUse = weightKg ?? this.bodyMetrics.weightKg ?? 70;
+        updatedProgress.estimatedCaloriesBurned = calculateCaloriesBurned(stepsTaken, activityHours, weightToUse) ?? 0;
+    }
     
     runInAction(() => {
         this.currentDayProgress = updatedProgress;
@@ -297,6 +304,10 @@ export class MealPlanStore {
     if (amount >= 0) this.updateCurrentDayProgress('stepsTaken', amount);
   }
 
+  setActivityHours = (hours: number) => {
+    if (hours >= 0) this.updateCurrentDayProgress('activityHours', hours);
+  }
+
   setBodyMetric = (metric: keyof BodyMetrics, value: number | undefined) => {
     if (value !== undefined && (isNaN(value) || value < 0)) return;
     
@@ -308,10 +319,12 @@ export class MealPlanStore {
         }
     });
 
+    // Height is a global property, so we save the entire app state when it changes.
+    // Other body metrics are part of the daily progress record and are saved there.
+    // The `bodyMetrics` object for other metrics acts as a cache for the latest known value
+    // to pre-populate future days, and it's updated from `updateCurrentDayProgress`.
     if (['heightCm'].includes(metric)) {
       this.saveToDB();
-    } else if (this.currentDayProgress) {
-        this.updateCurrentDayProgress(metric as keyof ProgressRecord, value);
     }
   }
 
@@ -345,12 +358,17 @@ export class MealPlanStore {
             stepsTaken: 0,
             waterIntakeMl: 0,
             weightKg: latestRecord?.weightKg,
+            activityHours: 1, // Default value
         };
     }
 
     record.adherence = isNaN(adherence) ? 0 : adherence;
     record.plannedCalories = plannedCalories;
     record.actualCalories = actualCalories;
+
+    const weightToUse = record.weightKg ?? this.bodyMetrics.weightKg ?? 70;
+    record.estimatedCaloriesBurned = calculateCaloriesBurned(record.stepsTaken, record.activityHours ?? 1, weightToUse) ?? 0;
+
 
     try {
         await db.progressHistory.put(record, 'date');
@@ -699,6 +717,38 @@ export class MealPlanStore {
     await db.dailyLogs.put(plan);
   }
 
+  toggleAllItemsInMeal = async (mealIndex: number) => {
+    if (!this.currentDayPlan) return;
+    const plan = toJS(this.currentDayPlan);
+    const meal = plan.meals[mealIndex];
+    if (!meal) return;
+
+    // Determine the new state. If some (but not all) are checked, or none are checked, check all. Otherwise, uncheck all.
+    const allChecked = meal.items.every(item => item.used);
+    const newUsedState = !allChecked;
+
+    // Use a temporary array to process pantry updates without modifying the source during iteration
+    const itemsToToggle: { originalState: MealItem, newState: boolean }[] = [];
+    
+    meal.items.forEach(item => {
+        if (item.used !== newUsedState) {
+            itemsToToggle.push({ originalState: { ...item }, newState: newUsedState });
+            item.used = newUsedState; // Update the item in the cloned plan
+        }
+    });
+    
+    // Update the state in MobX so the UI reacts instantly
+    runInAction(() => { this.currentDayPlan = plan; });
+
+    // Process pantry updates for all items that changed state
+    itemsToToggle.forEach(({ originalState, newState }) => {
+        this._updatePantryOnItemToggle(originalState, newState);
+    });
+
+    // Save the final state of the daily plan to the database
+    await db.dailyLogs.put(plan);
+  };
+
   toggleMealDone = async (mealIndex: number) => {
     if (!this.currentDayPlan) return;
     const plan = toJS(this.currentDayPlan);
@@ -880,7 +930,16 @@ export class MealPlanStore {
             runInAction(() => { this.currentDayProgress = progressRecord; });
         } else {
             const latestRecord = await db.progressHistory.where('date').below(dateStr).last();
-            const newRecord: ProgressRecord = { date: dateStr, adherence: 0, plannedCalories: 0, actualCalories: 0, stepsTaken: 0, waterIntakeMl: 0, weightKg: latestRecord?.weightKg, bodyFatPercentage: latestRecord?.bodyFatPercentage, leanMassKg: latestRecord?.leanMassKg, bodyWaterPercentage: latestRecord?.bodyWaterPercentage };
+            // Use store's bodyMetrics as a fallback to ensure the absolute latest data is always considered.
+            const newRecord: ProgressRecord = { 
+                date: dateStr, adherence: 0, plannedCalories: 0, actualCalories: 0, stepsTaken: 0, waterIntakeMl: 0, 
+                weightKg: latestRecord?.weightKg ?? this.bodyMetrics.weightKg, 
+                bodyFatPercentage: latestRecord?.bodyFatPercentage ?? this.bodyMetrics.bodyFatPercentage, 
+                leanMassKg: latestRecord?.leanMassKg ?? this.bodyMetrics.leanMassKg, 
+                bodyWaterPercentage: latestRecord?.bodyWaterPercentage ?? this.bodyMetrics.bodyWaterPercentage, 
+                activityHours: 1, 
+                estimatedCaloriesBurned: 0 
+            };
             runInAction(() => { this.currentDayProgress = newRecord; });
         }
     } catch (e) {
