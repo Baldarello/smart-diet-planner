@@ -19,6 +19,9 @@ import SkeletonLoader from './SkeletonLoader';
 const DailyPlanView: React.FC = observer(() => {
     const { dailyPlan, toggleMealDone, dailyNutritionSummary, onlineMode, currentDate, setCurrentDate, startDate, endDate, toggleAllItemsInMeal } = mealPlanStore;
 
+    const todayDateString = new Date().toLocaleDateString('en-CA');
+    const isToday = currentDate === todayDateString;
+
     if (!dailyPlan) {
         return ( 
             <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg text-center max-w-2xl mx-auto">
@@ -71,12 +74,12 @@ const DailyPlanView: React.FC = observer(() => {
                 <button onClick={() => changeDate(1)} disabled={isLastDay} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">&gt;</button>
             </div>
             
+            {isToday && <Snackbar />}
             {onlineMode && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
             
             <HydrationTracker />
             <StepTracker />
             <BodyMetricsTracker />
-            <Snackbar />
 
             <div className="space-y-5 mt-6">
                 {sortedMeals.map((meal) => {

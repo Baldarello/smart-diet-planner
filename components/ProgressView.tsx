@@ -66,12 +66,12 @@ const ProgressView: React.FC = observer(() => {
                 <div className="flex items-center gap-4 mt-4 sm:mt-0">
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('dateRange')}:</span>
-                        <div>
+                         <div className="bg-gray-200 dark:bg-gray-700 rounded-full p-1 flex items-center">
                             {( [7, 30, 90] as DateRange[]).map(range => (
                                 <button
                                     key={range}
                                     onClick={() => setDateRange(range)}
-                                    className={`px-3 py-1 text-sm font-semibold rounded-full transition-colors ${dateRange === range ? 'bg-violet-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                                    className={`w-full text-center px-3 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 ${dateRange === range ? 'bg-violet-600 text-white shadow-md' : 'bg-transparent text-gray-600 dark:text-gray-300'}`}
                                 >
                                     {t(range === 7 ? 'last7Days' : range === 30 ? 'last30Days' : 'last90Days')}
                                 </button>
@@ -81,13 +81,14 @@ const ProgressView: React.FC = observer(() => {
                      <button
                         onClick={() => recalculateAllProgress()}
                         disabled={recalculatingProgress}
-                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-violet-600 text-white hover:bg-violet-700 transition-colors disabled:bg-violet-400 disabled:cursor-wait text-sm font-semibold shadow-md"
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-violet-600 text-white hover:bg-violet-700 transition-colors disabled:bg-violet-400 disabled:opacity-75 disabled:cursor-wait text-sm font-semibold shadow-md"
                         title={t('recalculateProgressTitle')}
                     >
                         {recalculatingProgress
                             ? <div className="animate-spin h-5 w-5 border-b-2 border-white rounded-full"></div>
                             : <RefreshIcon className="h-5 w-5" />
                         }
+                        {/* Fix: Corrected typo in translation key from 'recalculating...' to 'recalculate...'. */}
                         <span>{recalculatingProgress ? t('recalculatingProgressButtonTextLoading') : t('recalculateProgressButtonText')}</span>
                     </button>
                 </div>

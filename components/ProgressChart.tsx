@@ -33,7 +33,7 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
     }, []);
 
     const { width, height } = dimensions;
-    const padding = { top: 20, right: 20, bottom: 40, left: 50 };
+    const padding = { top: 20, right: 30, bottom: 50, left: 60 };
 
     if (width === 0) return <div ref={containerRef} style={{ height: `${height}px` }} />;
 
@@ -90,9 +90,9 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
             const value = yMin + (i / (ticks - 1)) * (yMax - yMin);
             const yPos = y(value);
             return (
-                <g key={i} className="text-xs text-gray-500 dark:text-white-200">
+                <g key={i} className="text-xs text-gray-500 dark:text-gray-300">
                     <line x1={padding.left} x2={width - padding.right} y1={yPos} y2={yPos} stroke="currentColor" strokeDasharray="2,2" className="text-gray-200 dark:text-gray-700" />
-                    <text x={padding.left - 8} y={yPos + 4} textAnchor="end">{Math.round(value)}</text>
+                    <text x={padding.left - 8} y={yPos + 4} textAnchor="end" fill="currentColor">{Math.round(value)}</text>
                 </g>
             );
         });
@@ -106,7 +106,7 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
             if (i % tickStep !== 0) return null;
             const xPos = x(i);
             return (
-                <text key={i} x={xPos} y={height - padding.bottom + 16} textAnchor="middle" className="text-xs text-gray-500 dark:text-gray-200">
+                <text key={i} x={xPos} y={height - padding.bottom + 16} textAnchor="middle" className="text-xs text-gray-500 dark:text-gray-300" fill="currentColor">
                     {label}
                 </text>
             );

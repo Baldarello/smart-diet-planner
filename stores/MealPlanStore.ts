@@ -222,7 +222,17 @@ export class MealPlanStore {
 
   updateHydrationStatus = () => {
     this.resetSentNotificationsIfNeeded();
-    const waterIntakeMl = this.currentDayProgress?.waterIntakeMl ?? 0;
+    const todayStr = getTodayDateString();
+    
+    let todaysWaterIntake = 0;
+    if (this.currentDate === todayStr && this.currentDayProgress) {
+        todaysWaterIntake = this.currentDayProgress.waterIntakeMl ?? 0;
+    } else {
+        const todaysRecord = this.progressHistory.find(p => p.date === todayStr);
+        todaysWaterIntake = todaysRecord?.waterIntakeMl ?? 0;
+    }
+
+    const waterIntakeMl = todaysWaterIntake;
     const now = new Date();
     const currentHour = now.getHours();
     if (waterIntakeMl >= this.hydrationGoalLiters * 1000 || currentHour < 9) {
