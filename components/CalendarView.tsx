@@ -45,6 +45,10 @@ const CalendarView: React.FC = observer(() => {
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    const weekDays = locale === 'it' 
+        ? ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
+        : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     return (
         <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-4xl mx-auto">
@@ -56,7 +60,7 @@ const CalendarView: React.FC = observer(() => {
                 <button onClick={handleNextMonth} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">&gt;</button>
             </div>
             <div className="grid grid-cols-7 gap-1 text-center text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => <div key={day}>{day}</div>)}
+                {weekDays.map(day => <div key={day}>{day}</div>)}
             </div>
             <div className="grid grid-cols-7 gap-1">
                 {blanks.map((_, i) => <div key={`blank-${i}`} />)}

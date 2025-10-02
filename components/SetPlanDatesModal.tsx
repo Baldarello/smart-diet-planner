@@ -5,6 +5,7 @@ import { t } from '../i18n';
 
 const SetPlanDatesModal: React.FC = observer(() => {
     const { commitNewPlan, cancelNewPlan } = mealPlanStore;
+
     const today = new Date().toISOString().split('T')[0];
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1);
@@ -22,6 +23,10 @@ const SetPlanDatesModal: React.FC = observer(() => {
         setError('');
         commitNewPlan(startDate, endDate);
     };
+    
+    const commonInputProps = {
+        className: "mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent sm:text-sm appearance-none"
+    };
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -37,7 +42,7 @@ const SetPlanDatesModal: React.FC = observer(() => {
                             id="start-date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm"
+                            {...commonInputProps}
                         />
                     </div>
                      <div>
@@ -48,7 +53,7 @@ const SetPlanDatesModal: React.FC = observer(() => {
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
                             min={startDate}
-                            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm"
+                            {...commonInputProps}
                         />
                     </div>
                 </div>

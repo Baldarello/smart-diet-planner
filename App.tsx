@@ -1,8 +1,9 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore, AppStatus } from './stores/MealPlanStore';
 import { authStore } from './stores/AuthStore';
-import { t } from './i18n';
+import { t, setI18nLocaleGetter } from './i18n';
 import {
     FileUpload,
     Loader,
@@ -28,6 +29,8 @@ import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, Mo
 
 const App: React.FC = observer(() => {
     const store = mealPlanStore;
+    setI18nLocaleGetter(() => store.locale);
+    
     const notificationPermission = useRef(Notification.permission);
     
     const [showNewPlanFlow, setShowNewPlanFlow] = useState(false);

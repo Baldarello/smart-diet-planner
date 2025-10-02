@@ -2,7 +2,6 @@ import { jwtDecode } from 'jwt-decode';
 import { authStore } from '../stores/AuthStore';
 import { UserProfile, SyncedData } from '../types';
 import { runInAction } from 'mobx';
-import { mealPlanStore, AppStatus } from '../stores/MealPlanStore';
 import { loadStateFromDrive, saveStateToDrive } from './driveService';
 import { db } from './db';
 
@@ -50,6 +49,10 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 let tokenClient: google.accounts.oauth2.TokenClient | null = null;
 
 async function syncWithDriveOnLogin(accessToken: string) {
+    // Fix: Use dynamic import to break a circular dependency cycle with MealPlanStore.
+    // This was causing a fatal module initialization error.
+    const { mealPlanStore, AppStatus } = await import('../stores/MealPlanStore');
+
     runInAction(() => mealPlanStore.status = AppStatus.SYNCING);
     try {
         const remoteData = await loadStateFromDrive(accessToken);

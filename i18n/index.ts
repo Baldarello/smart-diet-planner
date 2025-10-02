@@ -1,4 +1,5 @@
-import { mealPlanStore } from '../stores/MealPlanStore';
+
+import type { Locale } from '../types';
 
 const translations = {
   it: {
@@ -227,6 +228,8 @@ const translations = {
     adherence: "Aderenza",
     planned: "Pianificato",
     actual: "Effettivo",
+    recalculateProgressTitle: "Ricalcola tutti i dati di progresso dall'inizio del piano",
+    recalculateProgressButtonText: "Aggiorna Ora",
   },
   en: {
     // App.tsx
@@ -453,32 +456,42 @@ const translations = {
     adherence: "Adherence",
     planned: "Planned",
     actual: "Actual",
+    recalculateProgressTitle: "Recalculate all progress data since the plan started",
+    recalculateProgressButtonText: "Update Now",
   },
 };
 
+let getLocale: () => Locale = () => 'it';
+
+export function setI18nLocaleGetter(getter: () => Locale) {
+    getLocale = getter;
+}
+
 export const t = (key: keyof typeof translations.it, options?: { [key: string]: string }): string => {
-    const locale = mealPlanStore.locale;
-    const translationValue = translations[locale][key] || translations.it[key];
+    const locale = getLocale();
+    const translationsForLocale = translations[locale] || translations.it;
+    const translationValue = translationsForLocale[key] || translations.it[key] || key;
 
     let text: string;
 
     if (Array.isArray(translationValue)) {
         console.warn(`Translation key '${key}' returned an array for t(), which expects a string. Using the first element.`);
-        text = translationValue[0] || '';
+        text = translationValue[0] || key;
     } else {
-        text = translationValue;
+        text = translationValue as string;
     }
     
     if (options) {
         Object.keys(options).forEach(k => {
-            text = text.replace(`{${k}}`, options[k]);
+            const regex = new RegExp(`\\{${k}\\}`, 'g');
+            text = text.replace(regex, options[k]);
         });
     }
     return text;
 };
 
 export const t_dynamic = (key: keyof typeof translations.it): string[] => {
-    const locale = mealPlanStore.locale;
+    const locale = getLocale();
     const value = translations[locale][key] || translations.it[key];
     if (Array.isArray(value)) {
         return value;

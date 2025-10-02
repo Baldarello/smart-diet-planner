@@ -55,6 +55,7 @@ export class MealPlanStore {
   recalculating = false;
   recalculatingMeal: { dayIndex: number; mealIndex: number } | null = null;
   recalculatingActualMeal: { dayIndex: number; mealIndex: number } | null = null;
+  recalculatingProgress = false;
 
   // Global goals and settings
   hydrationGoalLiters = 3;
@@ -365,6 +366,36 @@ export class MealPlanStore {
         console.error("Failed to save progress record to DB", error);
     }
   };
+
+  recalculateAllProgress = async () => {
+    if (!this.startDate) {
+        console.warn("Recalculation skipped: start date not set.");
+        return;
+    }
+    
+    runInAction(() => {
+        this.recalculatingProgress = true;
+    });
+
+    try {
+        const startDate = new Date(this.startDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Iterate from start date up to and including today
+        for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toLocaleDateString('en-CA');
+            await this.recordDailyProgress(dateStr);
+        }
+
+    } catch(e) {
+        console.error("Error during manual progress recalculation:", e);
+    } finally {
+        runInAction(() => {
+            this.recalculatingProgress = false;
+        });
+    }
+  }
 
 
   setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar') => { this.activeTab = tab; }
@@ -810,7 +841,7 @@ export class MealPlanStore {
     if (!this.planToSet) return;
     runInAction(() => {
         if (this.masterMealPlan.length > 0) {
-            const currentPlanToArchive: ArchivedPlan = { id: this.currentPlanId || Date.now().toString(), name: this.currentPlanName, date: new Date().toLocaleDateString('it-IT'), plan: this.masterMealPlan, shoppingList: this.shoppingList };
+            const currentPlanToArchive: ArchivedPlan = { id: this.currentPlanId || Date.now().toString(), name: this.currentPlanName, date: new Date().toLocaleDateString(this.locale === 'it' ? 'it-IT' : 'en-GB'), plan: this.masterMealPlan, shoppingList: this.shoppingList };
             this.archivedPlans.push(currentPlanToArchive);
         }
         this.masterMealPlan = this.planToSet!;

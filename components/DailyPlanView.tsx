@@ -54,12 +54,19 @@ const DailyPlanView: React.FC = observer(() => {
     const isFirstDay = startDate ? currentDate <= startDate : false;
     const isLastDay = endDate ? currentDate >= endDate : false;
 
+    const displayDate = new Date(currentDate).toLocaleDateString(
+        mealPlanStore.locale === 'it' ? 'it-IT' : mealPlanStore.locale,
+        mealPlanStore.locale === 'it'
+            ? { day: '2-digit', month: '2-digit', year: 'numeric' }
+            : { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+    );
+
     return (
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-xl transition-all duration-300 max-w-4xl mx-auto">
             <div className="flex justify-between items-center border-b dark:border-gray-700 pb-4 mb-4">
                 <button onClick={() => changeDate(-1)} disabled={isFirstDay} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">&lt;</button>
-                <h3 className="text-2xl sm:text-3xl font-bold text-violet-700 dark:text-violet-400 capitalize text-center">
-                    {new Date(currentDate).toLocaleDateString(mealPlanStore.locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                <h3 className={`text-2xl sm:text-3xl font-bold text-violet-700 dark:text-violet-400 text-center ${mealPlanStore.locale !== 'it' ? 'capitalize' : ''}`}>
+                    {displayDate}
                 </h3>
                 <button onClick={() => changeDate(1)} disabled={isLastDay} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">&gt;</button>
             </div>

@@ -4,13 +4,21 @@ import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
 import ProgressChart from './ProgressChart';
 import { ProgressRecord } from '../types';
-import { ProgressIcon } from './Icons';
+import { ProgressIcon, RefreshIcon } from './Icons';
 
 type DateRange = 7 | 30 | 90;
 
 const ProgressView: React.FC = observer(() => {
-    const { progressHistory } = mealPlanStore;
+    const { progressHistory, locale, recalculateAllProgress, recalculatingProgress } = mealPlanStore;
     const [dateRange, setDateRange] = useState<DateRange>(30);
+
+    const formatDateForChart = (dateStr: string) => {
+        const date = new Date(dateStr);
+        if (locale === 'it') {
+            return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+        }
+        return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+    };
 
     const filteredData = useMemo(() => {
         const endDate = new Date();
@@ -36,7 +44,7 @@ const ProgressView: React.FC = observer(() => {
     }
 
     const chartData = {
-        labels: filteredData.map(d => new Date(d.date).toLocaleDateString(mealPlanStore.locale, { month: 'short', day: 'numeric' })),
+        labels: filteredData.map(d => formatDateForChart(d.date)),
         weight: filteredData.map(d => ({ value: d.weightKg, date: d.date })).filter(d => d.value != null) as { value: number, date: string }[],
         fat: filteredData.map(d => ({ value: d.bodyFatPercentage, date: d.date })).filter(d => d.value != null) as { value: number, date: string }[],
         adherence: filteredData.map(d => d.adherence),
@@ -44,30 +52,44 @@ const ProgressView: React.FC = observer(() => {
         actualCalories: filteredData.map(d => d.actualCalories),
     };
 
-    const getMatchingLabels = (data: { date: string }[]) => {
+    const getMatchingLabels = (data: { value: number, date: string }[]) => {
         const dataDates = new Set(data.map(d => d.date));
         return filteredData
             .filter(record => dataDates.has(record.date))
-            .map(d => new Date(d.date).toLocaleDateString(mealPlanStore.locale, { month: 'short', day: 'numeric' }));
+            .map(d => formatDateForChart(d.date));
     };
 
     return (
         <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-6xl mx-auto">
             <div className="flex flex-col sm:flex-row justify-between items-center border-b dark:border-gray-700 pb-4 mb-6">
                 <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{t('progressTitle')}</h2>
-                <div className="flex items-center gap-2 mt-4 sm:mt-0">
-                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('dateRange')}:</span>
-                    <div>
-                        {( [7, 30, 90] as DateRange[]).map(range => (
-                            <button
-                                key={range}
-                                onClick={() => setDateRange(range)}
-                                className={`px-3 py-1 text-sm font-semibold rounded-full transition-colors ${dateRange === range ? 'bg-violet-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-                            >
-                                {t(range === 7 ? 'last7Days' : range === 30 ? 'last30Days' : 'last90Days')}
-                            </button>
-                        ))}
+                <div className="flex items-center gap-4 mt-4 sm:mt-0">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('dateRange')}:</span>
+                        <div>
+                            {( [7, 30, 90] as DateRange[]).map(range => (
+                                <button
+                                    key={range}
+                                    onClick={() => setDateRange(range)}
+                                    className={`px-3 py-1 text-sm font-semibold rounded-full transition-colors ${dateRange === range ? 'bg-violet-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                                >
+                                    {t(range === 7 ? 'last7Days' : range === 30 ? 'last30Days' : 'last90Days')}
+                                </button>
+                            ))}
+                        </div>
                     </div>
+                     <button
+                        onClick={() => recalculateAllProgress()}
+                        disabled={recalculatingProgress}
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-violet-600 text-white hover:bg-violet-700 transition-colors disabled:bg-violet-400 disabled:cursor-wait text-sm font-semibold shadow-md"
+                        title={t('recalculateProgressTitle')}
+                    >
+                        {recalculatingProgress
+                            ? <div className="animate-spin h-5 w-5 border-b-2 border-white rounded-full"></div>
+                            : <RefreshIcon className="h-5 w-5" />
+                        }
+                        <span>{t('recalculateProgressButtonText')}</span>
+                    </button>
                 </div>
             </div>
 
