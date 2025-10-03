@@ -652,10 +652,41 @@ export class MealPlanStore {
   }
 
   updatePantryItemQuantity = (itemName: string, newQuantity: string) => { const item = this.pantry.find(p => p.item === itemName); if (item) { item.quantity = newQuantity; this.saveToDB(); } }
-  addShoppingListItem = (categoryName: string, item: ShoppingListItem) => { /* ... unchanged ... */ }
-  deleteShoppingListItem = (categoryName: string, itemIndex: number) => { /* ... unchanged ... */ }
-  updateShoppingListItem = (categoryName: string, itemIndex: number, updatedItem: ShoppingListItem) => { /* ... unchanged ... */ }
-  addShoppingListCategory = (categoryName: string) => { /* ... unchanged ... */ }
+  
+  addShoppingListItem = (categoryName: string, item: ShoppingListItem) => {
+    const category = this.shoppingList.find(c => c.category === categoryName);
+    if (category) {
+        category.items.push(item);
+        this.saveToDB();
+    }
+  }
+  
+  deleteShoppingListItem = (categoryName: string, itemIndex: number) => {
+    const categoryIndex = this.shoppingList.findIndex(c => c.category === categoryName);
+    if (categoryIndex > -1) {
+        this.shoppingList[categoryIndex].items.splice(itemIndex, 1);
+        if (this.shoppingList[categoryIndex].items.length === 0) {
+            this.shoppingList.splice(categoryIndex, 1);
+        }
+        this.saveToDB();
+    }
+  }
+
+  updateShoppingListItem = (categoryName: string, itemIndex: number, updatedItem: ShoppingListItem) => {
+    const category = this.shoppingList.find(c => c.category === categoryName);
+    if (category && category.items[itemIndex]) {
+        category.items[itemIndex] = updatedItem;
+        this.saveToDB();
+    }
+  }
+  
+  addShoppingListCategory = (categoryName: string) => {
+    const trimmedName = categoryName.trim();
+    if (trimmedName && !this.shoppingList.some(c => c.category.toLowerCase() === trimmedName.toLowerCase())) {
+        this.shoppingList.push({ category: trimmedName, items: [] });
+        this.saveToDB();
+    }
+  }
   
   private _updatePantryOnItemToggle = (mealItem: MealItem, isConsumed: boolean) => {
     const consumedQty = parseQuantity(mealItem.fullDescription);
