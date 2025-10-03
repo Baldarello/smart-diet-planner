@@ -43,7 +43,7 @@ const ProgressView: React.FC = observer(() => {
             try {
                 // Fix: Explicitly type the result from Dexie to prevent `log` from being inferred as `unknown`.
                 // This resolves the error "Property 'meals' does not exist on type 'unknown'".
-                const logs: DailyLog[] = await db.dailyLogs.where('date').in(dates).toArray();
+                const logs: DailyLog[] = await db.dailyLogs.where('date').anyOf(dates).toArray();
                 const logMap = new Map(logs.map(log => [log.date, log]));
 
                 const counts = filteredData.map(record => {
