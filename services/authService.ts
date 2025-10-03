@@ -59,7 +59,8 @@ async function syncWithDriveOnLogin(accessToken: string) {
 
         if (remoteData && remoteData.appState) {
             console.log("Remote data found, overwriting local database.");
-            await db.transaction('rw', db.appState, db.progressHistory, async () => {
+            // Fix: Use the array-based overload for db.transaction to resolve TypeScript type inference issues.
+            await db.transaction('rw', [db.appState, db.progressHistory], async () => {
                 await db.progressHistory.clear();
                 await db.appState.put({ key: 'dietPlanData', value: remoteData.appState });
                 if (remoteData.progressHistory?.length) {
