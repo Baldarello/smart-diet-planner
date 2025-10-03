@@ -14,24 +14,35 @@ export class AuthStore {
         makeAutoObservable(this);
     }
 
-    init = () => {
+    init = async () => {
         try {
             const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-            const profile = localStorage.getItem(USER_PROFILE_KEY);
+            const profileStr = localStorage.getItem(USER_PROFILE_KEY);
 
-            if (token && profile) {
-                runInAction(() => {
-                    this.accessToken = token;
-                    this.userProfile = JSON.parse(profile);
-                    this.isLoggedIn = true;
-                    this.status = 'LOGGED_IN';
+            if (token && profileStr) {
+                // Validate token by fetching user info
+                const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
+
+                if (response.ok) {
+                    const profile = JSON.parse(profileStr);
+                    runInAction(() => {
+                        this.accessToken = token;
+                        this.userProfile = profile;
+                        this.isLoggedIn = true;
+                        this.status = 'LOGGED_IN';
+                    });
+                } else {
+                    // Token is invalid/expired
+                    throw new Error("Token validation failed.");
+                }
             } else {
                  this.setLoggedOut();
             }
         } catch (error) {
-            console.error("Failed to initialize auth state from localStorage", error);
-            this.setLoggedOut();
+            console.warn("Could not restore session:", error);
+            this.setLoggedOut(); // This also cleans up invalid data from localStorage
         }
     }
 
