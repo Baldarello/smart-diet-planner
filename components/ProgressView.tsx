@@ -1,16 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
 import ProgressChart from './ProgressChart';
-import { ProgressRecord } from '../types';
+import { ProgressRecord, DailyLog } from '../types';
 import { ProgressIcon, RefreshIcon } from './Icons';
+import { db } from '../services/db';
 
 type DateRange = 7 | 30 | 90;
 
 const ProgressView: React.FC = observer(() => {
     const { progressHistory, locale, recalculateAllProgress, recalculatingProgress } = mealPlanStore;
     const [dateRange, setDateRange] = useState<DateRange>(30);
+    const [cheatMealData, setCheatMealData] = useState<(number | null)[]>([]);
 
     const formatDateForChart = (dateStr: string) => {
         const date = new Date(dateStr);
@@ -30,6 +32,35 @@ const ProgressView: React.FC = observer(() => {
             return recordDate >= startDate && recordDate <= endDate;
         });
     }, [progressHistory, dateRange]);
+    
+    useEffect(() => {
+        const fetchCheatMeals = async () => {
+            if (filteredData.length === 0) {
+                setCheatMealData([]);
+                return;
+            }
+            const dates = filteredData.map(d => d.date);
+            try {
+                // Fix: Explicitly type the result from Dexie to prevent `log` from being inferred as `unknown`.
+                // This resolves the error "Property 'meals' does not exist on type 'unknown'".
+                const logs: DailyLog[] = await db.dailyLogs.where('date').in(dates).toArray();
+                const logMap = new Map(logs.map(log => [log.date, log]));
+
+                const counts = filteredData.map(record => {
+                    const log = logMap.get(record.date);
+                    if (!log) return 0;
+                    return log.meals.filter(meal => meal.cheat).length;
+                });
+                setCheatMealData(counts);
+            } catch (error) {
+                console.error("Failed to fetch cheat meal data:", error);
+                setCheatMealData([]);
+            }
+        };
+
+        fetchCheatMeals();
+    }, [filteredData]);
+
 
     if (progressHistory.length < 2) {
         return (
@@ -54,6 +85,7 @@ const ProgressView: React.FC = observer(() => {
         bodyWater: filteredData.map(d => d.bodyWaterPercentage),
         steps: filteredData.map(d => d.stepsTaken),
         caloriesBurned: filteredData.map(d => d.estimatedCaloriesBurned),
+        cheatMeals: cheatMealData,
     };
     
     const hasData = (data: (number | null | undefined)[]) => data.some(d => d != null && d > 0);
@@ -163,6 +195,22 @@ const ProgressView: React.FC = observer(() => {
                                     unit: t('unitPercent'),
                                 }] : [])
                             ]}
+                        />
+                    </div>
+                )}
+                
+                {hasData(chartData.cheatMeals) && (
+                     <div>
+                        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('cheatMealChartTitle')}</h3>
+                        <ProgressChart
+                            type="bar"
+                            labels={chartData.labels}
+                            datasets={[{
+                                label: t('cheatMeals'),
+                                data: chartData.cheatMeals,
+                                color: 'rgba(234, 88, 12, 0.8)',
+                                unit: t('unitCount'),
+                            }]}
                         />
                     </div>
                 )}

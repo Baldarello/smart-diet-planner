@@ -29,4 +29,5 @@ export { default as ProgressView } from './ProgressView';
 export { default as ProgressChart } from './ProgressChart';
 export { default as SetPlanDatesModal } from './SetPlanDatesModal';
 export { default as CalendarView } from './CalendarView';
+export { default as CheatMealModal } from './CheatMealModal';
 export * from './Icons';

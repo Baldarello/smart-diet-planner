@@ -48,6 +48,7 @@ export class MealPlanStore {
   currentDate: string = getTodayDateString();
   currentDayPlan: DailyLog | null = null;
   planToSet: DayPlan[] | null = null; // Holds a new plan before dates are set
+  shoppingListManaged = false;
 
   // Day-specific progress tracking
   currentDayProgress: ProgressRecord | null = null;
@@ -102,6 +103,7 @@ export class MealPlanStore {
                 this.bodyMetrics = data.bodyMetrics || {};
                 this.startDate = data.startDate || null;
                 this.endDate = data.endDate || null;
+                this.shoppingListManaged = data.shoppingListManaged ?? true; // Default to true for existing users
 
                 if (data.sentNotifications) {
                     this.sentNotifications = new Map(data.sentNotifications);
@@ -115,6 +117,9 @@ export class MealPlanStore {
 
                 if (this.masterMealPlan.length > 0 && this.currentPlanId) {
                     this.status = AppStatus.SUCCESS;
+                    if (!this.shoppingListManaged) {
+                        this.activeTab = 'list';
+                    }
                     this.loadPlanForDate(this.currentDate);
                 } else {
                     this.status = AppStatus.INITIAL;
@@ -551,6 +556,7 @@ export class MealPlanStore {
         bodyMetrics: toJS(this.bodyMetrics),
         startDate: this.startDate,
         endDate: this.endDate,
+        shoppingListManaged: this.shoppingListManaged,
       };
       await db.appState.put({ key: 'dietPlanData', value: dataToSave as StoredState });
     } catch (error) {
@@ -576,6 +582,7 @@ export class MealPlanStore {
         this.endDate = null;
         this.currentDayPlan = null;
         this.currentDayProgress = null;
+        this.shoppingListManaged = false;
         db.dailyLogs.clear();
         this.saveToDB();
     });
@@ -584,7 +591,7 @@ export class MealPlanStore {
   restorePlanFromArchive = (planId: string) => {
     const planToRestore = this.archivedPlans.find(p => p.id === planId);
     if (!planToRestore) return;
-    const restoredPlan = planToRestore.plan.map(day => ({ ...day, meals: day.meals.map(meal => ({ ...meal, done: false, actualNutrition: null, items: meal.items.map(item => ({...item, used: false})) })) }));
+    const restoredPlan = planToRestore.plan.map(day => ({ ...day, meals: day.meals.map(meal => ({ ...meal, done: false, cheat: false, cheatMealDescription: undefined, actualNutrition: null, items: meal.items.map(item => ({...item, used: false})) })) }));
     runInAction(() => {
         this.planToSet = restoredPlan;
         this.status = AppStatus.AWAITING_DATES;
@@ -616,6 +623,7 @@ export class MealPlanStore {
             this.shoppingList = this.shoppingList.filter(c => c.category !== categoryName);
         }
     }
+    runInAction(() => { this.shoppingListManaged = true; });
     this.saveToDB();
   }
 
@@ -765,7 +773,37 @@ export class MealPlanStore {
     const meal = plan.meals[mealIndex];
     if (meal) {
         meal.done = !meal.done;
+        if (meal.done) {
+            meal.cheat = false;
+            meal.cheatMealDescription = undefined;
+        }
         if (!meal.done) meal.actualNutrition = null;
+    }
+    runInAction(() => { this.currentDayPlan = plan; });
+    await db.dailyLogs.put(plan);
+  }
+  
+  logCheatMeal = async (mealIndex: number, description: string) => {
+    if (!this.currentDayPlan) return;
+    const plan = toJS(this.currentDayPlan);
+    const meal = plan.meals[mealIndex];
+    if (meal) {
+        meal.cheat = true;
+        meal.done = false;
+        meal.cheatMealDescription = description;
+        meal.actualNutrition = null;
+    }
+    runInAction(() => { this.currentDayPlan = plan; });
+    await db.dailyLogs.put(plan);
+  }
+  
+  undoCheatMeal = async (mealIndex: number) => {
+    if (!this.currentDayPlan) return;
+    const plan = toJS(this.currentDayPlan);
+    const meal = plan.meals[mealIndex];
+    if (meal) {
+        meal.cheat = false;
+        meal.cheatMealDescription = undefined;
     }
     runInAction(() => { this.currentDayPlan = plan; });
     await db.dailyLogs.put(plan);
@@ -830,7 +868,7 @@ export class MealPlanStore {
         try {
             if (!event.target?.result) throw new Error("File could not be read.");
             const data: ImportedJsonData = JSON.parse(event.target.result as string);
-            const sanitizedPlan = data.weeklyPlan.map(day => ({ ...day, meals: day.meals.map(meal => ({ ...meal, done: false, actualNutrition: null, items: meal.items.map(item => ({...item, used: false})) })) }));
+            const sanitizedPlan = data.weeklyPlan.map(day => ({ ...day, meals: day.meals.map(meal => ({ ...meal, done: false, cheat: false, cheatMealDescription: undefined, actualNutrition: null, items: meal.items.map(item => ({...item, used: false})) })) }));
             runInAction(() => {
                 this.planToSet = sanitizedPlan;
                 this.shoppingList = data.shoppingList;
@@ -909,7 +947,8 @@ export class MealPlanStore {
         this.startDate = startDate;
         this.endDate = endDate;
         this.status = AppStatus.SUCCESS;
-        this.activeTab = 'daily';
+        this.activeTab = 'list';
+        this.shoppingListManaged = false;
         this.hasUnsavedChanges = false;
         this.sentNotifications.clear();
         this.lastActiveDate = getTodayDateString();
@@ -974,7 +1013,7 @@ export class MealPlanStore {
 
             if (masterDay) {
                 const newDailyLog: DailyLog = { ...JSON.parse(JSON.stringify(masterDay)), date: dateStr };
-                newDailyLog.meals.forEach(meal => { meal.done = false; meal.actualNutrition = null; meal.items.forEach(item => item.used = false); });
+                newDailyLog.meals.forEach(meal => { meal.done = false; meal.cheat = false; meal.cheatMealDescription = undefined; meal.actualNutrition = null; meal.items.forEach(item => item.used = false); });
                 await db.dailyLogs.put(newDailyLog);
                 dailyLog = newDailyLog;
             }

@@ -94,6 +94,14 @@ const translations = {
     markAsDone: "Segna come completato",
     markAsToDo: "Segna come da fare",
     toggleAllMealItemsTitle: "Seleziona/Deseleziona tutti gli alimenti",
+    logCheatMealTitle: "Registra uno sgarro",
+    undoCheatMealTitle: "Annulla sgarro",
+    cheatMealBadge: "SGARRO",
+
+    // CheatMealModal.tsx
+    cheatMealModalTitle: "Registra uno Sgarro",
+    cheatMealModalPrompt: "Cosa hai mangiato al posto di questo pasto?",
+    cheatMealModalPlaceholder: "Descrivi il tuo pasto qui...",
 
     // ShoppingListView.tsx
     shoppingListTitle: "Lista della Spesa",
@@ -111,6 +119,9 @@ const translations = {
     editItemTitle: "Modifica Voce",
     quantityPlaceholder: "Quantità",
     selectAll: "Seleziona Tutto",
+    shoppingListSetupTitle: "Prepara il tuo piano!",
+    shoppingListSetupMessage: "Controlla la tua lista della spesa. Sposta gli articoli che hai già nella tua dispensa per iniziare.",
+
 
     // PantryView.tsx
     pantryTitle: "La Mia Dispensa",
@@ -227,6 +238,7 @@ const translations = {
     calorieIntakeChartTitle: "Introito Calorico (Pianificato vs. Effettivo)",
     hydrationChartTitle: "Andamento Idratazione e Acqua Corporea",
     stepsChartTitle: "Andamento Passi e Calorie Bruciate",
+    cheatMealChartTitle: "Andamento Sgarri",
     noProgressDataTitle: "Nessun dato sui progressi ancora",
     noProgressDataSubtitle: "Servono almeno due giorni di dati registrati per visualizzare i grafici. Continua a registrare i tuoi pasti e le tue misurazioni!",
     adherence: "Aderenza",
@@ -238,6 +250,8 @@ const translations = {
     waterIntake: "Idratazione",
     steps: "Passi",
     caloriesBurned: "Calorie Bruciate",
+    cheatMeals: "Sgarri",
+    unitCount: "n.",
   },
   en: {
     // App.tsx
@@ -329,6 +343,14 @@ const translations = {
     markAsDone: "Mark as done",
     markAsToDo: "Mark as to-do",
     toggleAllMealItemsTitle: "Select/Deselect all items",
+    logCheatMealTitle: "Log a cheat meal",
+    undoCheatMealTitle: "Undo cheat meal",
+    cheatMealBadge: "CHEAT",
+
+    // CheatMealModal.tsx
+    cheatMealModalTitle: "Log a Cheat Meal",
+    cheatMealModalPrompt: "What did you eat instead of this meal?",
+    cheatMealModalPlaceholder: "Describe your meal here...",
 
     // ShoppingListView.tsx
     shoppingListTitle: "Shopping List",
@@ -346,6 +368,9 @@ const translations = {
     editItemTitle: "Edit Item",
     quantityPlaceholder: "Quantity",
     selectAll: "Select All",
+    shoppingListSetupTitle: "Set up your plan!",
+    shoppingListSetupMessage: "Review your shopping list. Move items you already own to your pantry to get started.",
+
 
     // PantryView.tsx
     pantryTitle: "My Pantry",
@@ -462,6 +487,7 @@ const translations = {
     calorieIntakeChartTitle: "Calorie Intake (Planned vs. Actual)",
     hydrationChartTitle: "Hydration & Body Water Trend",
     stepsChartTitle: "Steps & Calories Burned Trend",
+    cheatMealChartTitle: "Cheat Meal Trend",
     noProgressDataTitle: "No Progress Data Yet",
     noProgressDataSubtitle: "At least two days of data are required to display charts. Keep logging your meals and metrics!",
     adherence: "Adherence",
@@ -473,6 +499,8 @@ const translations = {
     waterIntake: "Hydration",
     steps: "Steps",
     caloriesBurned: "Calories Burned",
+    cheatMeals: "Cheat Meals",
+    unitCount: "count",
   },
 };
 

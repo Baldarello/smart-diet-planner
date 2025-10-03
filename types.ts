@@ -20,6 +20,8 @@ export interface Meal {
   time?: string; // e.g., "08:30"
   nutrition?: NutritionInfo | null;
   actualNutrition?: NutritionInfo | null;
+  cheat?: boolean;
+  cheatMealDescription?: string;
 }
 
 export interface DayPlan {
@@ -120,6 +122,7 @@ export interface StoredState {
     bodyMetrics?: BodyMetrics;
     startDate: string | null;
     endDate: string | null;
+    shoppingListManaged?: boolean;
 }
 
 export interface SyncedData {

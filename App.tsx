@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore, AppStatus } from './stores/MealPlanStore';
@@ -158,13 +159,14 @@ const App: React.FC = observer(() => {
     };
 
     const renderDrawerContent = () => {
+        const isPlanLocked = !store.shoppingListManaged && !!store.currentPlanId;
         const tabs = [
-            { id: 'daily', icon: <TodayIcon />, label: t('tabDaily') },
-            { id: 'calendar', icon: <CalendarIcon />, label: t('tabCalendar') },
+            { id: 'daily', icon: <TodayIcon />, label: t('tabDaily'), disabled: isPlanLocked },
+            { id: 'calendar', icon: <CalendarIcon />, label: t('tabCalendar'), disabled: isPlanLocked },
             { id: 'plan', icon: <EditIcon />, label: t('tabWeekly') },
             { id: 'list', icon: <ListIcon />, label: t('tabShopping') },
             { id: 'pantry', icon: <PantryIcon />, label: t('tabPantry') },
-            { id: 'progress', icon: <ProgressIcon />, label: t('tabProgress') },
+            { id: 'progress', icon: <ProgressIcon />, label: t('tabProgress'), disabled: isPlanLocked },
             { id: 'archive', icon: <ArchiveIcon />, label: t('tabArchive') },
         ];
 
@@ -185,7 +187,9 @@ const App: React.FC = observer(() => {
                                         store.setActiveTab(tab.id as any);
                                         setIsDrawerOpen(false);
                                     }}
-                                    className={`flex items-center w-full text-left px-4 py-3 rounded-lg transition-colors ${store.activeTab === tab.id ? 'bg-violet-100 dark:bg-gray-700 text-violet-700 dark:text-violet-300 font-semibold' : 'bg-transparent text-gray-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700/50'}`}
+                                    disabled={tab.disabled}
+                                    className={`flex items-center w-full text-left px-4 py-3 rounded-lg transition-colors ${store.activeTab === tab.id ? 'bg-violet-100 dark:bg-gray-700 text-violet-700 dark:text-violet-300 font-semibold' : 'bg-transparent text-gray-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700/50'} ${tab.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title={tab.disabled ? t('shoppingListSetupMessage') : ''}
                                 >
                                     {tab.icon}
                                     <span className="ml-3">{tab.label}</span>
