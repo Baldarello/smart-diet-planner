@@ -54,7 +54,7 @@ const MetricInput: React.FC<MetricInputProps> = ({ label, value: propValue, onSa
             </div>
         </div>
     );
-});
+};
 
 
 const BodyMetricsTracker: React.FC = observer(() => {

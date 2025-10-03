@@ -59,10 +59,10 @@ async function syncWithDriveOnLogin(accessToken: string) {
 
         if (remoteData && remoteData.appState) {
             console.log("Remote data found, overwriting local database.");
-            // Fix: The transaction method was not being found on the custom Dexie class due to a TypeScript
-            // type inference issue with the separate-argument signature for tables. Switching to the
-            // array-based signature `['appState', 'progressHistory']` resolves the type error.
-            await db.transaction('rw', ['appState', 'progressHistory'], async () => {
+            // Fix: The transaction method was not being found on the custom Dexie class.
+            // Switching to the separate-argument signature, which passes strongly-typed Table objects,
+            // resolves the TypeScript type inference issue.
+            await db.transaction('rw', db.appState, db.progressHistory, async () => {
                 await db.progressHistory.clear();
                 await db.appState.put({ key: 'dietPlanData', value: remoteData.appState });
                 if (remoteData.progressHistory?.length) {
