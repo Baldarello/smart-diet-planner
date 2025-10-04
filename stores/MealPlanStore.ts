@@ -628,26 +628,42 @@ export class MealPlanStore {
   }
 
   movePantryItemToShoppingList = (pantryItemToMove: PantryItem) => {
-    const { originalCategory, ...shoppingItemToMove } = pantryItemToMove;
-    let category = this.shoppingList.find(c => c.category === originalCategory);
-    if (!category) {
-        category = { category: originalCategory, items: [] };
-        this.shoppingList.push(category);
-    }
-    const existingShoppingItem = category.items.find(i => i.item.toLowerCase() === shoppingItemToMove.item.toLowerCase());
-    if (existingShoppingItem) {
-        const shoppingQuantity = parseQuantity(existingShoppingItem.quantity);
-        const itemQuantity = parseQuantity(shoppingItemToMove.quantity);
-        if (shoppingQuantity && itemQuantity && shoppingQuantity.unit === itemQuantity.unit) {
-            shoppingQuantity.value += itemQuantity.value;
-            existingShoppingItem.quantity = formatQuantity(shoppingQuantity);
+    runInAction(() => {
+        const { originalCategory, ...shoppingItemToMove } = pantryItemToMove;
+        
+        const categoryIndex = this.shoppingList.findIndex(c => c.category === originalCategory);
+        
+        if (categoryIndex === -1) {
+            // Category does not exist, create it and add the item.
+            // This re-assignment is key for MobX reactivity.
+            this.shoppingList = [
+                ...this.shoppingList,
+                { category: originalCategory, items: [shoppingItemToMove] }
+            ];
         } else {
-            existingShoppingItem.quantity += `, ${shoppingItemToMove.quantity}`;
+            // Category exists, find if item exists to merge or add.
+            const category = this.shoppingList[categoryIndex];
+            const existingShoppingItem = category.items.find(i => i.item.toLowerCase() === shoppingItemToMove.item.toLowerCase());
+
+            if (existingShoppingItem) {
+                // Item exists, merge quantity.
+                const shoppingQuantity = parseQuantity(existingShoppingItem.quantity);
+                const itemQuantity = parseQuantity(shoppingItemToMove.quantity);
+                if (shoppingQuantity && itemQuantity && shoppingQuantity.unit === itemQuantity.unit) {
+                    shoppingQuantity.value += itemQuantity.value;
+                    existingShoppingItem.quantity = formatQuantity(shoppingQuantity);
+                } else {
+                    existingShoppingItem.quantity += `, ${shoppingItemToMove.quantity}`;
+                }
+            } else {
+                // Item does not exist, add it. This mutation is fine because the category object is observable.
+                category.items.push(shoppingItemToMove);
+            }
         }
-    } else {
-        category.items.push(shoppingItemToMove);
-    }
-    this.pantry = this.pantry.filter(p => p.item !== pantryItemToMove.item);
+
+        // Remove item from pantry by creating a new array.
+        this.pantry = this.pantry.filter(p => p.item.toLowerCase() !== pantryItemToMove.item.toLowerCase());
+    });
     this.saveToDB();
   }
 
