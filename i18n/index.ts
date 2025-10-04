@@ -127,6 +127,11 @@ const translations = {
     pantryTitle: "La Mia Dispensa",
     pantryEmpty: "La tua dispensa è vuota. Vai a fare la spesa!",
     moveToShoppingListTitle: "Sposta di nuovo nella Lista della Spesa",
+    addItemToPantryTitle: "Aggiungi Articolo alla Dispensa",
+    itemNamePlaceholder: "Nome Articolo (es. Latte)",
+    selectCategoryPrompt: "Seleziona una categoria",
+    newCategoryOption: "Crea nuova categoria...",
+    uncategorized: "Altro",
 
     // ArchiveView.tsx
     archiveEmpty: "Archivio Vuoto",
@@ -376,6 +381,11 @@ const translations = {
     pantryTitle: "My Pantry",
     pantryEmpty: "Your pantry is empty. Time to go shopping!",
     moveToShoppingListTitle: "Move back to Shopping List",
+    addItemToPantryTitle: "Add Item to Pantry",
+    itemNamePlaceholder: "Item Name (e.g., Milk)",
+    selectCategoryPrompt: "Select a category",
+    newCategoryOption: "Create new category...",
+    uncategorized: "Other",
 
     // ArchiveView.tsx
     archiveEmpty: "Archive is Empty",

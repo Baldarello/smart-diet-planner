@@ -653,6 +653,28 @@ export class MealPlanStore {
 
   updatePantryItemQuantity = (itemName: string, newQuantity: string) => { const item = this.pantry.find(p => p.item === itemName); if (item) { item.quantity = newQuantity; this.saveToDB(); } }
   
+  addPantryItem = (itemName: string, quantity: string, category: string) => {
+    const trimmedItemName = itemName.trim();
+    if (!trimmedItemName || !quantity.trim() || !category.trim()) return;
+    
+    const existingPantryItem = this.pantry.find(p => p.item.toLowerCase() === trimmedItemName.toLowerCase());
+    
+    if (existingPantryItem) {
+        const pantryQuantity = parseQuantity(existingPantryItem.quantity);
+        const itemQuantity = parseQuantity(quantity);
+        
+        if (pantryQuantity && itemQuantity && pantryQuantity.unit === itemQuantity.unit) {
+            pantryQuantity.value += itemQuantity.value;
+            existingPantryItem.quantity = formatQuantity(pantryQuantity);
+        } else {
+            existingPantryItem.quantity += `, ${quantity}`;
+        }
+    } else {
+        this.pantry.push({ item: trimmedItemName, quantity: quantity, originalCategory: category });
+    }
+    this.saveToDB();
+  }
+
   addShoppingListItem = (categoryName: string, item: ShoppingListItem) => {
     const category = this.shoppingList.find(c => c.category === categoryName);
     if (category) {
