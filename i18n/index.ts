@@ -108,7 +108,9 @@ const translations = {
     // ShoppingListView.tsx
     shoppingListTitle: "Lista della Spesa",
     moveToPantry: "Sposta in Dispensa",
-    shoppingListEmpty: "La tua lista della spesa è vuota. Ottimo lavoro!",
+    shoppingListEmptyTitle: "Tutto Pronto!",
+    shoppingListEmptyMessage: "La tua lista della spesa è vuota. Sei pronto per iniziare la settimana!",
+    shoppingListEmptyButton: "Vai al Piano di Oggi",
     shoppingListStaleTitle: "Modifiche Rilevate!",
     shoppingListStaleMessage: "Il tuo piano alimentare è cambiato. La lista e la dispensa potrebbero non essere accurate.",
     recalculateList: "Ricalcola Lista",
@@ -364,7 +366,9 @@ const translations = {
     // ShoppingListView.tsx
     shoppingListTitle: "Shopping List",
     moveToPantry: "Move to Pantry",
-    shoppingListEmpty: "Your shopping list is empty. Good job!",
+    shoppingListEmptyTitle: "All Set!",
+    shoppingListEmptyMessage: "Your shopping list is clear. You're ready to start your week!",
+    shoppingListEmptyButton: "Go to Today's Plan",
     shoppingListStaleTitle: "Changes Detected!",
     shoppingListStaleMessage: "Your meal plan has changed. The shopping list and pantry might be inaccurate.",
     recalculateList: "Recalculate List",

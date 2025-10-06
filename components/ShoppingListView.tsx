@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { ShoppingListItem, ShoppingListCategory } from '../types';
-import { PantryIcon, EditIcon, TrashIcon, CheckIcon, CloseIcon, PlusCircleIcon } from './Icons';
+import { PantryIcon, EditIcon, TrashIcon, CheckIcon, CloseIcon, PlusCircleIcon, TodayIcon } from './Icons';
 import { t } from '../i18n';
 
 const ShoppingListView: React.FC = observer(() => {
@@ -148,7 +148,20 @@ const ShoppingListView: React.FC = observer(() => {
                 </div>
             )}
             {shoppingList.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-8">{t('shoppingListEmpty')}</p>
+                <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-green-100 dark:bg-green-900/40 rounded-full mx-auto flex items-center justify-center mb-4">
+                        <CheckIcon />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">{t('shoppingListEmptyTitle')}</h3>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2 mb-6">{t('shoppingListEmptyMessage')}</p>
+                    <button 
+                        onClick={() => store.setActiveTab('daily')}
+                        className="bg-violet-600 text-white font-semibold px-6 py-3 rounded-full hover:bg-violet-700 transition-colors shadow-md flex items-center mx-auto"
+                    >
+                        <TodayIcon />
+                        <span className="ml-2">{t('shoppingListEmptyButton')}</span>
+                    </button>
+                </div>
             ) : (
                 <div className="space-y-6">
                     {shoppingList.map((category, catIndex) => {

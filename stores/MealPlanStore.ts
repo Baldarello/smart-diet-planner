@@ -764,7 +764,38 @@ export class MealPlanStore {
 
                 if (unitsMatch) {
                     const newPantryValue = pantryQty.value - consumedQty.value;
-                    if (newPantryValue <= 0.01) { // Use tolerance for float comparison
+                    if (newPantryValue <= 0.01) { // Item is depleted, move to shopping list
+                        const itemToRestock: ShoppingListItem = {
+                            item: pantryItem.item,
+                            quantity: pantryItem.quantity, // Use the quantity it had before this last consumption
+                        };
+
+                        // Add to shopping list
+                        const { originalCategory } = pantryItem;
+                        const categoryIndex = this.shoppingList.findIndex(c => c.category === originalCategory);
+                        
+                        if (categoryIndex > -1) {
+                            const category = this.shoppingList[categoryIndex];
+                            const existingItem = category.items.find(i => i.item.toLowerCase() === itemToRestock.item.toLowerCase());
+                            if (existingItem) {
+                                // Merge quantities if it already exists on the list
+                                const existingQty = parseQuantity(existingItem.quantity);
+                                const restockQty = parseQuantity(itemToRestock.quantity);
+                                if (existingQty && restockQty && existingQty.unit === restockQty.unit) {
+                                    existingQty.value += restockQty.value;
+                                    existingItem.quantity = formatQuantity(existingQty);
+                                } else {
+                                    existingItem.quantity += `, ${itemToRestock.quantity}`;
+                                }
+                            } else {
+                                category.items.push(itemToRestock);
+                            }
+                        } else {
+                            // Category doesn't exist, create it
+                            this.shoppingList.push({ category: originalCategory, items: [itemToRestock] });
+                        }
+
+                        // Finally, remove from pantry
                         this.pantry.splice(pantryIndex, 1);
                     } else {
                         pantryItem.quantity = formatQuantity({ value: newPantryValue, unit: pantryQty.unit });

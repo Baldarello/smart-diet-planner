@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { MealPlanData, DayPlan, ShoppingListCategory, Meal, NutritionInfo } from '../types';
 
 if (!process.env.GEMINI_API_KEY) {
@@ -8,6 +8,25 @@ if (!process.env.GEMINI_API_KEY) {
 }
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+const safetySettings = [
+    {
+      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+      threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+      threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+      threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+      threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+    },
+];
 
 const mealItemSchema = {
   type: Type.OBJECT,
@@ -166,6 +185,9 @@ ${text}
             config: {
                 responseMimeType: 'application/json',
                 responseSchema: weeklyPlanSchema,
+                temperature: 0.1,
+                // Fix: `safetySettings` must be a property of the `config` object.
+                safetySettings,
             },
         });
         if (!response.text) {
@@ -199,6 +221,9 @@ Fornisci la risposta **esclusivamente** in formato JSON, seguendo lo schema spec
             config: {
                 responseMimeType: 'application/json',
                 responseSchema: nutritionSchema,
+                temperature: 0.1,
+                // Fix: `safetySettings` must be a property of the `config` object.
+                safetySettings,
             },
         });
          if (!response.text) {
@@ -243,6 +268,9 @@ ${JSON.stringify(plan)}
             config: {
                 responseMimeType: 'application/json',
                 responseSchema: planAndListSchema,
+                temperature: 0.1,
+                // Fix: `safetySettings` must be a property of the `config` object.
+                safetySettings,
             },
         });
         if (!response.text) {
