@@ -97,6 +97,8 @@ const translations = {
     logCheatMealTitle: "Registra uno sgarro",
     undoCheatMealTitle: "Annulla sgarro",
     cheatMealBadge: "SGARRO",
+    mealsTab: "Pasti",
+    trackersTab: "Tracker",
 
     // CheatMealModal.tsx
     cheatMealModalTitle: "Registra uno Sgarro",
@@ -351,6 +353,8 @@ const translations = {
     logCheatMealTitle: "Log a cheat meal",
     undoCheatMealTitle: "Undo cheat meal",
     cheatMealBadge: "CHEAT",
+    mealsTab: "Meals",
+    trackersTab: "Trackers",
 
     // CheatMealModal.tsx
     cheatMealModalTitle: "Log a Cheat Meal",
@@ -362,7 +366,7 @@ const translations = {
     moveToPantry: "Move to Pantry",
     shoppingListEmpty: "Your shopping list is empty. Good job!",
     shoppingListStaleTitle: "Changes Detected!",
-    shoppingListStaleMessage: "Your meal plan has changed. The list and pantry may not be accurate.",
+    shoppingListStaleMessage: "Your meal plan has changed. The shopping list and pantry might be inaccurate.",
     recalculateList: "Recalculate List",
     recalculating: "Recalculating...",
     addItem: "Add Item",
@@ -373,19 +377,18 @@ const translations = {
     editItemTitle: "Edit Item",
     quantityPlaceholder: "Quantity",
     selectAll: "Select All",
-    shoppingListSetupTitle: "Set up your plan!",
-    shoppingListSetupMessage: "Review your shopping list. Move items you already own to your pantry to get started.",
-
+    shoppingListSetupTitle: "Get your plan ready!",
+    shoppingListSetupMessage: "Review your shopping list. Move any items you already have to your pantry to get started.",
 
     // PantryView.tsx
     pantryTitle: "My Pantry",
     pantryEmpty: "Your pantry is empty. Time to go shopping!",
     moveToShoppingListTitle: "Move back to Shopping List",
     addItemToPantryTitle: "Add Item to Pantry",
-    itemNamePlaceholder: "Item Name (e.g., Milk)",
+    itemNamePlaceholder: "Item Name (e.g. Milk)",
     selectCategoryPrompt: "Select a category",
     newCategoryOption: "Create new category...",
-    uncategorized: "Other",
+    uncategorized: "Uncategorized",
 
     // ArchiveView.tsx
     archiveEmpty: "Archive is Empty",
@@ -402,26 +405,26 @@ const translations = {
     exampleDay: "MONDAY",
     exampleMealBreakfast: "BREAKFAST",
     exampleItem1: "1 tub of soy yogurt (125g)",
-    exampleItem2: "30g of whole grain cereal",
+    exampleItem2: "30g of whole grain cereals",
     exampleMealLunch: "LUNCH",
     exampleItem3: "60g of brown rice",
     exampleItem4: "90g of canned chickpeas",
     exampleMealDinner: "DINNER",
     exampleItem5: "Veggie ricotta meatballs",
-    exampleItem6: "100g of grilled eggplant",
-    
+    exampleItem6: "100g of grilled eggplants",
+
     // Hydration & Alarms
-    hydrationTrackerTitle: "Hydration Tracking",
+    hydrationTrackerTitle: "Hydration Tracker",
     hydrationGoal: "Daily goal:",
     hydrationUnit: "Liters",
     hydrationIntake: "Today's intake:",
     hydrationUnitMl: "ml",
     editIntakeTitle: "Click to edit",
     mealTime: "Meal time",
-    notificationMealTitle: "It's time for {mealName}!",
+    notificationMealTitle: "It's {mealName} time!",
     notificationMealBody: "Time to eat: {mealTitle}",
     notificationHydrationTitle: "Hydration Reminder!",
-    notificationHydrationBody: "It's time to drink some water. Have about {amount}ml to stay on track.",
+    notificationHydrationBody: "It's time for some water. Drink about {amount}ml to stay on track.",
     snackbarReminder: "You're behind on hydration! Drink {amount}ml to catch up.",
     snackbarDone: "Done!",
     quickAddWaterTitle: "Quick Add",
@@ -443,33 +446,33 @@ const translations = {
     recalculatingActuals: "Calculating actual intake...",
     recalculateActualsButton: "Calculate Actual Intake",
     plannedShort: "Plan.",
-    nutritionDisclaimer: "Values are AI estimates and intended as a guideline, not medical advice.",
-
+    nutritionDisclaimer: "Values are AI estimates intended as a guideline, not as medical advice.",
+    
     // Meal Modification
     resetMealToPresetTitle: "Reset Meal",
     resetMealModalTitle: "Confirm Reset",
     resetMealModalContent: "All changes to this meal (ingredients, time, 'used' status) will be reverted to the original version. Are you sure?",
-
+    
     // PWA
     installPwaPrompt: "Install this app for a better experience and offline access.",
     install: "Install",
     dismiss: "Dismiss",
-
+    
     // Google Login & Sync
     signIn: "Sign In",
     signOut: "Sign Out",
-    signInTitle: "Sign in with Google to sync data",
+    signInTitle: "Sign in with Google to sync your data",
     signOutTitle: "Sign out of your account",
     syncDisabled: "Login not configured. Sync is disabled.",
 
     // Steps
-    stepTrackerTitle: "Step Tracking",
+    stepTrackerTitle: "Step Tracker",
     stepGoal: "Daily goal:",
     stepsUnit: "steps",
     stepsTaken: "Today's steps:",
     editStepsTitle: "Click to edit",
     quickAddStepsTitle: "Quick Add",
-    activityHours: "Hours of activity:",
+    activityHours: "Activity hours:",
     estimatedCalories: "Estimated Calories Burned:",
     caloriesUnit: "kcal",
     hoursUnit: "h",
@@ -497,9 +500,9 @@ const translations = {
     calorieIntakeChartTitle: "Calorie Intake (Planned vs. Actual)",
     hydrationChartTitle: "Hydration & Body Water Trend",
     stepsChartTitle: "Steps & Calories Burned Trend",
-    cheatMealChartTitle: "Cheat Meal Trend",
-    noProgressDataTitle: "No Progress Data Yet",
-    noProgressDataSubtitle: "At least two days of data are required to display charts. Keep logging your meals and metrics!",
+    cheatMealChartTitle: "Cheat Meals Trend",
+    noProgressDataTitle: "No progress data yet",
+    noProgressDataSubtitle: "At least two days of logged data are needed to display charts. Keep tracking your meals and measurements!",
     adherence: "Adherence",
     planned: "Planned",
     actual: "Actual",
@@ -510,44 +513,36 @@ const translations = {
     steps: "Steps",
     caloriesBurned: "Calories Burned",
     cheatMeals: "Cheat Meals",
-    unitCount: "count",
-  },
+    unitCount: "#",
+  }
 };
 
-let getLocale: () => Locale = () => 'it';
+let i18nLocaleGetter: () => Locale = () => 'it';
 
 export function setI18nLocaleGetter(getter: () => Locale) {
-    getLocale = getter;
+  i18nLocaleGetter = getter;
 }
 
-export const t = (key: keyof typeof translations.it, options?: { [key: string]: string }): string => {
-    const locale = getLocale();
-    const translationsForLocale = translations[locale] || translations.it;
-    const translationValue = translationsForLocale[key] || translations.it[key] || key;
+// Fix: Add type check to handle string array translations correctly and prevent runtime errors.
+export function t(key: keyof typeof translations['it'], options?: Record<string, string>): string {
+  const locale = i18nLocaleGetter();
+  const rawTranslation = translations[locale][key] || translations['en'][key] || key;
 
-    let text: string;
+  if (typeof rawTranslation !== 'string') {
+    console.warn(`t() function was called for a translation key ('${key}') that returns an array. Use t_dynamic() instead.`);
+    return key;
+  }
 
-    if (Array.isArray(translationValue)) {
-        console.warn(`Translation key '${key}' returned an array for t(), which expects a string. Using the first element.`);
-        text = translationValue[0] || key;
-    } else {
-        text = translationValue as string;
-    }
-    
-    if (options) {
-        Object.keys(options).forEach(k => {
-            const regex = new RegExp(`\\{${k}\\}`, 'g');
-            text = text.replace(regex, options[k]);
-        });
-    }
-    return text;
-};
+  let translation = rawTranslation;
+  if (options) {
+      Object.keys(options).forEach(optionKey => {
+          translation = translation.replace(`{${optionKey}}`, options[optionKey]);
+      });
+  }
+  return translation;
+}
 
-export const t_dynamic = (key: keyof typeof translations.it): string[] => {
-    const locale = getLocale();
-    const value = translations[locale][key] || translations.it[key];
-    if (Array.isArray(value)) {
-        return value;
-    }
-    return [];
+export function t_dynamic(key: 'readingMessages' | 'structuringPlanMessages' | 'analyzingNutritionMessages' | 'generatingListMessages'): string[] {
+    const locale = i18nLocaleGetter();
+    return translations[locale][key] || translations['en'][key] || [];
 }

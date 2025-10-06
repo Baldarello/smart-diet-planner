@@ -25,6 +25,7 @@ const DailyPlanView: React.FC = observer(() => {
     const [actionsMenuMealIndex, setActionsMenuMealIndex] = useState<number | null>(null);
     const [resettingMeal, setResettingMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
     const [recalculatingMeal, setRecalculatingMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
+    const [activeMobileTab, setActiveMobileTab] = useState<'meals' | 'trackers'>('meals');
 
 
     const todayDateString = new Date().toLocaleDateString('en-CA');
@@ -73,6 +74,105 @@ const DailyPlanView: React.FC = observer(() => {
     );
     const formattedDayName = dailyPlan.day.charAt(0) + dailyPlan.day.slice(1).toLowerCase();
 
+    const MealsContent = (
+        <div className="space-y-5 mt-6">
+            {sortedMeals.map((meal) => {
+                const allItemsUsed = meal.items.length > 0 && meal.items.every(item => item.used);
+                const someItemsUsed = meal.items.some(item => item.used) && !allItemsUsed;
+
+                const containerClasses = meal.done
+                    ? 'opacity-60 bg-slate-50 dark:bg-gray-700/50'
+                    : meal.cheat
+                    ? 'bg-orange-50 dark:bg-orange-900/30'
+                    : 'bg-slate-50 dark:bg-gray-700/50';
+
+                return (
+                    <div key={meal.originalIndex} className={`p-4 rounded-lg transition-all duration-500 ease-in-out ${containerClasses}`}>
+                        <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-x-2">
+                                    {!meal.cheat && (
+                                        <input
+                                            type="checkbox"
+                                            checked={allItemsUsed}
+                                            onChange={() => toggleAllItemsInMeal(meal.originalIndex)}
+                                            ref={el => { if (el) el.indeterminate = someItemsUsed; }}
+                                            className="h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500 cursor-pointer bg-transparent dark:bg-gray-600 flex-shrink-0"
+                                            title={t('toggleAllMealItemsTitle')}
+                                            aria-label={t('toggleAllMealItemsTitle')}
+                                        />
+                                    )}
+                                    <h4 className={`text-xl font-semibold text-gray-800 dark:text-gray-200 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.name}</h4>
+                                    {meal.cheat && <span className="text-xs font-bold uppercase text-orange-500 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50 px-2 py-1 rounded-full">{t('cheatMealBadge')}</span>}
+                                </div>
+                                {meal.title && <p className={`text-md font-medium text-violet-600 dark:text-violet-400 mt-1 transition-all truncate ${meal.done ? 'line-through' : ''}`}>{meal.title}</p>}
+                            </div>
+                            <div className="flex items-center gap-1 sm:gap-2">
+                                {/* Desktop-only actions */}
+                                <div className="hidden sm:flex items-center gap-2">
+                                    <MealTimeEditor dayIndex={dayIndex} mealIndex={meal.originalIndex} />
+                                    <MealModificationControl dayIndex={dayIndex} mealIndex={meal.originalIndex} onResetClick={() => setResettingMeal({ dayIndex, mealIndex: meal.originalIndex })} />
+                                    {!meal.done && !meal.cheat && (
+                                        <button onClick={() => setCheatingMealIndex(meal.originalIndex)} title={t('logCheatMealTitle')} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={t('logCheatMealTitle')}>
+                                            <WarningIcon />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Common done/undo actions */}
+                                {meal.cheat ? (
+                                    <button onClick={() => undoCheatMeal(meal.originalIndex)} title={t('undoCheatMealTitle')} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={t('undoCheatMealTitle')}>
+                                        <UndoIcon />
+                                    </button>
+                                ) : (
+                                    <button onClick={() => toggleMealDone(meal.originalIndex)} title={meal.done ? t('markAsToDo') : t('markAsDone')} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={meal.done ? t('markAsToDo') : t('markAsDone')}>
+                                        {meal.done ? <UndoIcon /> : <CheckCircleIcon />}
+                                    </button>
+                                )}
+                                
+                                {/* Mobile-only menu */}
+                                {!meal.done && !meal.cheat && (
+                                    <div className="relative sm:hidden">
+                                        <button onClick={(e) => { e.stopPropagation(); setActionsMenuMealIndex(meal.originalIndex); }} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
+                                            <MoreVertIcon />
+                                        </button>
+                                        {actionsMenuMealIndex === meal.originalIndex && (
+                                            <MealActionsPopup 
+                                                dayIndex={dayIndex}
+                                                mealIndex={meal.originalIndex}
+                                                onClose={() => setActionsMenuMealIndex(null)}
+                                                onLogCheatMeal={() => setCheatingMealIndex(meal.originalIndex)}
+                                                onResetClick={() => setResettingMeal({ dayIndex, mealIndex: meal.originalIndex })}
+                                            />
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {meal.cheat && meal.cheatMealDescription && (
+                            <div className="mt-2 p-3 bg-white dark:bg-gray-800 rounded-lg">
+                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{meal.cheatMealDescription}</p>
+                            </div>
+                        )}
+
+                        {!meal.cheat && <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} isEditable={true} showCheckbox={true} />}
+                        {onlineMode && !meal.cheat && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} onRecalcClick={() => setRecalculatingMeal({ dayIndex, mealIndex: meal.originalIndex })} />}
+                        {onlineMode && !meal.cheat && <ActualNutrition dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
+                    </div>
+                );
+            })}
+        </div>
+    );
+
+    const TrackersContent = (
+        <>
+            <HydrationTracker />
+            <StepTracker />
+            <BodyMetricsTracker />
+        </>
+    );
+
     return (
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-xl transition-all duration-300 max-w-4xl mx-auto">
             <div className="flex justify-between items-center border-b dark:border-gray-700 pb-4 mb-4">
@@ -90,100 +190,53 @@ const DailyPlanView: React.FC = observer(() => {
             </div>
             
             {isToday && <Snackbar />}
-            {onlineMode && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
-            
-            <HydrationTracker />
-            <StepTracker />
-            <BodyMetricsTracker />
 
-            <div className="space-y-5 mt-6">
-                {sortedMeals.map((meal) => {
-                    const allItemsUsed = meal.items.length > 0 && meal.items.every(item => item.used);
-                    const someItemsUsed = meal.items.some(item => item.used) && !allItemsUsed;
-
-                    const containerClasses = meal.done
-                        ? 'opacity-60 bg-slate-50 dark:bg-gray-700/50'
-                        : meal.cheat
-                        ? 'bg-orange-50 dark:bg-orange-900/30'
-                        : 'bg-slate-50 dark:bg-gray-700/50';
-
-                    return (
-                        <div key={meal.originalIndex} className={`p-4 rounded-lg transition-all duration-500 ease-in-out ${containerClasses}`}>
-                            <div className="flex justify-between items-start gap-2">
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-x-2">
-                                        {!meal.cheat && (
-                                            <input
-                                                type="checkbox"
-                                                checked={allItemsUsed}
-                                                onChange={() => toggleAllItemsInMeal(meal.originalIndex)}
-                                                ref={el => { if (el) el.indeterminate = someItemsUsed; }}
-                                                className="h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500 cursor-pointer bg-transparent dark:bg-gray-600 flex-shrink-0"
-                                                title={t('toggleAllMealItemsTitle')}
-                                                aria-label={t('toggleAllMealItemsTitle')}
-                                            />
-                                        )}
-                                        <h4 className={`text-xl font-semibold text-gray-800 dark:text-gray-200 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.name}</h4>
-                                        {meal.cheat && <span className="text-xs font-bold uppercase text-orange-500 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50 px-2 py-1 rounded-full">{t('cheatMealBadge')}</span>}
-                                    </div>
-                                    {meal.title && <p className={`text-md font-medium text-violet-600 dark:text-violet-400 mt-1 transition-all truncate ${meal.done ? 'line-through' : ''}`}>{meal.title}</p>}
-                                </div>
-                                <div className="flex items-center gap-1 sm:gap-2">
-                                    {/* Desktop-only actions */}
-                                    <div className="hidden sm:flex items-center gap-2">
-                                        <MealTimeEditor dayIndex={dayIndex} mealIndex={meal.originalIndex} />
-                                        <MealModificationControl dayIndex={dayIndex} mealIndex={meal.originalIndex} onResetClick={() => setResettingMeal({ dayIndex, mealIndex: meal.originalIndex })} />
-                                        {!meal.done && !meal.cheat && (
-                                            <button onClick={() => setCheatingMealIndex(meal.originalIndex)} title={t('logCheatMealTitle')} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={t('logCheatMealTitle')}>
-                                                <WarningIcon />
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {/* Common done/undo actions */}
-                                    {meal.cheat ? (
-                                        <button onClick={() => undoCheatMeal(meal.originalIndex)} title={t('undoCheatMealTitle')} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={t('undoCheatMealTitle')}>
-                                            <UndoIcon />
-                                        </button>
-                                    ) : (
-                                        <button onClick={() => toggleMealDone(meal.originalIndex)} title={meal.done ? t('markAsToDo') : t('markAsDone')} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={meal.done ? t('markAsToDo') : t('markAsDone')}>
-                                            {meal.done ? <UndoIcon /> : <CheckCircleIcon />}
-                                        </button>
-                                    )}
-                                    
-                                    {/* Mobile-only menu */}
-                                    {!meal.done && !meal.cheat && (
-                                        <div className="relative sm:hidden">
-                                            <button onClick={(e) => { e.stopPropagation(); setActionsMenuMealIndex(meal.originalIndex); }} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
-                                                <MoreVertIcon />
-                                            </button>
-                                            {actionsMenuMealIndex === meal.originalIndex && (
-                                                <MealActionsPopup 
-                                                    dayIndex={dayIndex}
-                                                    mealIndex={meal.originalIndex}
-                                                    onClose={() => setActionsMenuMealIndex(null)}
-                                                    onLogCheatMeal={() => setCheatingMealIndex(meal.originalIndex)}
-                                                    onResetClick={() => setResettingMeal({ dayIndex, mealIndex: meal.originalIndex })}
-                                                />
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {meal.cheat && meal.cheatMealDescription && (
-                                <div className="mt-2 p-3 bg-white dark:bg-gray-800 rounded-lg">
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{meal.cheatMealDescription}</p>
-                                </div>
-                            )}
-
-                            {!meal.cheat && <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} isEditable={true} showCheckbox={true} />}
-                            {onlineMode && !meal.cheat && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} onRecalcClick={() => setRecalculatingMeal({ dayIndex, mealIndex: meal.originalIndex })} />}
-                            {onlineMode && !meal.cheat && <ActualNutrition dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
-                        </div>
-                    );
-                })}
+            {/* Mobile Tab Nav */}
+            <div className="sm:hidden border-b border-gray-200 dark:border-gray-700">
+                 <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                    <button
+                        onClick={() => setActiveMobileTab('meals')}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                            activeMobileTab === 'meals'
+                                ? 'border-violet-500 text-violet-600 dark:text-violet-400'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-500'
+                        }`}
+                        aria-current={activeMobileTab === 'meals' ? 'page' : undefined}
+                    >
+                        {t('mealsTab')}
+                    </button>
+                    <button
+                        onClick={() => setActiveMobileTab('trackers')}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                            activeMobileTab === 'trackers'
+                                ? 'border-violet-500 text-violet-600 dark:text-violet-400'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-500'
+                        }`}
+                        aria-current={activeMobileTab === 'trackers' ? 'page' : undefined}
+                    >
+                        {t('trackersTab')}
+                    </button>
+                </nav>
             </div>
+
+            {/* Desktop View */}
+            <div className="hidden sm:block">
+                {onlineMode && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
+                {TrackersContent}
+                {MealsContent}
+            </div>
+
+            {/* Mobile View */}
+            <div className="sm:hidden">
+                {activeMobileTab === 'meals' && (
+                    <>
+                        {onlineMode && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
+                        {MealsContent}
+                    </>
+                )}
+                {activeMobileTab === 'trackers' && TrackersContent}
+            </div>
+
             {cheatingMealIndex !== null && (
                 <CheatMealModal
                     mealIndex={cheatingMealIndex}
