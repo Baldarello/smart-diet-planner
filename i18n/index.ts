@@ -1,5 +1,6 @@
 
 
+
 import type { Locale } from '../types';
 
 const translations = {
@@ -23,7 +24,7 @@ const translations = {
     uploadPdfTitle: "Carica il tuo Piano",
     viewArchived: "Vedi Piani Archiviati",
     uploadNew: "Carica un Nuovo Piano Dietetico",
-    footer: "Realizzato con React & MobX. Parsing offline.",
+    footer: "Realizzata per aiutare a rispettare quotidianamente tutti gli aspetti di una vita sana e per migliorare l'attitudine dell'utente.",
     errorAndUpload: "Per favore, prova a caricare un nuovo file",
     onlineModeTitle: "Modalità Online: Analisi AI e nutrizione attive.",
     offlineModeTitle: "Modalità Offline: Quota API superata. Funzionalità di base attive.",
@@ -282,7 +283,7 @@ const translations = {
     uploadPdfTitle: "Upload Your Plan",
     viewArchived: "View Archived Plans",
     uploadNew: "Upload a New Diet Plan",
-    footer: "Made with React & MobX. Offline-first parsing.",
+    footer: "Designed to help you embrace a healthy lifestyle every day and enhance your wellness mindset.",
     errorAndUpload: "Please try uploading a new file",
     onlineModeTitle: "Online Mode: AI analysis and nutrition are active.",
     offlineModeTitle: "Offline Mode: API quota exceeded. Basic functionality is active.",
