@@ -747,82 +747,89 @@ export class MealPlanStore {
   private _updatePantryOnItemToggle = (mealItem: MealItem, isConsumed: boolean) => {
     const consumedQty = parseQuantity(mealItem.fullDescription);
     if (!consumedQty) {
-      console.warn(`Could not parse quantity for "${mealItem.fullDescription}", skipping pantry update.`);
-      return;
+        console.warn(`Could not parse quantity for "${mealItem.fullDescription}", skipping pantry update.`);
+        return;
     }
 
     const singularConsumedName = singularize(mealItem.ingredientName);
     const pantryIndex = this.pantry.findIndex(p => singularize(p.item.toLowerCase()) === singularConsumedName);
-    const pantryItem = pantryIndex > -1 ? this.pantry[pantryIndex] : null;
+    
+    if (pantryIndex === -1 && isConsumed) {
+        console.warn(`Item "${mealItem.ingredientName}" consumed but not found in pantry.`);
+        return;
+    }
 
     runInAction(() => {
         if (isConsumed) { // Deduct from pantry
-            if (pantryItem) {
-                const pantryQty = parseQuantity(pantryItem.quantity);
-                const unitsMatch = pantryQty && consumedQty && (
-                    singularize(pantryQty.unit) === singularize(consumedQty.unit) ||
-                    pantryQty.unit === 'units' || consumedQty.unit === 'units'
-                );
+            const pantryItem = this.pantry[pantryIndex];
+            const pantryQuantities = pantryItem.quantity.split(',').map(s => s.trim());
+            let deducted = false;
+
+            const updatedQuantities = pantryQuantities.map(pantryQtyStr => {
+                if (deducted) return pantryQtyStr;
+
+                const pantryQty = parseQuantity(pantryQtyStr);
+                const unitsMatch = pantryQty && (singularize(pantryQty.unit) === singularize(consumedQty.unit));
 
                 if (unitsMatch) {
                     const newPantryValue = pantryQty.value - consumedQty.value;
-                    if (newPantryValue <= 0.01) { // Item is depleted, move to shopping list
-                        const itemToRestock: ShoppingListItem = {
-                            item: pantryItem.item,
-                            // Use the original quantity for restocking, fallback to current quantity if not available.
-                            quantity: pantryItem.originalQuantity || pantryItem.quantity,
-                        };
-
-                        // Add to shopping list
-                        const { originalCategory } = pantryItem;
-                        const categoryIndex = this.shoppingList.findIndex(c => c.category === originalCategory);
-                        
-                        if (categoryIndex > -1) {
-                            const category = this.shoppingList[categoryIndex];
-                            const existingItem = category.items.find(i => i.item.toLowerCase() === itemToRestock.item.toLowerCase());
-                            if (existingItem) {
-                                // Merge quantities if it already exists on the list
-                                const existingQty = parseQuantity(existingItem.quantity);
-                                const restockQty = parseQuantity(itemToRestock.quantity);
-                                if (existingQty && restockQty && existingQty.unit === restockQty.unit) {
-                                    existingQty.value += restockQty.value;
-                                    existingItem.quantity = formatQuantity(existingQty);
-                                } else {
-                                    existingItem.quantity += `, ${itemToRestock.quantity}`;
-                                }
-                            } else {
-                                category.items.push(itemToRestock);
-                            }
-                        } else {
-                            // Category doesn't exist, create it
-                            this.shoppingList.push({ category: originalCategory, items: [itemToRestock] });
-                        }
-
-                        // Finally, remove from pantry
-                        this.pantry.splice(pantryIndex, 1);
-                    } else {
-                        pantryItem.quantity = formatQuantity({ value: newPantryValue, unit: pantryQty.unit });
+                    const roundedNewPantryValue = Math.round(newPantryValue * 100) / 100;
+                    
+                    deducted = true;
+                    if (roundedNewPantryValue > 0) {
+                        return formatQuantity({ value: roundedNewPantryValue, unit: pantryQty.unit });
                     }
-                } else {
-                    console.warn(`Cannot deduct from pantry: Units mismatch or unparsable quantity for "${pantryItem.item}". Pantry: "${pantryItem.quantity}", Consumed: "${mealItem.fullDescription}"`);
+                    return null; // This quantity part is depleted
                 }
-            } else {
-                 console.warn(`Item "${mealItem.ingredientName}" consumed but not found in pantry.`);
-            }
-        } else { // Add back to pantry
-            if (pantryItem) {
-                const pantryQty = parseQuantity(pantryItem.quantity);
-                const unitsMatch = pantryQty && consumedQty && (
-                    singularize(pantryQty.unit) === singularize(consumedQty.unit) ||
-                    pantryQty.unit === 'units' || consumedQty.unit === 'units'
-                );
+                return pantryQtyStr;
+            }).filter((q): q is string => q !== null);
 
-                if (unitsMatch) {
-                     const newPantryValue = pantryQty.value + consumedQty.value;
-                     pantryItem.quantity = formatQuantity({ value: newPantryValue, unit: pantryQty.unit });
+            if (!deducted) {
+                console.warn(`Could not deduct "${mealItem.fullDescription}" from pantry item "${pantryItem.item}" with quantity "${pantryItem.quantity}". Units might not match.`);
+                return;
+            }
+
+            if (updatedQuantities.length === 0) {
+                // Item is fully depleted, move to shopping list
+                const itemToRestock: ShoppingListItem = {
+                    item: pantryItem.item,
+                    quantity: pantryItem.originalQuantity || pantryItem.quantity,
+                };
+                const { originalCategory } = pantryItem;
+                const category = this.shoppingList.find(c => c.category === originalCategory);
+                if (category) {
+                    category.items.push(itemToRestock);
                 } else {
-                    // Fallback for complex units: append. This is a safe but potentially messy way to handle it.
-                    pantryItem.quantity += `, ${formatQuantity(consumedQty)}`;
+                    this.shoppingList.push({ category: originalCategory, items: [itemToRestock] });
+                }
+                this.pantry.splice(pantryIndex, 1);
+            } else {
+                pantryItem.quantity = updatedQuantities.join(', ');
+            }
+
+        } else { // Add back to pantry
+            let pantryItem = this.pantry[pantryIndex];
+
+            if (pantryItem) {
+                const pantryQuantities = pantryItem.quantity.split(',').map(s => s.trim());
+                let added = false;
+
+                const restoredQuantities = pantryQuantities.map(pantryQtyStr => {
+                    if (added) return pantryQtyStr;
+                    const pantryQty = parseQuantity(pantryQtyStr);
+                    const unitsMatch = pantryQty && (singularize(pantryQty.unit) === singularize(consumedQty.unit));
+                    if (unitsMatch) {
+                        const newValue = pantryQty.value + consumedQty.value;
+                        added = true;
+                        return formatQuantity({ value: newValue, unit: pantryQty.unit });
+                    }
+                    return pantryQtyStr;
+                });
+
+                if (added) {
+                    pantryItem.quantity = restoredQuantities.join(', ');
+                } else {
+                    pantryItem.quantity = [...pantryQuantities, formatQuantity(consumedQty)].join(', ');
                 }
             } else {
                 // Item wasn't in pantry, add it back.
@@ -835,7 +842,8 @@ export class MealPlanStore {
             }
         }
     });
-    this.saveToDB(); // Save changes to pantry
+
+    this.saveToDB();
   }
 
   toggleMealItem = async (mealIndex: number, itemIndex: number) => {
