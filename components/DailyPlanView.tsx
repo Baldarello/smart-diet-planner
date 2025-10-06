@@ -17,11 +17,14 @@ import BodyMetricsTracker from './BodyMetricsTracker';
 import SkeletonLoader from './SkeletonLoader';
 import CheatMealModal from './CheatMealModal';
 import MealActionsPopup from './MealActionsPopup';
+import ConfirmationModal from './ConfirmationModal';
 
 const DailyPlanView: React.FC = observer(() => {
     const { dailyPlan, toggleMealDone, dailyNutritionSummary, onlineMode, currentDate, setCurrentDate, startDate, endDate, toggleAllItemsInMeal, undoCheatMeal, setActiveTab } = mealPlanStore;
     const [cheatingMealIndex, setCheatingMealIndex] = useState<number | null>(null);
     const [actionsMenuMealIndex, setActionsMenuMealIndex] = useState<number | null>(null);
+    const [resettingMeal, setResettingMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
+    const [recalculatingMeal, setRecalculatingMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
 
 
     const todayDateString = new Date().toLocaleDateString('en-CA');
@@ -68,6 +71,7 @@ const DailyPlanView: React.FC = observer(() => {
             ? { day: '2-digit', month: '2-digit', year: 'numeric' }
             : { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
     );
+    const formattedDayName = dailyPlan.day.charAt(0) + dailyPlan.day.slice(1).toLowerCase();
 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-xl transition-all duration-300 max-w-4xl mx-auto">
@@ -78,8 +82,8 @@ const DailyPlanView: React.FC = observer(() => {
                     className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     title={t('tabCalendar')}
                 >
-                    <h3 className={`text-2xl sm:text-3xl font-bold text-violet-700 dark:text-violet-400 text-center ${mealPlanStore.locale !== 'it' ? 'capitalize' : ''}`}>
-                        {displayDate}
+                    <h3 className="text-2xl sm:text-3xl font-bold text-violet-700 dark:text-violet-400 text-center capitalize">
+                        {mealPlanStore.locale === 'it' ? `${formattedDayName}, ${displayDate}` : displayDate}
                     </h3>
                 </button>
                 <button onClick={() => changeDate(1)} disabled={isLastDay} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">&gt;</button>
@@ -128,7 +132,7 @@ const DailyPlanView: React.FC = observer(() => {
                                     {/* Desktop-only actions */}
                                     <div className="hidden sm:flex items-center gap-2">
                                         <MealTimeEditor dayIndex={dayIndex} mealIndex={meal.originalIndex} />
-                                        <MealModificationControl dayIndex={dayIndex} mealIndex={meal.originalIndex} />
+                                        <MealModificationControl dayIndex={dayIndex} mealIndex={meal.originalIndex} onResetClick={() => setResettingMeal({ dayIndex, mealIndex: meal.originalIndex })} />
                                         {!meal.done && !meal.cheat && (
                                             <button onClick={() => setCheatingMealIndex(meal.originalIndex)} title={t('logCheatMealTitle')} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={t('logCheatMealTitle')}>
                                                 <WarningIcon />
@@ -159,6 +163,7 @@ const DailyPlanView: React.FC = observer(() => {
                                                     mealIndex={meal.originalIndex}
                                                     onClose={() => setActionsMenuMealIndex(null)}
                                                     onLogCheatMeal={() => setCheatingMealIndex(meal.originalIndex)}
+                                                    onResetClick={() => setResettingMeal({ dayIndex, mealIndex: meal.originalIndex })}
                                                 />
                                             )}
                                         </div>
@@ -173,7 +178,7 @@ const DailyPlanView: React.FC = observer(() => {
                             )}
 
                             {!meal.cheat && <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} isEditable={true} showCheckbox={true} />}
-                            {onlineMode && !meal.cheat && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
+                            {onlineMode && !meal.cheat && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} onRecalcClick={() => setRecalculatingMeal({ dayIndex, mealIndex: meal.originalIndex })} />}
                             {onlineMode && !meal.cheat && <ActualNutrition dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
                         </div>
                     );
@@ -184,6 +189,26 @@ const DailyPlanView: React.FC = observer(() => {
                     mealIndex={cheatingMealIndex}
                     onClose={() => setCheatingMealIndex(null)}
                 />
+            )}
+            {resettingMeal && (
+                <ConfirmationModal
+                    isOpen={!!resettingMeal}
+                    onClose={() => setResettingMeal(null)}
+                    onConfirm={() => mealPlanStore.resetMealToPreset(resettingMeal.dayIndex, resettingMeal.mealIndex)}
+                    title={t('resetMealModalTitle')}
+                >
+                    <p>{t('resetMealModalContent')}</p>
+                </ConfirmationModal>
+            )}
+            {recalculatingMeal && (
+                <ConfirmationModal
+                    isOpen={!!recalculatingMeal}
+                    onClose={() => setRecalculatingMeal(null)}
+                    onConfirm={() => mealPlanStore.recalculateMealNutrition(recalculatingMeal.dayIndex, recalculatingMeal.mealIndex)}
+                    title={t('recalcModalTitle')}
+                >
+                    <p>{t('recalcModalContent')}</p>
+                </ConfirmationModal>
             )}
         </div>
     );

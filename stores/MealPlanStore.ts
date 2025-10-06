@@ -531,6 +531,22 @@ export class MealPlanStore {
             runInAction(() => {
                 const presetMeal = JSON.parse(JSON.stringify(this.presetMealPlan[dayIndex].meals[mealIndex]));
                 this.masterMealPlan[dayIndex].meals[mealIndex] = presetMeal;
+
+                const masterDay = this.masterMealPlan[dayIndex];
+                if (this.currentDayPlan && this.currentDayPlan.day.toUpperCase() === masterDay.day.toUpperCase()) {
+                    const updatedDailyLog = toJS(this.currentDayPlan);
+                    
+                    const newDailyMeal = JSON.parse(JSON.stringify(masterDay.meals[mealIndex]));
+                    newDailyMeal.done = false;
+                    newDailyMeal.cheat = false;
+                    newDailyMeal.cheatMealDescription = undefined;
+                    newDailyMeal.actualNutrition = null;
+                    newDailyMeal.items.forEach((item: MealItem) => { item.used = false; });
+                    
+                    updatedDailyLog.meals[mealIndex] = newDailyMeal;
+                    this.currentDayPlan = updatedDailyLog;
+                    db.dailyLogs.put(updatedDailyLog);
+                }
             });
             this.saveToDB();
         }

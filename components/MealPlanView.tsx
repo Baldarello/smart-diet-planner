@@ -9,10 +9,13 @@ import DailyNutritionSummary from './DailyNutritionSummary';
 import MealModificationControl from './MealModificationControl';
 import { MoreVertIcon } from './Icons';
 import MealActionsPopup from './MealActionsPopup';
+import ConfirmationModal from './ConfirmationModal';
+import { t } from '../i18n';
 
 const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = observer(({ plan, isMasterPlanView = false }) => {
     const [openDayIndex, setOpenDayIndex] = useState<number | null>(0);
     const [actionsMenu, setActionsMenu] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
+    const [resettingMeal, setResettingMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
 
     const handleToggle = (dayIndex: number) => {
         setOpenDayIndex(prevIndex => (prevIndex === dayIndex ? null : dayIndex));
@@ -57,7 +60,7 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                                                     <div className="flex items-center gap-1 sm:gap-2">
                                                         <div className="hidden sm:flex items-center gap-2">
                                                             <MealTimeEditor dayIndex={dayIndex} mealIndex={mealIndex} />
-                                                            <MealModificationControl dayIndex={dayIndex} mealIndex={mealIndex} />
+                                                            <MealModificationControl dayIndex={dayIndex} mealIndex={mealIndex} onResetClick={() => setResettingMeal({ dayIndex, mealIndex })} />
                                                         </div>
                                                         <div className="relative sm:hidden">
                                                             <button onClick={(e) => { e.stopPropagation(); setActionsMenu({ dayIndex, mealIndex }); }} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
@@ -68,6 +71,7 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                                                                     dayIndex={dayIndex}
                                                                     mealIndex={mealIndex}
                                                                     onClose={() => setActionsMenu(null)}
+                                                                    onResetClick={() => setResettingMeal({ dayIndex, mealIndex })}
                                                                 />
                                                             )}
                                                         </div>
@@ -91,6 +95,16 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                     </details>
                 )
             })}
+            {resettingMeal && (
+                <ConfirmationModal
+                    isOpen={!!resettingMeal}
+                    onClose={() => setResettingMeal(null)}
+                    onConfirm={() => mealPlanStore.resetMealToPreset(resettingMeal.dayIndex, resettingMeal.mealIndex)}
+                    title={t('resetMealModalTitle')}
+                >
+                    <p>{t('resetMealModalContent')}</p>
+                </ConfirmationModal>
+            )}
         </div>
     );
 });

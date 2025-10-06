@@ -10,9 +10,10 @@ interface MealActionsPopupProps {
     mealIndex: number;
     onClose: () => void;
     onLogCheatMeal?: () => void;
+    onResetClick?: () => void;
 }
 
-const MealActionsPopup: React.FC<MealActionsPopupProps> = observer(({ dayIndex, mealIndex, onClose, onLogCheatMeal }) => {
+const MealActionsPopup: React.FC<MealActionsPopupProps> = observer(({ dayIndex, mealIndex, onClose, onLogCheatMeal, onResetClick }) => {
     const popupRef = useRef<HTMLDivElement>(null);
     
     useEffect(() => {
@@ -34,6 +35,13 @@ const MealActionsPopup: React.FC<MealActionsPopupProps> = observer(({ dayIndex, 
         onClose();
     };
 
+    const handleResetClick = () => {
+        if (onResetClick) {
+            onResetClick();
+        }
+        onClose();
+    };
+
     return (
         <div
             ref={popupRef}
@@ -46,12 +54,15 @@ const MealActionsPopup: React.FC<MealActionsPopupProps> = observer(({ dayIndex, 
                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('mealTime')}</span>
                      <MealTimeEditor dayIndex={dayIndex} mealIndex={mealIndex} />
                 </div>
-                <MealModificationControl
-                    dayIndex={dayIndex}
-                    mealIndex={mealIndex}
-                    showText={true}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-                />
+                {onResetClick && (
+                    <MealModificationControl
+                        dayIndex={dayIndex}
+                        mealIndex={mealIndex}
+                        showText={true}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+                        onResetClick={handleResetClick}
+                    />
+                )}
                 {onLogCheatMeal && (
                     <>
                         <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>

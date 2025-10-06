@@ -19,7 +19,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, onClose, 
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6 animate-slide-in-up">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 animate-slide-in-up">
                 <h2 id="modal-title" className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">{title}</h2>
                 <div className="text-gray-600 dark:text-gray-400 mb-6">
                     {children}

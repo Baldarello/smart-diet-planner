@@ -1,36 +1,34 @@
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import { observer } from 'mobx-react-lite';
+import { toJS } from 'mobx';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
 import { ResetToPresetIcon } from './Icons';
-import ConfirmationModal from './ConfirmationModal';
 
 interface MealModificationControlProps {
     dayIndex: number;
     mealIndex: number;
+    onResetClick: () => void;
     showText?: boolean;
     className?: string;
 }
 
-const MealModificationControl: React.FC<MealModificationControlProps> = observer(({ dayIndex, mealIndex, showText = false, className }) => {
-    // Fix: Replaced non-existent 'activeMealPlan' with 'masterMealPlan'.
-    const { masterMealPlan, presetMealPlan, resetMealToPreset } = mealPlanStore;
-    const [isModalOpen, setIsModalOpen] = useState(false);
+const MealModificationControl: React.FC<MealModificationControlProps> = observer(({ dayIndex, mealIndex, onResetClick, showText = false, className }) => {
+    const { masterMealPlan, presetMealPlan } = mealPlanStore;
 
-    const isModified = useMemo(() => {
-        const activeMeal = masterMealPlan[dayIndex]?.meals[mealIndex];
-        const presetMeal = presetMealPlan[dayIndex]?.meals[mealIndex];
-        if (!activeMeal || !presetMeal) return false;
-        
+    const activeMeal = masterMealPlan[dayIndex]?.meals[mealIndex];
+    const presetMeal = presetMealPlan[dayIndex]?.meals[mealIndex];
+
+    let isModified = false;
+    if (activeMeal && presetMeal) {
         try {
-            return JSON.stringify(activeMeal) !== JSON.stringify(presetMeal);
+            // Compare stringified versions of plain JS objects to detect deep changes
+            isModified = JSON.stringify(toJS(activeMeal)) !== JSON.stringify(toJS(presetMeal));
         } catch (e) {
             console.error("Could not compare meal objects:", e);
-            return false;
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [masterMealPlan[dayIndex]?.meals[mealIndex], presetMealPlan[dayIndex]?.meals[mealIndex], dayIndex, mealIndex]);
-
+    }
+    
     if (!isModified) {
         return null;
     }
@@ -38,25 +36,15 @@ const MealModificationControl: React.FC<MealModificationControlProps> = observer
     const defaultClassName = "p-1 rounded-full text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors";
 
     return (
-        <>
-            <button
-                onClick={() => setIsModalOpen(true)}
-                title={t('resetMealToPresetTitle')}
-                className={className || defaultClassName}
-                aria-label={t('resetMealToPresetTitle')}
-            >
-                <ResetToPresetIcon />
-                {showText && <span className="ml-2">{t('resetMealToPresetTitle')}</span>}
-            </button>
-            <ConfirmationModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onConfirm={() => resetMealToPreset(dayIndex, mealIndex)}
-                title={t('resetMealModalTitle')}
-            >
-                <p>{t('resetMealModalContent')}</p>
-            </ConfirmationModal>
-        </>
+        <button
+            onClick={onResetClick}
+            title={t('resetMealToPresetTitle')}
+            className={className || defaultClassName}
+            aria-label={t('resetMealToPresetTitle')}
+        >
+            <ResetToPresetIcon />
+            {showText && <span className="ml-2">{t('resetMealToPresetTitle')}</span>}
+        </button>
     );
 });
 

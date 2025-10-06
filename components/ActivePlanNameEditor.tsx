@@ -6,7 +6,7 @@ import { t } from '../i18n';
 const ActivePlanNameEditor: React.FC = observer(() => {
     const { currentPlanName, setCurrentPlanName } = mealPlanStore;
     return (
-        <div className="mb-8 text-center">
+        <div className="mb-8 text-center hidden sm:block">
             <input
                 type="text"
                 value={currentPlanName}
