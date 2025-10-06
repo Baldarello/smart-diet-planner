@@ -3,6 +3,8 @@ import { UserProfile, SyncedData } from '../types';
 import { runInAction } from 'mobx';
 import { loadStateFromDrive, saveStateToDrive } from './driveService';
 import { db } from './db';
+// Fix: Import Dexie to use as a type for casting, resolving type inference issues.
+import Dexie from 'dexie';
 
 // Define google types globally as they come from a script tag
 declare global {
@@ -48,10 +50,11 @@ async function syncWithDriveOnLogin(accessToken: string) {
 
         if (remoteData && remoteData.appState) {
             console.log("Remote data found, overwriting local database.");
-            // Fix: Changed to use the rest-arguments overload for `db.transaction` to resolve a TypeScript
-            // type inference issue where the method was not being found on the subclassed Dexie instance.
-            // This is likely related to subtle circular dependency issues.
-            await db.transaction('rw', 'appState', 'progressHistory', async () => {
+            // Fix: Cast `db` to the base `Dexie` type to resolve type inference issues where
+            // the `transaction` method was not being found on the subclassed `MySubClassedDexie`.
+            // The previous varargs overload attempt was also failing. Using the array-of-tables
+            // overload with the cast provides a robust fix.
+            await (db as Dexie).transaction('rw', [db.appState, db.progressHistory], async () => {
                 await db.progressHistory.clear();
                 await db.appState.put({ key: 'dietPlanData', value: remoteData.appState });
                 if (remoteData.progressHistory?.length) {

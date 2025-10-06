@@ -7,9 +7,12 @@ import MealTimeEditor from './MealTimeEditor';
 import NutritionInfoDisplay from './NutritionInfoDisplay';
 import DailyNutritionSummary from './DailyNutritionSummary';
 import MealModificationControl from './MealModificationControl';
+import { MoreVertIcon } from './Icons';
+import MealActionsPopup from './MealActionsPopup';
 
 const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = observer(({ plan, isMasterPlanView = false }) => {
-    const [openDayIndex, setOpenDayIndex] = useState<number | null>(null);
+    const [openDayIndex, setOpenDayIndex] = useState<number | null>(0);
+    const [actionsMenu, setActionsMenu] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
 
     const handleToggle = (dayIndex: number) => {
         setOpenDayIndex(prevIndex => (prevIndex === dayIndex ? null : dayIndex));
@@ -41,28 +44,48 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                             {mealPlanStore.onlineMode && <DailyNutritionSummary summary={summary} showTitle={false} className="mb-4" />}
 
                             <div className="space-y-4">
-                                {day.meals.map((meal, mealIndex) => (
-                                    <div key={mealIndex} className={`border-t border-gray-100 dark:border-gray-700 pt-3`}>
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <div className="flex items-center gap-x-2">
+                                {day.meals.map((meal, mealIndex) => {
+                                    const isMenuOpen = actionsMenu?.dayIndex === dayIndex && actionsMenu.mealIndex === mealIndex;
+                                    return (
+                                        <div key={mealIndex} className={`border-t border-gray-100 dark:border-gray-700 pt-3`}>
+                                            <div className="flex justify-between items-start gap-2">
+                                                <div className="flex-1 min-w-0">
                                                     <h4 className={`font-semibold text-gray-800 dark:text-gray-200`}>{meal.name}</h4>
-                                                    {isMasterPlanView && <MealTimeEditor dayIndex={dayIndex} mealIndex={mealIndex} />}
-                                                    {isMasterPlanView && <MealModificationControl dayIndex={dayIndex} mealIndex={mealIndex} />}
+                                                    {meal.title && <p className={`text-sm font-medium text-violet-600 dark:text-violet-400 truncate`}>{meal.title}</p>}
                                                 </div>
-                                                {meal.title && <p className={`text-sm font-medium text-violet-600 dark:text-violet-400`}>{meal.title}</p>}
+                                                {isMasterPlanView && (
+                                                    <div className="flex items-center gap-1 sm:gap-2">
+                                                        <div className="hidden sm:flex items-center gap-2">
+                                                            <MealTimeEditor dayIndex={dayIndex} mealIndex={mealIndex} />
+                                                            <MealModificationControl dayIndex={dayIndex} mealIndex={mealIndex} />
+                                                        </div>
+                                                        <div className="relative sm:hidden">
+                                                            <button onClick={(e) => { e.stopPropagation(); setActionsMenu({ dayIndex, mealIndex }); }} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
+                                                                <MoreVertIcon />
+                                                            </button>
+                                                            {isMenuOpen && (
+                                                                <MealActionsPopup
+                                                                    dayIndex={dayIndex}
+                                                                    mealIndex={mealIndex}
+                                                                    onClose={() => setActionsMenu(null)}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
+                                            <MealItemChecklist 
+                                                items={meal.items} 
+                                                dayIndex={dayIndex} 
+                                                mealIndex={mealIndex} 
+                                                mealIsDone={false} 
+                                                isEditable={isMasterPlanView}
+                                                showCheckbox={false}
+                                            />
+                                            {mealPlanStore.onlineMode && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={mealIndex} isMasterPlanView={isMasterPlanView} />}
                                         </div>
-                                        <MealItemChecklist 
-                                            items={meal.items} 
-                                            dayIndex={dayIndex} 
-                                            mealIndex={mealIndex} 
-                                            mealIsDone={false} 
-                                            isMasterPlanView={isMasterPlanView}
-                                        />
-                                        {mealPlanStore.onlineMode && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={mealIndex} isMasterPlanView={isMasterPlanView} />}
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     </details>

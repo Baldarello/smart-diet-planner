@@ -93,12 +93,12 @@ const ProgressView: React.FC = observer(() => {
 
     return (
         <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-6xl mx-auto">
-            <div className="flex flex-col sm:flex-row justify-between items-center border-b dark:border-gray-700 pb-4 mb-6">
-                <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{t('progressTitle')}</h2>
-                <div className="flex items-center gap-4 mt-4 sm:mt-0">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('dateRange')}:</span>
-                         <div className="bg-gray-200 dark:bg-gray-700 rounded-full p-1 flex items-center">
+            <div className="flex flex-col md:flex-row justify-between items-center border-b dark:border-gray-700 pb-4 mb-6 gap-4">
+                <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 self-start md:self-center">{t('progressTitle')}</h2>
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400 hidden sm:inline">{t('dateRange')}:</span>
+                         <div className="bg-gray-200 dark:bg-gray-700 rounded-full p-1 flex items-center flex-grow sm:flex-grow-0">
                             {( [7, 30, 90] as DateRange[]).map(range => (
                                 <button
                                     key={range}
@@ -113,14 +113,13 @@ const ProgressView: React.FC = observer(() => {
                      <button
                         onClick={() => recalculateAllProgress()}
                         disabled={recalculatingProgress}
-                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-violet-600 text-white hover:bg-violet-700 transition-colors disabled:bg-violet-400 disabled:opacity-75 disabled:cursor-wait text-sm font-semibold shadow-md"
+                        className="flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-violet-600 text-white hover:bg-violet-700 transition-colors disabled:bg-violet-400 disabled:opacity-75 disabled:cursor-wait text-sm font-semibold shadow-md w-full sm:w-auto"
                         title={t('recalculateProgressTitle')}
                     >
                         {recalculatingProgress
                             ? <div className="animate-spin h-5 w-5 border-b-2 border-white rounded-full"></div>
                             : <RefreshIcon className="h-5 w-5" />
                         }
-                        {/* Fix: Corrected typo in translation key from 'recalculating...' to 'recalculate...'. */}
                         <span>{recalculatingProgress ? t('recalculatingProgressButtonTextLoading') : t('recalculateProgressButtonText')}</span>
                     </button>
                 </div>

@@ -3,7 +3,7 @@ import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import MealItemChecklist from './MealItemChecklist';
 import { t } from '../i18n';
-import { CheckCircleIcon, UndoIcon, WarningIcon } from './Icons';
+import { CheckCircleIcon, UndoIcon, WarningIcon, MoreVertIcon } from './Icons';
 import HydrationTracker from './HydrationTracker';
 import MealTimeEditor from './MealTimeEditor';
 import DailyNutritionSummary from './DailyNutritionSummary';
@@ -16,10 +16,13 @@ import StepTracker from './StepTracker';
 import BodyMetricsTracker from './BodyMetricsTracker';
 import SkeletonLoader from './SkeletonLoader';
 import CheatMealModal from './CheatMealModal';
+import MealActionsPopup from './MealActionsPopup';
 
 const DailyPlanView: React.FC = observer(() => {
     const { dailyPlan, toggleMealDone, dailyNutritionSummary, onlineMode, currentDate, setCurrentDate, startDate, endDate, toggleAllItemsInMeal, undoCheatMeal, setActiveTab } = mealPlanStore;
     const [cheatingMealIndex, setCheatingMealIndex] = useState<number | null>(null);
+    const [actionsMenuMealIndex, setActionsMenuMealIndex] = useState<number | null>(null);
+
 
     const todayDateString = new Date().toLocaleDateString('en-CA');
     const isToday = currentDate === todayDateString;
@@ -102,9 +105,9 @@ const DailyPlanView: React.FC = observer(() => {
 
                     return (
                         <div key={meal.originalIndex} className={`p-4 rounded-lg transition-all duration-500 ease-in-out ${containerClasses}`}>
-                            <div className="flex justify-between items-start">
-                                 <div>
-                                    <div className="flex items-center gap-x-3">
+                            <div className="flex justify-between items-start gap-2">
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-x-2">
                                         {!meal.cheat && (
                                             <input
                                                 type="checkbox"
@@ -118,17 +121,22 @@ const DailyPlanView: React.FC = observer(() => {
                                         )}
                                         <h4 className={`text-xl font-semibold text-gray-800 dark:text-gray-200 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.name}</h4>
                                         {meal.cheat && <span className="text-xs font-bold uppercase text-orange-500 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50 px-2 py-1 rounded-full">{t('cheatMealBadge')}</span>}
+                                    </div>
+                                    {meal.title && <p className={`text-md font-medium text-violet-600 dark:text-violet-400 mt-1 transition-all truncate ${meal.done ? 'line-through' : ''}`}>{meal.title}</p>}
+                                </div>
+                                <div className="flex items-center gap-1 sm:gap-2">
+                                    {/* Desktop-only actions */}
+                                    <div className="hidden sm:flex items-center gap-2">
                                         <MealTimeEditor dayIndex={dayIndex} mealIndex={meal.originalIndex} />
                                         <MealModificationControl dayIndex={dayIndex} mealIndex={meal.originalIndex} />
+                                        {!meal.done && !meal.cheat && (
+                                            <button onClick={() => setCheatingMealIndex(meal.originalIndex)} title={t('logCheatMealTitle')} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={t('logCheatMealTitle')}>
+                                                <WarningIcon />
+                                            </button>
+                                        )}
                                     </div>
-                                    {meal.title && <p className={`text-md font-medium text-violet-600 dark:text-violet-400 mt-1 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.title}</p>}
-                                 </div>
-                                 <div className="flex items-center gap-2">
-                                    {!meal.done && !meal.cheat && (
-                                        <button onClick={() => setCheatingMealIndex(meal.originalIndex)} title={t('logCheatMealTitle')} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={t('logCheatMealTitle')}>
-                                            <WarningIcon />
-                                        </button>
-                                    )}
+
+                                    {/* Common done/undo actions */}
                                     {meal.cheat ? (
                                         <button onClick={() => undoCheatMeal(meal.originalIndex)} title={t('undoCheatMealTitle')} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={t('undoCheatMealTitle')}>
                                             <UndoIcon />
@@ -138,7 +146,24 @@ const DailyPlanView: React.FC = observer(() => {
                                             {meal.done ? <UndoIcon /> : <CheckCircleIcon />}
                                         </button>
                                     )}
-                                 </div>
+                                    
+                                    {/* Mobile-only menu */}
+                                    {!meal.done && !meal.cheat && (
+                                        <div className="relative sm:hidden">
+                                            <button onClick={(e) => { e.stopPropagation(); setActionsMenuMealIndex(meal.originalIndex); }} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
+                                                <MoreVertIcon />
+                                            </button>
+                                            {actionsMenuMealIndex === meal.originalIndex && (
+                                                <MealActionsPopup 
+                                                    dayIndex={dayIndex}
+                                                    mealIndex={meal.originalIndex}
+                                                    onClose={() => setActionsMenuMealIndex(null)}
+                                                    onLogCheatMeal={() => setCheatingMealIndex(meal.originalIndex)}
+                                                />
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {meal.cheat && meal.cheatMealDescription && (
@@ -147,7 +172,7 @@ const DailyPlanView: React.FC = observer(() => {
                                 </div>
                             )}
 
-                            {!meal.cheat && <MealItemChecklist items={meal.items} mealIndex={meal.originalIndex} mealIsDone={meal.done} />}
+                            {!meal.cheat && <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} isEditable={true} showCheckbox={true} />}
                             {onlineMode && !meal.cheat && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
                             {onlineMode && !meal.cheat && <ActualNutrition dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
                         </div>

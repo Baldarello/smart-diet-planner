@@ -8,9 +8,11 @@ import ConfirmationModal from './ConfirmationModal';
 interface MealModificationControlProps {
     dayIndex: number;
     mealIndex: number;
+    showText?: boolean;
+    className?: string;
 }
 
-const MealModificationControl: React.FC<MealModificationControlProps> = observer(({ dayIndex, mealIndex }) => {
+const MealModificationControl: React.FC<MealModificationControlProps> = observer(({ dayIndex, mealIndex, showText = false, className }) => {
     // Fix: Replaced non-existent 'activeMealPlan' with 'masterMealPlan'.
     const { masterMealPlan, presetMealPlan, resetMealToPreset } = mealPlanStore;
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -33,15 +35,18 @@ const MealModificationControl: React.FC<MealModificationControlProps> = observer
         return null;
     }
 
+    const defaultClassName = "p-1 rounded-full text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors";
+
     return (
         <>
             <button
                 onClick={() => setIsModalOpen(true)}
                 title={t('resetMealToPresetTitle')}
-                className="p-1 rounded-full text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors"
+                className={className || defaultClassName}
                 aria-label={t('resetMealToPresetTitle')}
             >
                 <ResetToPresetIcon />
+                {showText && <span className="ml-2">{t('resetMealToPresetTitle')}</span>}
             </button>
             <ConfirmationModal
                 isOpen={isModalOpen}

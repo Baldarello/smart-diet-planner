@@ -3,7 +3,13 @@ import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { MealItem } from '../types';
 
-const EditableMealItem: React.FC<{ item: MealItem, dayIndex: number, mealIndex: number, itemIndex: number, isMasterPlanView?: boolean }> = observer(({ item, dayIndex, mealIndex, itemIndex, isMasterPlanView = false }) => {
+const EditableMealItem: React.FC<{
+    item: MealItem,
+    dayIndex: number,
+    mealIndex: number,
+    itemIndex: number,
+    isEditable: boolean
+}> = observer(({ item, dayIndex, mealIndex, itemIndex, isEditable }) => {
     const [currentValue, setCurrentValue] = useState(item.fullDescription);
 
     useEffect(() => {
@@ -11,7 +17,7 @@ const EditableMealItem: React.FC<{ item: MealItem, dayIndex: number, mealIndex: 
     }, [item.fullDescription]);
 
     const handleBlur = () => {
-        if (isMasterPlanView && currentValue.trim() !== item.fullDescription) {
+        if (isEditable && currentValue.trim() !== item.fullDescription) {
             mealPlanStore.updateItemDescription(dayIndex, mealIndex, itemIndex, currentValue.trim());
         }
     };
@@ -29,18 +35,25 @@ const EditableMealItem: React.FC<{ item: MealItem, dayIndex: number, mealIndex: 
             onChange={(e) => setCurrentValue(e.target.value)}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            readOnly={!isMasterPlanView}
-            className={`w-full bg-transparent outline-none rounded-md px-1 py-0.5 transition-colors duration-200 ${item.used ? 'line-through text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'} ${!isMasterPlanView ? 'cursor-default' : 'focus:bg-white dark:focus:bg-gray-700/50'}`}
+            readOnly={!isEditable}
+            className={`w-full bg-transparent outline-none rounded-md px-1 py-0.5 transition-colors duration-200 ${item.used ? 'line-through text-gray-400 dark:text-gray-500' : 'dark:text-gray-300'} ${!isEditable ? 'cursor-default' : 'focus:bg-white dark:focus:bg-gray-700/50'}`}
         />
     );
 });
 
-const MealItemChecklist: React.FC<{items: MealItem[], dayIndex?: number, mealIndex: number, mealIsDone: boolean, isMasterPlanView?: boolean}> = observer(({items, dayIndex, mealIndex, mealIsDone, isMasterPlanView = false}) => {
+const MealItemChecklist: React.FC<{
+    items: MealItem[],
+    dayIndex?: number,
+    mealIndex: number,
+    mealIsDone: boolean,
+    isEditable?: boolean,
+    showCheckbox?: boolean
+}> = observer(({ items, dayIndex, mealIndex, mealIsDone, isEditable = false, showCheckbox = false }) => {
     return (
         <ul className="text-gray-600 dark:text-gray-400 text-sm mt-2 space-y-2">
             {items.map((item, itemIndex) => (
-                 <li key={itemIndex} className="flex items-center">
-                    {!isMasterPlanView && (
+                <li key={itemIndex} className="flex items-center">
+                    {showCheckbox && (
                         <input
                             type="checkbox"
                             id={`mealitem-${mealIndex}-${itemIndex}`}
@@ -50,7 +63,13 @@ const MealItemChecklist: React.FC<{items: MealItem[], dayIndex?: number, mealInd
                             aria-label={item.fullDescription}
                         />
                     )}
-                    <EditableMealItem item={item} dayIndex={dayIndex!} mealIndex={mealIndex} itemIndex={itemIndex} isMasterPlanView={isMasterPlanView} />
+                    <EditableMealItem 
+                        item={item} 
+                        dayIndex={dayIndex!} 
+                        mealIndex={mealIndex} 
+                        itemIndex={itemIndex} 
+                        isEditable={isEditable} 
+                    />
                 </li>
             ))}
         </ul>
