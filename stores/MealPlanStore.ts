@@ -629,8 +629,10 @@ export class MealPlanStore {
         } else {
             existingPantryItem.quantity += `, ${itemToMove.quantity}`;
         }
+        // When merging, the "original" quantity for restocking should be the size of the new package just bought.
+        existingPantryItem.originalQuantity = itemToMove.quantity;
     } else {
-        this.pantry.push({ ...itemToMove, originalCategory: categoryName });
+        this.pantry.push({ ...itemToMove, originalCategory: categoryName, originalQuantity: itemToMove.quantity });
     }
     const category = this.shoppingList.find(c => c.category === categoryName);
     if (category) {
@@ -767,7 +769,8 @@ export class MealPlanStore {
                     if (newPantryValue <= 0.01) { // Item is depleted, move to shopping list
                         const itemToRestock: ShoppingListItem = {
                             item: pantryItem.item,
-                            quantity: pantryItem.quantity, // Use the quantity it had before this last consumption
+                            // Use the original quantity for restocking, fallback to current quantity if not available.
+                            quantity: pantryItem.originalQuantity || pantryItem.quantity,
                         };
 
                         // Add to shopping list

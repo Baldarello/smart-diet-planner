@@ -47,6 +47,7 @@ export interface PantryItem {
   item: string;
   quantity: string;
   originalCategory: string;
+  originalQuantity?: string;
 }
 
 export interface MealPlanData {
