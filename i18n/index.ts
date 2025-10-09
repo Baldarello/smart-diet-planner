@@ -1,6 +1,7 @@
 
 
 
+
 import type { Locale } from '../types';
 
 const translations = {
@@ -37,6 +38,9 @@ const translations = {
     language: "Lingua",
     connectionStatus: "Stato Connessione",
     navigation: "Navigazione",
+    loginSuggestionTitle: "Sincronizza i Tuoi Progressi",
+    loginSuggestionMessage: "Accedi con Google per eseguire il backup e sincronizzare in modo sicuro i tuoi piani alimentari, la dispensa e i progressi su tutti i tuoi dispositivi.",
+    continueWithoutLogin: "Continua senza account",
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Imposta Durata del Piano",
@@ -296,6 +300,9 @@ const translations = {
     language: "Language",
     connectionStatus: "Connection Status",
     navigation: "Navigation",
+    loginSuggestionTitle: "Sync Your Progress",
+    loginSuggestionMessage: "Sign in with Google to securely back up and sync your meal plans, pantry, and progress across all your devices.",
+    continueWithoutLogin: "Continue without an account",
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Set Plan Duration",

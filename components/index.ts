@@ -20,6 +20,7 @@ export { default as ManualPlanEntryForm } from './ManualPlanEntryForm';
 export { default as ConfirmationModal } from './ConfirmationModal';
 export { default as MealModificationControl } from './MealModificationControl';
 export { default as InstallPwaSnackbar } from './InstallPwaSnackbar';
+export { default as LoginSuggestionModal } from './LoginSuggestionModal';
 export { default as GoogleLogin } from './GoogleLogin';
 export { default as ActualNutrition } from './ActualNutrition';
 export { default as Drawer } from './Drawer';

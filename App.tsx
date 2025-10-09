@@ -1,5 +1,6 @@
 
 
+
 import React, { useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore, AppStatus } from './stores/MealPlanStore';
@@ -25,6 +26,7 @@ import {
     ProgressView,
     SetPlanDatesModal,
     CalendarView,
+    LoginSuggestionModal,
 } from './components';
 import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon } from './components/Icons';
 
@@ -38,10 +40,27 @@ const App: React.FC = observer(() => {
     const [showManualForm, setShowManualForm] = useState(false);
     const [installPrompt, setInstallPrompt] = useState<any>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [showLoginSuggestion, setShowLoginSuggestion] = useState(false);
 
     useEffect(() => {
         authStore.init();
     }, []);
+
+    useEffect(() => {
+        if (authStore.status === 'LOGGED_OUT') {
+            const hasSeenLoginSuggestion = sessionStorage.getItem('hasSeenLoginSuggestion');
+            if (!hasSeenLoginSuggestion) {
+                setShowLoginSuggestion(true);
+            }
+        } else if (authStore.status === 'LOGGED_IN') {
+            setShowLoginSuggestion(false);
+        }
+    }, [authStore.status]);
+
+    const handleCloseLoginSuggestion = () => {
+        setShowLoginSuggestion(false);
+        sessionStorage.setItem('hasSeenLoginSuggestion', 'true');
+    };
 
     useEffect(() => {
         const handleBeforeInstallPrompt = (e: Event) => {
@@ -322,6 +341,7 @@ const App: React.FC = observer(() => {
 
     return (
         <div className="min-h-screen">
+            {showLoginSuggestion && <LoginSuggestionModal onClose={handleCloseLoginSuggestion} />}
             <Drawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)}>
                 {renderDrawerContent()}
             </Drawer>
