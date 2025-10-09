@@ -1,6 +1,3 @@
-
-
-
 import React, { useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore, AppStatus } from './stores/MealPlanStore';
@@ -27,8 +24,9 @@ import {
     SetPlanDatesModal,
     CalendarView,
     LoginSuggestionModal,
+    SettingsView,
 } from './components';
-import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon } from './components/Icons';
+import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon } from './components/Icons';
 
 const App: React.FC = observer(() => {
     const store = mealPlanStore;
@@ -179,15 +177,36 @@ const App: React.FC = observer(() => {
 
     const renderDrawerContent = () => {
         const isPlanLocked = !store.shoppingListManaged && !!store.currentPlanId;
-        const tabs = [
+        const planSpecificTabs = [
             { id: 'daily', icon: <TodayIcon />, label: t('tabDaily'), disabled: isPlanLocked },
             { id: 'calendar', icon: <CalendarIcon />, label: t('tabCalendar'), disabled: isPlanLocked },
             { id: 'plan', icon: <EditIcon />, label: t('tabWeekly') },
             { id: 'list', icon: <ListIcon />, label: t('tabShopping') },
             { id: 'pantry', icon: <PantryIcon />, label: t('tabPantry') },
             { id: 'progress', icon: <ProgressIcon />, label: t('tabProgress'), disabled: isPlanLocked },
-            { id: 'archive', icon: <ArchiveIcon />, label: t('tabArchive') },
         ];
+        
+        const generalTabs = [
+            { id: 'archive', icon: <ArchiveIcon />, label: t('tabArchive') },
+            { id: 'settings', icon: <SettingsIcon />, label: t('tabSettings') },
+        ];
+
+        // Fix: Replace JSX.Element with React.ReactNode to resolve "Cannot find namespace 'JSX'" error.
+        const renderTab = (tab: { id: string, icon: React.ReactNode, label: string, disabled?: boolean }) => (
+             <button
+                key={tab.id}
+                onClick={() => {
+                    store.setActiveTab(tab.id as any);
+                    setIsDrawerOpen(false);
+                }}
+                disabled={tab.disabled}
+                className={`flex items-center w-full text-left px-4 py-3 rounded-lg transition-colors ${store.activeTab === tab.id ? 'bg-violet-100 dark:bg-gray-700 text-violet-700 dark:text-violet-300 font-semibold' : 'bg-transparent text-gray-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700/50'} ${tab.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title={tab.disabled ? t('shoppingListSetupMessage') : ''}
+            >
+                {tab.icon}
+                <span className="ml-3">{tab.label}</span>
+            </button>
+        );
 
         return (
             <div className="flex flex-col h-full">
@@ -195,30 +214,17 @@ const App: React.FC = observer(() => {
                     <GoogleLogin />
                 </div>
 
-                {store.status === AppStatus.SUCCESS && store.currentPlanId && (
-                    <div className="border-b dark:border-gray-700 py-6">
-                        <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('navigation')}</h3>
-                        <div className="flex flex-col space-y-1">
-                            {tabs.map(tab => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => {
-                                        store.setActiveTab(tab.id as any);
-                                        setIsDrawerOpen(false);
-                                    }}
-                                    disabled={tab.disabled}
-                                    className={`flex items-center w-full text-left px-4 py-3 rounded-lg transition-colors ${store.activeTab === tab.id ? 'bg-violet-100 dark:bg-gray-700 text-violet-700 dark:text-violet-300 font-semibold' : 'bg-transparent text-gray-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700/50'} ${tab.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    title={tab.disabled ? t('shoppingListSetupMessage') : ''}
-                                >
-                                    {tab.icon}
-                                    <span className="ml-3">{tab.label}</span>
-                                </button>
-                            ))}
-                        </div>
+                <div className="border-b dark:border-gray-700 py-6">
+                    <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('navigation')}</h3>
+                    <div className="flex flex-col space-y-1">
+                        {store.status === AppStatus.SUCCESS && store.currentPlanId && (
+                            planSpecificTabs.map(renderTab)
+                        )}
+                        {generalTabs.map(renderTab)}
                     </div>
-                )}
+                </div>
 
-                <div className="py-6 border-b dark:border-gray-700">
+                <div className="py-6 flex-grow">
                     <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('planManagement')}</h3>
                     <div className="flex flex-col space-y-1">
                         <button onClick={() => { setShowNewPlanFlow(true); setShowManualForm(false); setIsDrawerOpen(false); }} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
@@ -232,41 +238,6 @@ const App: React.FC = observer(() => {
                                 <ExportIcon /> <span className="ml-3">{t('exportPlan')}</span>
                             </button>
                         )}
-                    </div>
-                </div>
-                
-                <div className="flex-grow flex flex-col justify-end">
-                    <div className="pt-6 space-y-4 px-4">
-                        <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t('settings')}</h3>
-                        <div className="flex items-center justify-between bg-slate-50 dark:bg-gray-700/50 p-3 rounded-lg">
-                            <span className="font-medium text-gray-700 dark:text-gray-300">{t('theme')}</span>
-                            <button onClick={() => store.setTheme(store.theme === 'light' ? 'dark' : 'light')} className="p-2 rounded-full bg-white dark:bg-gray-800 shadow-md hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors">
-                                {store.theme === 'light' ? <MoonIcon /> : <SunIcon />}
-                            </button>
-                        </div>
-                        <div className="bg-slate-50 dark:bg-gray-700/50 p-3 rounded-lg">
-                            <span className="font-medium text-gray-700 dark:text-gray-300 mb-2 block">{t('language')}</span>
-                            <div className="flex items-center bg-gray-200 dark:bg-gray-800 rounded-full p-1">
-                                <button
-                                    onClick={() => store.setLocale('it')}
-                                    className={`w-full text-center px-3 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 ${store.locale === 'it' ? 'bg-violet-600 text-white shadow-md' : 'bg-transparent text-gray-600 dark:text-gray-300'}`}
-                                >
-                                    Italiano
-                                </button>
-                                <button
-                                    onClick={() => store.setLocale('en')}
-                                    className={`w-full text-center px-3 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 ${store.locale === 'en' ? 'bg-violet-600 text-white shadow-md' : 'bg-transparent text-gray-600 dark:text-gray-300'}`}
-                                >
-                                    English
-                                </button>
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-between bg-slate-50 dark:bg-gray-700/50 p-3 rounded-lg" title={store.onlineMode ? t('onlineModeTitle') : t('offlineModeTitle')}>
-                            <span className="font-medium text-gray-700 dark:text-gray-300">{t('connectionStatus')}</span>
-                            <div className="p-2 rounded-full bg-white dark:bg-gray-800 shadow-md">
-                                {store.onlineMode ? <CloudOnlineIcon /> : <CloudOfflineIcon />}
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -294,6 +265,7 @@ const App: React.FC = observer(() => {
                     {store.activeTab === 'pantry' && <PantryView />}
                     {store.activeTab === 'progress' && <ProgressView />}
                     {store.activeTab === 'archive' && <ArchiveView />}
+                    {store.activeTab === 'settings' && <SettingsView />}
                 </>
             );
         }
@@ -302,6 +274,13 @@ const App: React.FC = observer(() => {
             return <ManualPlanEntryForm onCancel={() => { setShowManualForm(false); if (store.currentPlanId) setShowNewPlanFlow(false); }} />;
         }
         
+        if (store.activeTab === 'settings') {
+            return <SettingsView />;
+        }
+        if (store.activeTab === 'archive') {
+            return <ArchiveView />;
+        }
+
         return (
             <div className="text-center">
                  {hasActivePlan && (

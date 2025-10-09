@@ -1,7 +1,3 @@
-
-
-
-
 import type { Locale } from '../types';
 
 const translations = {
@@ -20,6 +16,7 @@ const translations = {
     tabArchive: "Archivio",
     tabProgress: "Progressi",
     tabCalendar: "Calendario",
+    tabSettings: "Impostazioni",
     welcomeTitle: "Inizia un Nuovo Piano Dietetico",
     welcomeSubtitle: "Carica un file PDF o JSON del tuo piano per iniziare.",
     uploadPdfTitle: "Carica il tuo Piano",
@@ -41,6 +38,11 @@ const translations = {
     loginSuggestionTitle: "Sincronizza i Tuoi Progressi",
     loginSuggestionMessage: "Accedi con Google per eseguire il backup e sincronizzare in modo sicuro i tuoi piani alimentari, la dispensa e i progressi su tutti i tuoi dispositivi.",
     continueWithoutLogin: "Continua senza account",
+    settingsStepGoal: "Obiettivo Passi Giornaliero",
+    settingsHydrationGoal: "Obiettivo Idratazione Giornaliero",
+    settingsUserGoals: "Obiettivi Utente",
+    settingsAppPreferences: "Preferenze App",
+    settingsStatus: "Stato",
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Imposta Durata del Piano",
@@ -282,6 +284,7 @@ const translations = {
     tabArchive: "Archive",
     tabProgress: "Progress",
     tabCalendar: "Calendar",
+    tabSettings: "Settings",
     welcomeTitle: "Start a New Diet Plan",
     welcomeSubtitle: "Upload a PDF or JSON file of your plan to get started.",
     uploadPdfTitle: "Upload Your Plan",
@@ -303,6 +306,11 @@ const translations = {
     loginSuggestionTitle: "Sync Your Progress",
     loginSuggestionMessage: "Sign in with Google to securely back up and sync your meal plans, pantry, and progress across all your devices.",
     continueWithoutLogin: "Continue without an account",
+    settingsStepGoal: "Daily Step Goal",
+    settingsHydrationGoal: "Daily Hydration Goal",
+    settingsUserGoals: "User Goals",
+    settingsAppPreferences: "App Preferences",
+    settingsStatus: "Status",
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Set Plan Duration",

@@ -34,7 +34,7 @@ export class MealPlanStore {
   shoppingList: ShoppingListCategory[] = [];
   pantry: PantryItem[] = [];
   archivedPlans: ArchivedPlan[] = [];
-  activeTab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' = 'daily';
+  activeTab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' | 'settings' = 'daily';
   pdfParseProgress = 0;
   currentPlanName = 'My Diet Plan';
   theme: Theme = 'light';
@@ -433,7 +433,7 @@ export class MealPlanStore {
   }
 
 
-  setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar') => { this.activeTab = tab; }
+  setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' | 'settings') => { this.activeTab = tab; }
   setCurrentPlanName = (name: string) => { this.currentPlanName = name; this.saveToDB(); }
   updateArchivedPlanName = (planId: string, newName: string) => {
     const planIndex = this.archivedPlans.findIndex(p => p.id === planId);

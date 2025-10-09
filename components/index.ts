@@ -32,4 +32,5 @@ export { default as SetPlanDatesModal } from './SetPlanDatesModal';
 export { default as CalendarView } from './CalendarView';
 export { default as CheatMealModal } from './CheatMealModal';
 export { default as MealActionsPopup } from './MealActionsPopup';
+export { default as SettingsView } from './SettingsView';
 export * from './Icons';
