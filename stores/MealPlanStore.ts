@@ -68,6 +68,7 @@ export class MealPlanStore {
 
   sentNotifications = new Map<string, boolean>();
   lastActiveDate: string = getTodayDateString();
+  lastModified: number = 0;
 
   constructor() {
     makeAutoObservable(this, {}, { autoBind: true });
@@ -104,6 +105,7 @@ export class MealPlanStore {
                 this.startDate = data.startDate || null;
                 this.endDate = data.endDate || null;
                 this.shoppingListManaged = data.shoppingListManaged ?? true; // Default to true for existing users
+                this.lastModified = data.lastModified || Date.now();
 
                 if (data.sentNotifications) {
                     this.sentNotifications = new Map(data.sentNotifications);
@@ -554,6 +556,7 @@ export class MealPlanStore {
 
   saveToDB = async () => {
     try {
+      this.lastModified = Date.now();
       const dataToSave: Omit<StoredState, 'waterIntakeMl' | 'stepsTaken'> = {
         masterMealPlan: toJS(this.masterMealPlan),
         presetMealPlan: toJS(this.presetMealPlan),
@@ -573,6 +576,7 @@ export class MealPlanStore {
         startDate: this.startDate,
         endDate: this.endDate,
         shoppingListManaged: this.shoppingListManaged,
+        lastModified: this.lastModified,
       };
       await db.appState.put({ key: 'dietPlanData', value: dataToSave as StoredState });
     } catch (error) {

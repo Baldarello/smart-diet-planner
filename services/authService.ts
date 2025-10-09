@@ -47,32 +47,40 @@ async function syncWithDriveOnLogin(accessToken: string) {
     runInAction(() => mealPlanStore.status = AppStatus.SYNCING);
     try {
         const remoteData = await loadStateFromDrive(accessToken);
+        const localData = await db.appState.get('dietPlanData');
 
-        if (remoteData && remoteData.appState) {
-            console.log("Remote data found, overwriting local database.");
+        const remoteTimestamp = remoteData?.appState?.lastModified || 0;
+        const localTimestamp = localData?.value?.lastModified || 0;
+        
+        console.log(`Sync check: Remote timestamp=${remoteTimestamp}, Local timestamp=${localTimestamp}`);
+
+        if (remoteData && (!localData || remoteTimestamp > localTimestamp)) {
+            // Remote is newer or local doesn't exist. Overwrite local.
+            console.log("Remote data is newer or local data is missing. Overwriting local database.");
             // Fix: Cast `db` to the base `Dexie` type to resolve type inference issues where
             // the `transaction` method was not being found on the subclassed `MySubClassedDexie`.
             // The previous varargs overload attempt was also failing. Using the array-of-tables
             // overload with the cast provides a robust fix.
-            await (db as Dexie).transaction('rw', [db.appState, db.progressHistory], async () => {
+            await (db as Dexie).transaction('rw', [db.appState, db.progressHistory, db.dailyLogs], async () => {
+                await db.appState.clear();
                 await db.progressHistory.clear();
+                await db.dailyLogs.clear();
+
                 await db.appState.put({ key: 'dietPlanData', value: remoteData.appState });
                 if (remoteData.progressHistory?.length) {
                     await db.progressHistory.bulkPut(remoteData.progressHistory);
                 }
             });
-             console.log("Local database overwritten successfully.");
+            console.log("Local database overwritten successfully.");
+        } else if (localData && (!remoteData || localTimestamp > remoteTimestamp)) {
+            // Local is newer or remote doesn't exist. Overwrite remote.
+            console.log("Local data is newer or remote data is missing. Uploading to Google Drive.");
+            const progressHistory = await db.progressHistory.toArray();
+            const dataToSave: SyncedData = { appState: localData.value, progressHistory };
+            await saveStateToDrive(dataToSave, accessToken);
+            console.log("Local data uploaded to Google Drive.");
         } else {
-            console.log("No remote data found. Checking for local data to upload.");
-            const appState = await db.appState.get('dietPlanData');
-            if (appState) {
-                const progressHistory = await db.progressHistory.toArray();
-                const dataToSave: SyncedData = { appState: appState.value, progressHistory };
-                await saveStateToDrive(dataToSave, accessToken);
-                console.log("Local data uploaded to Google Drive.");
-            } else {
-                 console.log("No local data to upload.");
-            }
+            console.log("Local and remote data are in sync. No action needed.");
         }
     } catch (error) {
         console.error("Error during Google Drive sync:", error);

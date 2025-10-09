@@ -124,6 +124,7 @@ export interface StoredState {
     startDate: string | null;
     endDate: string | null;
     shoppingListManaged?: boolean;
+    lastModified?: number;
 }
 
 export interface SyncedData {
