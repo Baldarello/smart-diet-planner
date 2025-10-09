@@ -61,7 +61,7 @@ export class MealPlanStore {
 
   // Global goals and settings
   hydrationGoalLiters = 3;
-  stepGoal = 20000;
+  stepGoal = 6000;
   bodyMetrics: BodyMetrics = {}; // Holds the LATEST known body metrics for carry-over
   hydrationSnackbar: HydrationSnackbarInfo | null = null;
   progressHistory: ProgressRecord[] = [];
@@ -100,7 +100,7 @@ export class MealPlanStore {
                 this.hydrationGoalLiters = data.hydrationGoalLiters || 3;
                 this.lastActiveDate = data.lastActiveDate || getTodayDateString();
                 this.currentPlanId = data.currentPlanId || null;
-                this.stepGoal = data.stepGoal || 20000;
+                this.stepGoal = data.stepGoal || 6000;
                 this.bodyMetrics = data.bodyMetrics || {};
                 this.startDate = data.startDate || null;
                 this.endDate = data.endDate || null;
