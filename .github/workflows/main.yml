@@ -48,7 +48,7 @@ jobs:
           # Remove the cache option to avoid the lock file error
       - run: npm i
       - run: npm run build --if-present
-      - run: ls
+      - run: ls ./dist
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
