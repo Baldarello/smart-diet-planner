@@ -14,9 +14,11 @@ interface ProgressChartProps {
     type: ChartType;
     labels: string[];
     datasets: Dataset[];
+    yAxisMin?: number;
+    yAxisMax?: number;
 }
 
-const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets }) => {
+const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, yAxisMin: yAxisMinProp, yAxisMax: yAxisMaxProp }) => {
     const [tooltip, setTooltip] = useState<{ x: number; y: number; content: React.ReactNode; visible: boolean } | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 250 });
@@ -44,24 +46,31 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
     const startIndex = Math.max(0, Math.floor(viewDomain.min));
     const endIndex = Math.min(labels.length - 1, Math.ceil(viewDomain.max));
 
-    const visibleData = datasets.flatMap(d => 
-        d.data.slice(startIndex, endIndex + 1)
-    ).filter(d => typeof d === 'number' && !isNaN(d)) as number[];
+    let yMin: number, yMax: number;
     
-    let yMin = visibleData.length > 0 ? Math.min(...visibleData) : 0;
-    let yMax = visibleData.length > 0 ? Math.max(...visibleData) : 1;
-    
-    const yRange = yMax - yMin;
-    if (yRange === 0) {
-        yMax += 1;
-        yMin -= 1;
+    if (yAxisMinProp !== undefined && yAxisMaxProp !== undefined) {
+        yMin = yAxisMinProp;
+        yMax = yAxisMaxProp;
     } else {
-        yMax += yRange * 0.1;
-        yMin -= yRange * 0.1;
+        const visibleData = datasets.flatMap(d => 
+            d.data.slice(startIndex, endIndex + 1)
+        ).filter(d => typeof d === 'number' && !isNaN(d)) as number[];
+        
+        yMin = visibleData.length > 0 ? Math.min(...visibleData) : 0;
+        yMax = visibleData.length > 0 ? Math.max(...visibleData) : 1;
+        
+        const yRange = yMax - yMin;
+        if (yRange === 0) {
+            yMax += 1;
+            yMin -= 1;
+        } else {
+            yMax += yRange * 0.1;
+            yMin -= yRange * 0.1;
+        }
+        if (yMax > 0 && yMin > 0) yMin = 0; // If all data is positive, start axis at 0
+        yMin = Math.floor(yMin);
+        yMax = Math.ceil(yMax);
     }
-    if (yMax > 0 && yMin > 0) yMin = 0; // If all data is positive, start axis at 0
-    yMin = Math.floor(yMin);
-    yMax = Math.ceil(yMax);
 
 
     const x = (i: number): number => {

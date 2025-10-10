@@ -102,7 +102,7 @@ const DashboardView: React.FC = observer(() => {
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const upcomingMeals = store.dailyPlan?.meals
         .filter(meal => !meal.done && !meal.cheat && (meal.time ?? '00:00') >= currentTime)
-        .slice(0, 3);
+        .slice(0, 1);
 
     // Progress data
     const stepsProgress = store.currentDayProgress?.stepsTaken ?? 0;
@@ -113,6 +113,18 @@ const DashboardView: React.FC = observer(() => {
     const last7DaysHistory = store.progressHistory.slice(-7);
     const weightLabels = last7DaysHistory.map(d => new Date(d.date).toLocaleDateString(store.locale, { month: 'short', day: 'numeric' }));
     const weightData = last7DaysHistory.map(d => d.weightKg);
+
+    // Calculate focused Y-axis for weight chart
+    const validWeightData = weightData.filter(w => w != null && !isNaN(w as number)) as number[];
+    let yAxisMin: number | undefined = undefined;
+    let yAxisMax: number | undefined = undefined;
+
+    if (validWeightData.length > 0) {
+        const minWeight = Math.min(...validWeightData);
+        const maxWeight = Math.max(...validWeightData);
+        yAxisMin = Math.floor(minWeight - 5);
+        yAxisMax = Math.ceil(maxWeight + 5);
+    }
 
     // Streaks & Achievements
     const { adherenceStreak, hydrationStreak, achievements } = store;
@@ -176,6 +188,8 @@ const DashboardView: React.FC = observer(() => {
                                 type="line"
                                 labels={weightLabels}
                                 datasets={[ { label: t('weight'), data: weightData, color: 'rgba(139, 92, 246, 1)', unit: t('unitKg') } ]}
+                                yAxisMin={yAxisMin}
+                                yAxisMax={yAxisMax}
                             />
                         </div>
                     )}
