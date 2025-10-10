@@ -1,4 +1,6 @@
 import { makeAutoObservable, runInAction, toJS } from 'mobx';
+// Fix: Import Dexie to resolve type error when calling db.transaction
+import Dexie from 'dexie';
 // Fix: Import the 'StoredState' type to resolve 'Cannot find name' errors.
 import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo, HydrationSnackbarInfo, BodyMetrics, ProgressRecord, DailyLog, StoredState, MealItem } from '../types';
 import { parsePdfText, generateShoppingList as generateShoppingListOffline, extractIngredientInfo, singularize, categorizeIngredient } from '../services/offlineParser';
@@ -128,6 +130,7 @@ export class MealPlanStore {
                 }
             } else {
                 this.status = AppStatus.INITIAL;
+                this._generateAndInjectMockData();
             }
         });
     } catch (error) {
@@ -136,6 +139,91 @@ export class MealPlanStore {
             this.status = AppStatus.ERROR;
             this.error = "Failed to load data from the database.";
         });
+    }
+  }
+
+  private async _generateAndInjectMockData() {
+    console.log("No existing data found. Generating and injecting mock data for demonstration.");
+    const mockProgress: ProgressRecord[] = [];
+    const mockLogs: DailyLog[] = [];
+    const today = new Date();
+    const daysToGenerate = 90;
+
+    const DAY_KEYWORDS_FOR_MOCK = ['LUNEDI', 'MARTEDI', 'MERCOLEDI', 'GIOVEDI', 'VENERDI', 'SABATO', 'DOMENICA'];
+
+    let currentWeight = 85;
+    let currentBodyFat = 25;
+    let currentBodyWater = 55;
+
+    for (let i = daysToGenerate - 1; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dateStr = date.toLocaleDateString('en-CA');
+
+        // Simulate trends with noise
+        currentWeight -= (Math.random() * 0.15);
+        if (date.getDay() === 0 || date.getDay() === 6) { // Weekend fluctuation
+            currentWeight += (Math.random() * 0.3 - 0.1);
+        }
+        currentBodyFat -= (Math.random() * 0.05);
+        currentBodyWater += (Math.random() * 0.04);
+        
+        const adherence = 70 + Math.random() * 30;
+        const plannedCalories = 1850;
+        const actualCalories = plannedCalories * (adherence / 100) + (Math.random() * 200 - 100);
+        const stepsTaken = 4000 + Math.random() * 8000;
+        const waterIntakeMl = 2000 + Math.random() * 1500;
+        const activityHours = 1 + Math.random() * 1.5;
+        const weightKg = parseFloat(currentWeight.toFixed(2));
+        const bodyFatPercentage = parseFloat(currentBodyFat.toFixed(2));
+        const bodyWaterPercentage = parseFloat(currentBodyWater.toFixed(2));
+        const leanMassKg = parseFloat((weightKg * (1 - bodyFatPercentage / 100)).toFixed(2));
+        
+        const record: ProgressRecord = {
+            date: dateStr,
+            adherence: Math.round(adherence),
+            plannedCalories: Math.round(plannedCalories),
+            actualCalories: Math.round(actualCalories),
+            weightKg: weightKg,
+            bodyFatPercentage: bodyFatPercentage,
+            leanMassKg: leanMassKg,
+            stepsTaken: Math.round(stepsTaken),
+            waterIntakeMl: Math.round(waterIntakeMl),
+            bodyWaterPercentage: bodyWaterPercentage,
+            activityHours: parseFloat(activityHours.toFixed(2)),
+            estimatedCaloriesBurned: calculateCaloriesBurned(stepsTaken, activityHours, weightKg) ?? 0,
+        };
+        mockProgress.push(record);
+
+        // Simulate cheat meals on some weekends
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+        if (isWeekend && Math.random() > 0.6) { // 40% chance of cheat meal on a weekend day
+             const dayIndex = (date.getDay() + 6) % 7;
+             const log: DailyLog = {
+                date: dateStr,
+                day: DAY_KEYWORDS_FOR_MOCK[dayIndex],
+                meals: [
+                    { name: 'COLAZIONE', items: [], done: true, time: '08:00' },
+                    { name: 'PRANZO', items: [], done: true, time: '13:00' },
+                    { name: 'CENA', items: [], done: false, cheat: true, cheatMealDescription: 'Pizza night!', time: '20:00' },
+                ]
+            };
+            mockLogs.push(log);
+        }
+    }
+    
+    try {
+        // Fix: Cast `db` to `Dexie` and use array syntax for tables to fix transaction method type error.
+        await (db as Dexie).transaction('rw', [db.progressHistory, db.dailyLogs], async () => {
+            await db.progressHistory.bulkPut(mockProgress);
+            await db.dailyLogs.bulkPut(mockLogs);
+        });
+        runInAction(() => {
+            this.progressHistory = mockProgress;
+        });
+        console.log("Mock data injected and saved to DB.");
+    } catch (error) {
+        console.error("Failed to inject mock data into the database:", error);
     }
   }
 
