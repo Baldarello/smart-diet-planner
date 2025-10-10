@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { authStore } from '../stores/AuthStore';
 import { t } from '../i18n';
-import { ClockIcon, FlameIcon, TrophyIcon, WaterDropIcon, StepsIcon, TodayIcon, FootprintIcon } from './Icons';
+import { ClockIcon, FlameIcon, WaterDropIcon, StepsIcon, TodayIcon } from './Icons';
 import ProgressChart from './ProgressChart';
 import { Meal } from '../types';
+import AchievementsModal from './AchievementsModal';
 
 const CircularProgress: React.FC<{
     progress: number;
@@ -85,26 +86,10 @@ const StreakItem: React.FC<{ count: number, label: string, icon: React.ReactNode
     );
 };
 
-const AchievementCard: React.FC<{ label: string; icon: React.ReactNode; color: string }> = ({ label, icon, color }) => {
-    const bgClass = `bg-${color}-50 dark:bg-${color}-900/30`;
-    const textClass = `text-${color}-800 dark:text-${color}-200`;
-    const iconColorClass = `text-${color}-500`;
-
-    // A small hack because Tailwind CSS purges dynamic classes. We list them all here so they are preserved.
-    const hiddenClasses = "bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 text-amber-500 bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-red-500 bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-blue-500 bg-teal-50 dark:bg-teal-900/30 text-teal-800 dark:text-teal-200 text-teal-500";
-
-    return (
-        <div className={`flex items-center gap-3 p-3 rounded-xl ${bgClass}`}>
-            <div className={iconColorClass}>{icon}</div>
-            <p className={`font-semibold text-sm ${textClass}`}>{label}</p>
-        </div>
-    );
-};
-
-
 const DashboardView: React.FC = observer(() => {
     const store = mealPlanStore;
     const user = authStore.userProfile;
+    const [isAchievementsModalOpen, setIsAchievementsModalOpen] = useState(false);
 
     const getTodayDateString = () => new Date().toLocaleDateString('en-CA');
 
@@ -142,94 +127,87 @@ const DashboardView: React.FC = observer(() => {
         yAxisMax = Math.ceil(maxWeight + 5);
     }
 
-    // Streaks & Achievements
-    const { adherenceStreak, hydrationStreak, achievements } = store;
-    
-    const achievementsConfig: { [key: string]: { label: string; icon: React.ReactNode; color: string } } = {
-        firstWeekComplete: { label: t('achievementFirstWeek'), icon: <TrophyIcon />, color: 'amber' },
-        fiveKgLost: { label: t('achievement5kgLost'), icon: <TrophyIcon />, color: 'blue' },
-        perfectWeekAdherence: { label: t('achievementPerfectWeekAdherence'), icon: <TrophyIcon />, color: 'amber' },
-        perfectWeekHydration: { label: t('achievementPerfectWeekHydration'), icon: <TrophyIcon />, color: 'amber' },
-        achievementMonthComplete: { label: t('achievementMonthComplete'), icon: <TrophyIcon />, color: 'red' },
-        achievement10kgLost: { label: t('achievement10kgLost'), icon: <TrophyIcon />, color: 'blue' },
-        achievementStepMarathon: { label: t('achievementStepMarathon'), icon: <FootprintIcon />, color: 'teal' },
-    };
-
+    // Streaks
+    const { adherenceStreak, hydrationStreak } = store;
 
     return (
-        <div className="max-w-6xl mx-auto animate-slide-in-up space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{t('dashboardWelcome', { name: user?.name.split(' ')[0] || '' })}</h1>
-                <p className="text-gray-500 dark:text-gray-400 mt-1">{t('dashboardSubtitle')}</p>
-            </div>
+        <>
+            <div className="max-w-6xl mx-auto animate-slide-in-up space-y-6">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{t('dashboardWelcome', { name: user?.name.split(' ')[0] || '' })}</h1>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">{t('dashboardSubtitle')}</p>
+                </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main Content Column */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Upcoming Meals */}
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300">{t('upcomingMeals')}</h2>
-                            <button 
-                                onClick={handleGoToToday} 
-                                className="flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors"
-                                title={t('goToTodayView')}
-                            >
-                                <TodayIcon />
-                                <span className="hidden sm:inline">{t('goToToday')}</span>
-                            </button>
-                        </div>
-                        {upcomingMeals && upcomingMeals.length > 0 ? (
-                            <div className="space-y-3">
-                                {upcomingMeals.map((meal, index) => <UpcomingMealCard key={index} meal={meal} />)}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Main Content Column */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* Upcoming Meals */}
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300">{t('upcomingMeals')}</h2>
+                                <button 
+                                    onClick={handleGoToToday} 
+                                    className="flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors"
+                                    title={t('goToTodayView')}
+                                >
+                                    <TodayIcon />
+                                    <span className="hidden sm:inline">{t('goToToday')}</span>
+                                </button>
                             </div>
-                        ) : (
-                            <p className="text-center text-gray-500 dark:text-gray-400 py-4">{t('noUpcomingMeals')}</p>
-                        )}
-                    </div>
-                    
-                    {/* Streaks & Achievements */}
-                    {(adherenceStreak > 1 || hydrationStreak > 1 || achievements.length > 0) && (
-                         <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                            <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4">{t('streaksAndAchievements')}</h2>
+                            {upcomingMeals && upcomingMeals.length > 0 ? (
+                                <div className="space-y-3">
+                                    {upcomingMeals.map((meal, index) => <UpcomingMealCard key={index} meal={meal} />)}
+                                </div>
+                            ) : (
+                                <p className="text-center text-gray-500 dark:text-gray-400 py-4">{t('noUpcomingMeals')}</p>
+                            )}
+                        </div>
+                        
+                        {/* Streaks & Achievements */}
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                             <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300">{t('streaksAndAchievements')}</h2>
+                                <button 
+                                    onClick={() => setIsAchievementsModalOpen(true)}
+                                    className="text-sm font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors"
+                                >
+                                    {t('viewAllAchievements')}
+                                </button>
+                            </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <StreakItem count={adherenceStreak} label={t('adherenceStreak')} icon={<FlameIcon />} />
                                 <StreakItem count={hydrationStreak} label={t('hydrationStreak')} icon={<WaterDropIcon />} />
-                                {achievements.map(achKey => {
-                                    const config = achievementsConfig[achKey];
-                                    if (!config) return null;
-                                    return <AchievementCard key={achKey} label={config.label} icon={config.icon} color={config.color} />;
-                                })}
                             </div>
                         </div>
-                    )}
 
-                </div>
-
-                {/* Sidebar Column */}
-                <div className="space-y-6">
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                        <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4">{t('todaysProgress')}</h2>
-                        <div className="grid grid-cols-2 gap-4">
-                            <CircularProgress progress={stepsProgress} goal={store.stepGoal} label={t('steps')} unit="" color="text-teal-500" icon={<StepsIcon />} />
-                            <CircularProgress progress={waterProgress} goal={waterGoalMl} label={t('hydration')} unit="ml" color="text-blue-500" icon={<WaterDropIcon />} />
-                        </div>
                     </div>
-                    {weightData.some(d => d != null) && (
+
+                    {/* Sidebar Column */}
+                    <div className="space-y-6">
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                            <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4">{t('weightTrend')}</h2>
-                             <ProgressChart
-                                type="line"
-                                labels={weightLabels}
-                                datasets={[ { label: t('weight'), data: weightData, color: 'rgba(139, 92, 246, 1)', unit: t('unitKg') } ]}
-                                yAxisMin={yAxisMin}
-                                yAxisMax={yAxisMax}
-                            />
+                            <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4">{t('todaysProgress')}</h2>
+                            <div className="grid grid-cols-2 gap-4">
+                                <CircularProgress progress={stepsProgress} goal={store.stepGoal} label={t('steps')} unit="" color="text-teal-500" icon={<StepsIcon />} />
+                                <CircularProgress progress={waterProgress} goal={waterGoalMl} label={t('hydration')} unit="ml" color="text-blue-500" icon={<WaterDropIcon />} />
+                            </div>
                         </div>
-                    )}
+                        {weightData.some(d => d != null) && (
+                            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                                <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4">{t('weightTrend')}</h2>
+                                <ProgressChart
+                                    type="line"
+                                    labels={weightLabels}
+                                    datasets={[ { label: t('weight'), data: weightData, color: 'rgba(139, 92, 246, 1)', unit: t('unitKg') } ]}
+                                    yAxisMin={yAxisMin}
+                                    yAxisMax={yAxisMax}
+                                />
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
+            <AchievementsModal isOpen={isAchievementsModalOpen} onClose={() => setIsAchievementsModalOpen(false)} />
+        </>
     );
 });
 

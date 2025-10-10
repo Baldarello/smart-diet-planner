@@ -103,6 +103,7 @@ export class MealPlanStore {
   bodyMetrics: BodyMetrics = {}; // Holds the LATEST known body metrics for carry-over
   hydrationSnackbar: HydrationSnackbarInfo | null = null;
   progressHistory: ProgressRecord[] = [];
+  earnedAchievements: string[] = [];
 
   sentNotifications = new Map<string, boolean>();
   lastActiveDate: string = getTodayDateString();
@@ -154,6 +155,7 @@ export class MealPlanStore {
                 }
 
                 this.resetSentNotificationsIfNeeded();
+                this.updateAchievements();
 
                 if (this.masterMealPlan.length > 0 && this.currentPlanId) {
                     this.status = AppStatus.SUCCESS;
@@ -455,6 +457,7 @@ export class MealPlanStore {
                 this.progressHistory.sort((a, b) => a.date.localeCompare(b.date));
             }
         });
+        this.updateAchievements();
     } catch (error) {
         console.error("Failed to save progress record to DB", error);
     }
@@ -578,6 +581,7 @@ export class MealPlanStore {
                 this.progressHistory.sort((a, b) => a.date.localeCompare(b.date));
             }
         });
+        this.updateAchievements();
     } catch (error) {
         console.error("Failed to save progress record to DB", error);
     }
@@ -855,6 +859,7 @@ export class MealPlanStore {
     }
     runInAction(() => { this.shoppingListManaged = true; });
     this.saveToDB();
+    this.updateAchievements();
   }
 
   movePantryItemToShoppingList = (pantryItemToMove: PantryItem) => {
@@ -1134,6 +1139,7 @@ export class MealPlanStore {
     }
     runInAction(() => { this.currentDayPlan = plan; });
     await db.dailyLogs.put(plan);
+    this.updateAchievements();
   }
   
   undoCheatMeal = async (mealIndex: number) => {
@@ -1391,46 +1397,45 @@ export class MealPlanStore {
     return streak;
   }
 
-  get achievements(): string[] {
+  updateAchievements = async () => {
     const earned: string[] = [];
-    if (this.progressHistory.length === 0) return earned;
+    if (this.progressHistory.length === 0 && this.pantry.length === 0) {
+        runInAction(() => this.earnedAchievements = []);
+        return;
+    };
 
-    // Time-based
-    if (this.progressHistory.length >= 7) {
-        earned.push('firstWeekComplete');
-    }
-    if (this.progressHistory.length >= 30) {
-        earned.push('achievementMonthComplete');
-    }
+    // Time-based & Simple Milestones
+    if (this.progressHistory.length >= 1) earned.push('firstDayComplete');
+    if (this.progressHistory.length >= 7) earned.push('firstWeekComplete');
+    if (this.progressHistory.length >= 30) earned.push('achievementMonthComplete');
+    if (this.progressHistory.some(p => new Date(p.date).getDay() === 1)) earned.push('firstMondayComplete');
 
     // Weight-based
     const initialWeight = this.progressHistory[0]?.weightKg;
     const currentWeight = this.progressHistory[this.progressHistory.length - 1]?.weightKg;
     if (initialWeight && currentWeight) {
-        if (initialWeight - currentWeight >= 5) {
-            earned.push('fiveKgLost');
-        }
-        if (initialWeight - currentWeight >= 10) {
-            earned.push('achievement10kgLost');
-        }
+        if (initialWeight - currentWeight >= 5) earned.push('fiveKgLost');
+        if (initialWeight - currentWeight >= 10) earned.push('achievement10kgLost');
     }
     
     // Streak-based
-    if (this.adherenceStreak >= 7) {
-         earned.push('perfectWeekAdherence');
-    }
-
-    if (this.hydrationStreak >= 7) {
-        earned.push('perfectWeekHydration');
-    }
+    if (this.adherenceStreak >= 7) earned.push('perfectWeekAdherence');
+    if (this.hydrationStreak >= 7) earned.push('perfectWeekHydration');
     
     // Cumulative
     const totalSteps = this.progressHistory.reduce((sum, record) => sum + (record.stepsTaken || 0), 0);
-    if (totalSteps >= 250000) {
-        earned.push('achievementStepMarathon');
-    }
+    if (totalSteps >= 250000) earned.push('achievementStepMarathon');
+    
+    // Interaction-based
+    if (this.pantry.length >= 5) earned.push('pantryOrganized');
+    
+    // Async checks (DB queries)
+    const hasCheatMeal = await db.dailyLogs.where('meals').anySatisfy(meals => meals.some(m => m.cheat)).count();
+    if (hasCheatMeal > 0) earned.push('firstCheatMeal');
 
-    return earned;
+    runInAction(() => {
+        this.earnedAchievements = Array.from(new Set(earned));
+    });
   }
 }
 
