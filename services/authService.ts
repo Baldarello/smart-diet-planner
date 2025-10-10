@@ -1,5 +1,5 @@
 import { authStore } from '../stores/AuthStore';
-import { UserProfile, SyncedData } from '../types';
+import { UserProfile, SyncedData, DailyLog } from '../types';
 import { runInAction } from 'mobx';
 import { loadStateFromDrive, saveStateToDrive } from './driveService';
 import { db } from './db';
@@ -70,13 +70,17 @@ async function syncWithDriveOnLogin(accessToken: string) {
                 if (remoteData.progressHistory?.length) {
                     await db.progressHistory.bulkPut(remoteData.progressHistory);
                 }
+                 if (remoteData.dailyLogs?.length) {
+                    await db.dailyLogs.bulkPut(remoteData.dailyLogs);
+                }
             });
             console.log("Local database overwritten successfully.");
         } else if (localData && (!remoteData || localTimestamp > remoteTimestamp)) {
             // Local is newer or remote doesn't exist. Overwrite remote.
             console.log("Local data is newer or remote data is missing. Uploading to Google Drive.");
             const progressHistory = await db.progressHistory.toArray();
-            const dataToSave: SyncedData = { appState: localData.value, progressHistory };
+            const dailyLogs = await db.dailyLogs.toArray();
+            const dataToSave: SyncedData = { appState: localData.value, progressHistory, dailyLogs };
             await saveStateToDrive(dataToSave, accessToken);
             console.log("Local data uploaded to Google Drive.");
         } else {

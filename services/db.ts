@@ -54,17 +54,19 @@ async function handleDatabaseChangeForSync(changes: DexieObservableChange[]) {
     
     const isAppStateChange = changes.some(c => c.table === 'appState' && c.key === 'dietPlanData');
     const isProgressChange = changes.some(c => c.table === 'progressHistory');
+    const isDailyLogChange = changes.some(c => c.table === 'dailyLogs');
 
 
-    if (isAppStateChange || isProgressChange) {
+    if (isAppStateChange || isProgressChange || isDailyLogChange) {
         debounceSync(async () => {
             console.log('Database state changed. Debouncing sync with Google Drive.');
             try {
                 const appState = await db.appState.get('dietPlanData');
                 const progressHistory = await db.progressHistory.toArray();
+                const dailyLogs = await db.dailyLogs.toArray();
 
                 if (appState && authStore.accessToken) {
-                    const dataToSave: SyncedData = { appState: appState.value, progressHistory };
+                    const dataToSave: SyncedData = { appState: appState.value, progressHistory, dailyLogs };
                     await saveStateToDrive(dataToSave, authStore.accessToken);
                     console.log('Successfully synced state to Google Drive.');
                 }

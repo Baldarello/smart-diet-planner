@@ -174,6 +174,20 @@ export class MealPlanStore {
     }
   }
 
+  setPlanStartDate = (date: string) => {
+    if (date && (!this.endDate || date <= this.endDate)) {
+        this.startDate = date;
+        this.saveToDB();
+    }
+  }
+
+  setPlanEndDate = (date: string) => {
+    if (date && (!this.startDate || date >= this.startDate)) {
+        this.endDate = date;
+        this.saveToDB();
+    }
+  }
+
   setHydrationGoal = (liters: number) => {
     if (liters > 0 && liters <= 10) {
       this.hydrationGoalLiters = liters;
