@@ -1,5 +1,5 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
-import { t } from '../i18n';
+import { PlusIcon, MinusIcon, ChevronLeftIcon, ChevronRightIcon, RefreshIcon } from './Icons';
 
 type ChartType = 'line' | 'bar' | 'area';
 
@@ -20,6 +20,10 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
     const [tooltip, setTooltip] = useState<{ x: number; y: number; content: React.ReactNode; visible: boolean } | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 250 });
+    
+    const [viewDomain, setViewDomain] = useState({ min: 0, max: labels.length > 1 ? labels.length - 1 : 1 });
+    const [isPanning, setIsPanning] = useState(false);
+    const panStartRef = useRef({ x: 0, domainMin: 0, domainMax: 0 });
 
     useLayoutEffect(() => {
         const updateSize = () => {
@@ -37,17 +41,171 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
 
     if (width === 0) return <div ref={containerRef} style={{ height: `${height}px` }} />;
 
-    const allData = datasets.flatMap(d => d.data).filter(d => typeof d === 'number' && !isNaN(d)) as number[];
-    const yMin = Math.min(...allData) * 0.9;
-    const yMax = Math.max(...allData) * 1.1;
+    const startIndex = Math.max(0, Math.floor(viewDomain.min));
+    const endIndex = Math.min(labels.length - 1, Math.ceil(viewDomain.max));
 
-    const x = (i: number) => padding.left + (i / (labels.length - 1)) * (width - padding.left - padding.right);
-    const y = (value: number) => height - padding.bottom - ((value - yMin) / (yMax - yMin)) * (height - padding.top - padding.bottom);
+    const visibleData = datasets.flatMap(d => 
+        d.data.slice(startIndex, endIndex + 1)
+    ).filter(d => typeof d === 'number' && !isNaN(d)) as number[];
     
-    const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    let yMin = visibleData.length > 0 ? Math.min(...visibleData) : 0;
+    let yMax = visibleData.length > 0 ? Math.max(...visibleData) : 1;
+    
+    const yRange = yMax - yMin;
+    if (yRange === 0) {
+        yMax += 1;
+        yMin -= 1;
+    } else {
+        yMax += yRange * 0.1;
+        yMin -= yRange * 0.1;
+    }
+    if (yMax > 0 && yMin > 0) yMin = 0; // If all data is positive, start axis at 0
+    yMin = Math.floor(yMin);
+    yMax = Math.ceil(yMax);
+
+
+    const x = (i: number): number => {
+        const domainWidth = viewDomain.max - viewDomain.min;
+        if (domainWidth <= 0) return padding.left;
+        const ratio = (i - viewDomain.min) / domainWidth;
+        return padding.left + ratio * (width - padding.left - padding.right);
+    };
+
+    const y = (value: number): number => {
+        const domainHeight = yMax - yMin;
+        if (domainHeight <= 0) return height - padding.bottom;
+        const ratio = (value - yMin) / domainHeight;
+        return height - padding.bottom - ratio * (height - padding.top - padding.bottom);
+    };
+    
+    const handlePan = (direction: 'left' | 'right') => {
+        const domainWidth = viewDomain.max - viewDomain.min;
+        const shiftAmount = domainWidth * 0.2; // Shift by 20%
+        const shift = direction === 'left' ? -shiftAmount : shiftAmount;
+
+        let newMin = viewDomain.min + shift;
+        let newMax = viewDomain.max + shift;
+
+        if (newMin < 0) {
+            newMin = 0;
+            newMax = domainWidth;
+        }
+        if (newMax > labels.length - 1) {
+            newMax = labels.length - 1;
+            newMin = newMax - domainWidth;
+        }
+        setViewDomain({ min: newMin, max: newMax });
+    };
+
+    const handleZoom = (direction: 'in' | 'out') => {
+        const zoomFactor = 1.25;
+        const domainWidth = viewDomain.max - viewDomain.min;
+        const centerIndex = viewDomain.min + domainWidth / 2;
+
+        let newDomainWidth = direction === 'in' ? domainWidth / zoomFactor : domainWidth * zoomFactor;
+
+        if (newDomainWidth < 2 && direction === 'in') return;
+
+        let newMin = centerIndex - newDomainWidth / 2;
+        let newMax = centerIndex + newDomainWidth / 2;
+
+        if (newMin < 0) newMin = 0;
+        if (newMax > labels.length - 1) newMax = labels.length - 1;
+        
+        if (newMax - newMin < newDomainWidth && direction === 'out') {
+             if (newMin === 0) newMax = Math.min(newMin + newDomainWidth, labels.length - 1);
+             if (newMax === labels.length - 1) newMin = Math.max(newMax - newDomainWidth, 0);
+        }
+
+        setViewDomain({ min: newMin, max: newMax });
+    };
+
+    const handleReset = () => {
+        setViewDomain({ min: 0, max: labels.length > 1 ? labels.length - 1 : 1 });
+    };
+    
+    const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+        e.preventDefault();
+        const zoomIntensity = 0.1;
+        const direction = e.deltaY < 0 ? 1 : -1;
+
         const svgRect = e.currentTarget.getBoundingClientRect();
         const mouseX = e.clientX - svgRect.left;
-        const index = Math.round(((mouseX - padding.left) / (width - padding.left - padding.right)) * (labels.length - 1));
+        
+        const currentDomainWidth = viewDomain.max - viewDomain.min;
+        const mouseRatio = (mouseX - padding.left) / (width - padding.left - padding.right);
+        
+        if (mouseRatio < 0 || mouseRatio > 1) return;
+
+        const mouseIndex = viewDomain.min + mouseRatio * currentDomainWidth;
+        const newDomainWidth = currentDomainWidth * (1 - direction * zoomIntensity);
+
+        if (newDomainWidth < 2 && direction > 0) return;
+        if (newDomainWidth > (labels.length - 1) && direction < 0) {
+            handleReset();
+            return;
+        }
+
+        let newMin = mouseIndex - mouseRatio * newDomainWidth;
+        let newMax = newMin + newDomainWidth;
+
+        if (newMin < 0) {
+            newMax = newMax - newMin;
+            newMin = 0;
+        }
+        if (newMax > labels.length - 1) {
+            newMin = newMin - (newMax - (labels.length - 1));
+            newMax = labels.length - 1;
+        }
+        if (newMin < 0) newMin = 0;
+        
+        setViewDomain({ min: newMin, max: newMax });
+    };
+
+    const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+        e.currentTarget.style.cursor = 'grabbing';
+        setIsPanning(true);
+        panStartRef.current = { x: e.clientX, domainMin: viewDomain.min, domainMax: viewDomain.max };
+    };
+
+    const handleMouseUp = (e: React.MouseEvent<SVGSVGElement>) => {
+        e.currentTarget.style.cursor = 'grab';
+        setIsPanning(false);
+    };
+    
+    const handleMouseLeave = (e: React.MouseEvent<SVGSVGElement>) => {
+        e.currentTarget.style.cursor = 'grab';
+        setIsPanning(false);
+        setTooltip(null);
+    };
+
+    const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+        const svgRect = e.currentTarget.getBoundingClientRect();
+        if (isPanning) {
+            setTooltip(null);
+            const dx = e.clientX - panStartRef.current.x;
+            const domainWidth = panStartRef.current.domainMax - panStartRef.current.domainMin;
+            const domainDelta = (dx / (width - padding.left - padding.right)) * domainWidth;
+            
+            let newMin = panStartRef.current.domainMin - domainDelta;
+            let newMax = panStartRef.current.domainMax - domainDelta;
+
+            if (newMin < 0) {
+                newMin = 0;
+                newMax = newMin + domainWidth;
+            }
+            if (newMax > labels.length - 1) {
+                newMax = labels.length - 1;
+                newMin = newMax - domainWidth;
+            }
+            setViewDomain({ min: newMin, max: newMax });
+            return;
+        }
+
+        const mouseX = e.clientX - svgRect.left;
+        const domainWidth = viewDomain.max - viewDomain.min;
+        const indexFloat = viewDomain.min + ((mouseX - padding.left) / (width - padding.left - padding.right)) * domainWidth;
+        const index = Math.round(indexFloat);
 
         if (index >= 0 && index < labels.length) {
             const hasDataAtIndex = datasets.some(d => d.data[index] != null && !isNaN(d.data[index] as number));
@@ -65,7 +223,7 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
                          return (
                             <div key={i} className="flex items-center">
                                 <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: dataset.color }}></span>
-                                <span>{dataset.label}: <strong>{value} {dataset.unit}</strong></span>
+                                <span>{dataset.label}: <strong>{Math.round(value as number * 10) / 10} {dataset.unit}</strong></span>
                             </div>
                         )
                     })}
@@ -77,12 +235,11 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
                 content,
                 visible: true
             });
+        } else {
+            setTooltip(null);
         }
     };
 
-    const handleMouseLeave = () => {
-        setTooltip(null);
-    };
 
     const renderYAxis = () => {
         const ticks = 5;
@@ -99,15 +256,24 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
     };
     
     const renderXAxis = () => {
-         const tickCount = Math.min(labels.length, Math.floor(width / 80));
-         const tickStep = Math.ceil(labels.length / tickCount);
-         
-         return labels.map((label, i) => {
-            if (i % tickStep !== 0) return null;
+        const domainWidth = viewDomain.max - viewDomain.min;
+        const desiredLabels = Math.floor((width - padding.left - padding.right) / 80);
+        const tickStep = Math.max(1, Math.round(domainWidth / desiredLabels));
+        
+        const labelsToShow = [];
+        const firstVisibleLabelIndex = Math.ceil(viewDomain.min);
+        
+        for (let i = firstVisibleLabelIndex; i <= endIndex; i++) {
+            if ((i - firstVisibleLabelIndex) % tickStep === 0) {
+                labelsToShow.push(i);
+            }
+        }
+
+        return labelsToShow.map(i => {
             const xPos = x(i);
             return (
-                <text key={i} x={xPos} y={height - padding.bottom + 16} textAnchor="middle" className="text-xs text-gray-500 dark:text-gray-300" fill="currentColor">
-                    {label}
+                <text key={i} x={xPos} y={height - padding.bottom + 20} textAnchor="middle" className="text-xs text-gray-500 dark:text-gray-300" fill="currentColor">
+                    {labels[i]}
                 </text>
             );
         });
@@ -119,20 +285,28 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
                 const value = d as number;
                 if (value == null || isNaN(value)) return path; 
                 
-                const point = `${x(j)} ${y(value)}`;
+                const point = `${x(j)},${y(value)}`;
                 const prevIsNaN = j > 0 && (dataset.data[j - 1] == null || isNaN(dataset.data[j-1] as number));
                 
                 return `${path} ${path === '' || prevIsNaN ? 'M' : 'L'} ${point}`;
             }, '');
+            
+            const clipPathId = `clip-path-${i}`;
 
             if (type === 'line') {
-                return <path key={i} d={pathData} fill="none" stroke={dataset.color} strokeWidth="2" />;
+                return <path key={i} d={pathData} fill="none" stroke={dataset.color} strokeWidth="2" clipPath={`url(#${clipPathId})`} />;
             }
             if (type === 'area') {
-                const areaPathData = `${pathData} V ${height - padding.bottom} H ${padding.left} Z`; // This needs adjustment for gaps
+                let areaPathData = pathData;
+                if(pathData) {
+                    const firstPoint = `${x(startIndex)},${height - padding.bottom}`;
+                    const lastPoint = `${x(endIndex)},${height - padding.bottom}`;
+                    areaPathData = `M ${firstPoint} ${pathData.substring(1)} L ${lastPoint} Z`;
+                }
+
                 const color = dataset.color.replace('1)', '0.2)');
                 return (
-                     <g key={i}>
+                     <g key={i} clipPath={`url(#${clipPathId})`}>
                         <path d={areaPathData} fill={color} stroke="none" />
                         <path d={pathData} fill="none" stroke={dataset.color} strokeWidth="2" />
                     </g>
@@ -143,52 +317,88 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
     };
     
     const renderBars = () => {
-        const barWidth = (width - padding.left - padding.right) / labels.length * 0.8;
+        const domainWidth = viewDomain.max - viewDomain.min;
+        const totalItems = domainWidth > 0 ? domainWidth : labels.length;
+        const barWidth = (width - padding.left - padding.right) / (totalItems + 1) * 0.8;
         const groupWidth = barWidth / datasets.length;
 
-        return labels.map((_, i) => (
-             <g key={i}>
-                {datasets.map((dataset, j) => {
-                    const value = dataset.data[i] as number;
-                    if (value == null || isNaN(value)) return null;
+        return Array.from({length: endIndex - startIndex + 1}).map((_, i) => {
+             const dataIndex = startIndex + i;
+             return (
+                 <g key={dataIndex}>
+                    {datasets.map((dataset, j) => {
+                        const value = dataset.data[dataIndex] as number;
+                        if (value == null || isNaN(value)) return null;
 
-                    const xPos = x(i) - barWidth / 2 + j * groupWidth;
-                    const yPos = y(value);
-                    const barHeight = height - padding.bottom - yPos;
-                    return (
-                        <rect key={`${i}-${j}`} x={xPos} y={yPos} width={groupWidth} height={barHeight} fill={dataset.color} />
-                    );
-                })}
-            </g>
-        ));
+                        const xPos = x(dataIndex) - barWidth / 2 + j * groupWidth;
+                        const yPos = y(value);
+                        const barHeight = Math.max(0, height - padding.bottom - yPos);
+                        return (
+                            <rect key={`${dataIndex}-${j}`} x={xPos} y={yPos} width={groupWidth} height={barHeight} fill={dataset.color} />
+                        );
+                    })}
+                </g>
+             )
+        });
     };
 
     return (
-        <div ref={containerRef} className="relative">
-            <svg width={width} height={height} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
-                {renderYAxis()}
-                {renderXAxis()}
-                
-                { (type === 'line' || type === 'area') && renderPaths() }
-                { type === 'bar' && renderBars() }
-
-                {tooltip && tooltip.visible && (
-                    <line x1={tooltip.x} y1={padding.top} x2={tooltip.x} y2={height - padding.bottom} stroke="currentColor" className="text-gray-400 dark:text-gray-500" />
-                )}
-            </svg>
-            
-            {tooltip && tooltip.visible && (
-                <div
-                    className="absolute p-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-md shadow-lg text-sm pointer-events-none"
-                    style={{
-                        left: `${tooltip.x + 10}px`,
-                        top: `${tooltip.y - 40}px`,
-                        transform: tooltip.x > width / 2 ? 'translateX(-100%)' : 'translateX(0)'
-                    }}
-                >
-                    {tooltip.content}
+        <div ref={containerRef}>
+            <div className="flex justify-end mb-2">
+                <div className="inline-flex items-center gap-0.5 p-1 bg-slate-100/80 dark:bg-gray-900/50 backdrop-blur-sm rounded-lg border border-slate-200 dark:border-gray-700">
+                    <button onClick={() => handlePan('left')} title="Pan Left" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><ChevronLeftIcon /></button>
+                    <button onClick={() => handlePan('right')} title="Pan Right" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><ChevronRightIcon /></button>
+                    <button onClick={() => handleZoom('in')} title="Zoom In" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><PlusIcon /></button>
+                    <button onClick={() => handleZoom('out')} title="Zoom Out" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><MinusIcon /></button>
+                    <button onClick={handleReset} title="Reset View" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><RefreshIcon className="h-5 w-5"/></button>
                 </div>
-            )}
+            </div>
+            <div className="relative">
+                <svg
+                    width={width}
+                    height={height}
+                    onMouseMove={handleMouseMove}
+                    onMouseLeave={handleMouseLeave}
+                    onMouseDown={handleMouseDown}
+                    onMouseUp={handleMouseUp}
+                    onWheel={handleWheel}
+                    style={{ cursor: 'grab' }}
+                    className="select-none"
+                >
+                    <defs>
+                        {datasets.map((_, i) => (
+                            <clipPath key={i} id={`clip-path-${i}`}>
+                                <rect x={padding.left} y={padding.top} width={width - padding.left - padding.right} height={height - padding.top - padding.bottom} />
+                            </clipPath>
+                        ))}
+                    </defs>
+
+                    {renderYAxis()}
+                    {renderXAxis()}
+                    
+                    { (type === 'line' || type === 'area') && renderPaths() }
+                    { type === 'bar' && renderBars() }
+
+                    {tooltip && tooltip.visible && (
+                        <line x1={tooltip.x} y1={padding.top} x2={tooltip.x} y2={height - padding.bottom} stroke="currentColor" className="text-gray-400 dark:text-gray-500" />
+                    )}
+                </svg>
+                
+                {tooltip && tooltip.visible && (
+                    <div
+                        className="absolute p-2 bg-white dark:bg-gray-900/80 backdrop-blur-sm border dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-md shadow-lg text-sm pointer-events-none"
+                        style={{
+                            left: `${tooltip.x + 10}px`,
+                            top: `${tooltip.y - 10}px`,
+                            transform: tooltip.x > width / 1.5 ? `translateX(calc(-100% - 20px))` : 'translateX(0)',
+                            opacity: tooltip.visible ? 1 : 0,
+                            transition: 'opacity 0.1s ease'
+                        }}
+                    >
+                        {tooltip.content}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

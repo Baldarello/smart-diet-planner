@@ -26,7 +26,7 @@ import {
     LoginSuggestionModal,
     SettingsView,
 } from './components';
-import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon } from './components/Icons';
+import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon } from './components/Icons';
 
 const App: React.FC = observer(() => {
     const store = mealPlanStore;
@@ -207,12 +207,57 @@ const App: React.FC = observer(() => {
                 <span className="ml-3">{tab.label}</span>
             </button>
         );
+        
+        const renderSimulateButton = () => {
+            if (authStore.status === 'LOGGED_OUT' && !store.currentPlanId) {
+                return (
+                    <div className="border-b dark:border-gray-700 py-6">
+                         <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('simulateAppDescription')}</h3>
+                         <button
+                            onClick={() => {
+                                store.startSimulation();
+                                setIsDrawerOpen(false);
+                            }}
+                            className="flex items-center w-full text-left px-4 py-3 rounded-lg bg-violet-500 text-white font-semibold hover:bg-violet-600 transition-colors shadow-md hover:shadow-lg"
+                            title={t('simulateAppTitle')}
+                        >
+                            <SparklesIcon />
+                            <span className="ml-3">{t('simulateApp')}</span>
+                        </button>
+                    </div>
+                );
+            }
+            return null;
+        }
+
+        const renderExitSimulationButton = () => {
+            if (store.currentPlanId === 'simulated_plan_123') {
+                return (
+                    <div className="border-t dark:border-gray-700 pt-6 pb-2">
+                         <button
+                            onClick={() => {
+                                store.exitSimulation();
+                                setIsDrawerOpen(false);
+                            }}
+                            className="flex items-center w-full text-left px-4 py-3 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 transition-colors shadow-md hover:shadow-lg"
+                            title={t('exitSimulationTitle')}
+                        >
+                            <ExitIcon />
+                            <span className="ml-3">{t('exitSimulation')}</span>
+                        </button>
+                    </div>
+                );
+            }
+            return null;
+        }
 
         return (
             <div className="flex flex-col h-full">
                 <div className="border-b dark:border-gray-700 pb-6">
                     <GoogleLogin />
                 </div>
+
+                {renderSimulateButton()}
 
                 <div className="border-b dark:border-gray-700 py-6">
                     <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('navigation')}</h3>
@@ -240,6 +285,7 @@ const App: React.FC = observer(() => {
                         )}
                     </div>
                 </div>
+                {renderExitSimulationButton()}
             </div>
         );
     }
