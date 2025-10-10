@@ -60,7 +60,9 @@ const MOCK_MEAL_PLAN_DATA = {
     pantry: [
         { item: 'Olio EVO', quantity: '1 bottiglia', originalCategory: 'Condimenti e Spezie' },
         { item: 'Mais', quantity: '1 scatoletta', originalCategory: 'Dispensa (Secchi, Scatolati, Pasta, Cereali)' },
-        { item: 'Marmellata', quantity: '1 vasetto', originalCategory: 'Condimenti e Spezie' }
+        { item: 'Marmellata', quantity: '1 vasetto', originalCategory: 'Condimenti e Spezie' },
+        { item: 'Caffè', quantity: '1 confezione', originalCategory: 'Bevande' },
+        { item: 'Sale', quantity: '1kg', originalCategory: 'Condimenti e Spezie' }
     ]
 };
 
@@ -218,9 +220,92 @@ export class MealPlanStore {
         this.activeTab = 'dashboard';
     });
     
+    // Generate and inject 90 days of rich progress history
+    const mockProgress: ProgressRecord[] = [];
+    const mockLogs: DailyLog[] = [];
+    const today = new Date();
+    const daysToGenerate = 90;
+    const DAY_KEYWORDS_FOR_MOCK = ['LUNEDI', 'MARTEDI', 'MERCOLEDI', 'GIOVEDI', 'VENERDI', 'SABATO', 'DOMENICA'];
+    let currentWeight = 85;
+    let currentBodyFat = 25;
+    let currentBodyWater = 55;
+
+    for (let i = daysToGenerate - 1; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dateStr = date.toLocaleDateString('en-CA');
+
+        currentWeight -= (Math.random() * 0.15);
+        if (date.getDay() === 0 || date.getDay() === 6) { 
+            currentWeight += (Math.random() * 0.3 - 0.1);
+        }
+        currentBodyFat -= (Math.random() * 0.05);
+        currentBodyWater += (Math.random() * 0.04);
+        
+        let adherence: number;
+        let waterIntakeMl: number;
+
+        // Ensure the last 7 days (i < 7) fulfill streak achievements
+        if (i < 7) { 
+            adherence = 90 + Math.random() * 10;
+            waterIntakeMl = 3000 + Math.random() * 500;
+        } else {
+            adherence = 70 + Math.random() * 30;
+            waterIntakeMl = 2000 + Math.random() * 1500;
+        }
+        
+        const plannedCalories = 1850;
+        const actualCalories = plannedCalories * (adherence / 100) + (Math.random() * 200 - 100);
+        const stepsTaken = 4000 + Math.random() * 8000;
+        const activityHours = 1 + Math.random() * 1.5;
+        const weightKg = parseFloat(currentWeight.toFixed(2));
+        const bodyFatPercentage = parseFloat(currentBodyFat.toFixed(2));
+        const bodyWaterPercentage = parseFloat(currentBodyWater.toFixed(2));
+        const leanMassKg = parseFloat((weightKg * (1 - bodyFatPercentage / 100)).toFixed(2));
+        
+        const record: ProgressRecord = {
+            date: dateStr,
+            adherence: Math.round(adherence),
+            plannedCalories: Math.round(plannedCalories),
+            actualCalories: Math.round(actualCalories),
+            weightKg: weightKg,
+            bodyFatPercentage: bodyFatPercentage,
+            leanMassKg: leanMassKg,
+            stepsTaken: Math.round(stepsTaken),
+            waterIntakeMl: Math.round(waterIntakeMl),
+            bodyWaterPercentage: bodyWaterPercentage,
+            activityHours: parseFloat(activityHours.toFixed(2)),
+            estimatedCaloriesBurned: calculateCaloriesBurned(stepsTaken, activityHours, weightKg) ?? 0,
+        };
+        mockProgress.push(record);
+
+        if (isWeekend && Math.random() > 0.6) {
+             const dayIndex = (date.getDay() + 6) % 7;
+             const log: DailyLog = {
+                date: dateStr, day: DAY_KEYWORDS_FOR_MOCK[dayIndex],
+                meals: [ { name: 'COLAZIONE', items: [], done: true, time: '08:00' }, { name: 'PRANZO', items: [], done: true, time: '13:00' }, { name: 'CENA', items: [], done: false, cheat: true, cheatMealDescription: 'Pizza night!', time: '20:00' }, ]
+            };
+            mockLogs.push(log);
+        }
+    }
+    
     await db.dailyLogs.clear();
+    await db.progressHistory.clear();
+
+    try {
+        await (db as Dexie).transaction('rw', [db.progressHistory, db.dailyLogs], async () => {
+            await db.progressHistory.bulkPut(mockProgress);
+            await db.dailyLogs.bulkPut(mockLogs);
+        });
+        runInAction(() => { this.progressHistory = mockProgress; });
+        console.log("Mock simulation data injected and saved to DB.");
+    } catch (error) {
+        console.error("Failed to inject mock simulation data into the database:", error);
+    }
+    
     await this.saveToDB();
-    this.loadPlanForDate(this.currentDate);
+    await this.loadPlanForDate(this.currentDate);
+    await this.updateAchievements();
   }
 
   private async _generateAndInjectMockData() {
@@ -249,11 +334,21 @@ export class MealPlanStore {
         currentBodyFat -= (Math.random() * 0.05);
         currentBodyWater += (Math.random() * 0.04);
         
-        const adherence = 70 + Math.random() * 30;
+        let adherence: number;
+        let waterIntakeMl: number;
+
+        // Ensure the last 7 days (i < 7) fulfill streak achievements
+        if (i < 7) { 
+            adherence = 90 + Math.random() * 10;
+            waterIntakeMl = 3000 + Math.random() * 500;
+        } else {
+            adherence = 70 + Math.random() * 30;
+            waterIntakeMl = 2000 + Math.random() * 1500;
+        }
+        
         const plannedCalories = 1850;
         const actualCalories = plannedCalories * (adherence / 100) + (Math.random() * 200 - 100);
         const stepsTaken = 4000 + Math.random() * 8000;
-        const waterIntakeMl = 2000 + Math.random() * 1500;
         const activityHours = 1 + Math.random() * 1.5;
         const weightKg = parseFloat(currentWeight.toFixed(2));
         const bodyFatPercentage = parseFloat(currentBodyFat.toFixed(2));
