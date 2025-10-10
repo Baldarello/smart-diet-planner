@@ -787,6 +787,33 @@ export class MealPlanStore {
     });
   }
   
+  exitSimulation = async () => {
+    runInAction(() => {
+        this.masterMealPlan = [];
+        this.presetMealPlan = [];
+        this.shoppingList = [];
+        this.pantry = [];
+        this.status = AppStatus.INITIAL;
+        this.activeTab = 'daily';
+        this.pdfParseProgress = 0;
+        this.currentPlanName = 'My Diet Plan';
+        this.hasUnsavedChanges = false;
+        this.sentNotifications.clear();
+        this.currentPlanId = null;
+        this.startDate = null;
+        this.endDate = null;
+        this.currentDayPlan = null;
+        this.currentDayProgress = null;
+        this.shoppingListManaged = false;
+        this.progressHistory = []; // Clear in-memory progress
+    });
+    
+    await db.dailyLogs.clear();
+    await db.progressHistory.clear();
+    
+    this.saveToDB();
+  }
+
   restorePlanFromArchive = (planId: string) => {
     const planToRestore = this.archivedPlans.find(p => p.id === planId);
     if (!planToRestore) return;

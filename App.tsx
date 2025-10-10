@@ -26,7 +26,7 @@ import {
     LoginSuggestionModal,
     SettingsView,
 } from './components';
-import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon } from './components/Icons';
+import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon } from './components/Icons';
 
 const App: React.FC = observer(() => {
     const store = mealPlanStore;
@@ -230,6 +230,27 @@ const App: React.FC = observer(() => {
             return null;
         }
 
+        const renderExitSimulationButton = () => {
+            if (store.currentPlanId === 'simulated_plan_123') {
+                return (
+                    <div className="border-t dark:border-gray-700 pt-6">
+                         <button
+                            onClick={() => {
+                                store.exitSimulation();
+                                setIsDrawerOpen(false);
+                            }}
+                            className="flex items-center w-full text-left px-4 py-3 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 transition-colors shadow-md hover:shadow-lg"
+                            title={t('exitSimulationTitle')}
+                        >
+                            <ExitIcon />
+                            <span className="ml-3">{t('exitSimulation')}</span>
+                        </button>
+                    </div>
+                );
+            }
+            return null;
+        }
+
         return (
             <div className="flex flex-col h-full">
                 <div className="border-b dark:border-gray-700 pb-6">
@@ -264,6 +285,7 @@ const App: React.FC = observer(() => {
                         )}
                     </div>
                 </div>
+                {renderExitSimulationButton()}
             </div>
         );
     }
