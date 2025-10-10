@@ -21,8 +21,37 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
         setOpenDayIndex(prevIndex => (prevIndex === dayIndex ? null : dayIndex));
     };
     
+    const commonInputProps = {
+        className: "mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent sm:text-sm appearance-none"
+    };
+
     return (
         <div className="grid grid-cols-1 gap-6 max-w-4xl mx-auto">
+            {isMasterPlanView && (
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                     <div>
+                        <label htmlFor="start-date-editor" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('startDateLabel')}</label>
+                        <input
+                            type="date"
+                            id="start-date-editor"
+                            value={mealPlanStore.startDate || ''}
+                            onChange={(e) => mealPlanStore.setPlanStartDate(e.target.value)}
+                            {...commonInputProps}
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="end-date-editor" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('endDateLabel')}</label>
+                        <input
+                            type="date"
+                            id="end-date-editor"
+                            value={mealPlanStore.endDate || ''}
+                            onChange={(e) => mealPlanStore.setPlanEndDate(e.target.value)}
+                            min={mealPlanStore.startDate || ''}
+                            {...commonInputProps}
+                        />
+                    </div>
+                </div>
+            )}
             {plan.map((day, dayIndex) => {
                 const summary = mealPlanStore.getDayNutritionSummary(day);
                 const isOpen = openDayIndex === dayIndex;

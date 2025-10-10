@@ -130,4 +130,5 @@ export interface StoredState {
 export interface SyncedData {
   appState: StoredState;
   progressHistory: ProgressRecord[];
+  dailyLogs: DailyLog[];
 }
