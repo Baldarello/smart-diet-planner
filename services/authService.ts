@@ -35,7 +35,7 @@ declare global {
 
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+const SCOPES = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
 
 let tokenClient: google.accounts.oauth2.TokenClient | null = null;
 
