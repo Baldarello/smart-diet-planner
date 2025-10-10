@@ -58,6 +58,8 @@ export const PlusIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" classNam
 export const MinusIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M18 12H6" /></svg> );
 export const ChevronLeftIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg> );
 export const ChevronRightIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg> );
+export const FootprintIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.16a2.84 2.84 0 0 0-2.83 2.83A2.84 2.84 0 0 0 12 8.82a2.84 2.84 0 0 0 2.83-2.83A2.84 2.84 0 0 0 12 3.16zm-3.3 6.42c-.52 0-1 .4-.94 1.14l.63 7.5c.12 1.5.76 2.78 2.37 2.78h.04c1.7 0 2.3-1.48 2.3-2.95V11c0-.55-.45-1-1-1h-3.4z"/></svg> );
+
 
 export const SparklesIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">

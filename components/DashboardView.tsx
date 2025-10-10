@@ -3,7 +3,7 @@ import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { authStore } from '../stores/AuthStore';
 import { t } from '../i18n';
-import { ClockIcon, FlameIcon, TrophyIcon, WaterDropIcon, StepsIcon, TodayIcon } from './Icons';
+import { ClockIcon, FlameIcon, TrophyIcon, WaterDropIcon, StepsIcon, TodayIcon, FootprintIcon } from './Icons';
 import ProgressChart from './ProgressChart';
 import { Meal } from '../types';
 
@@ -85,12 +85,21 @@ const StreakItem: React.FC<{ count: number, label: string, icon: React.ReactNode
     );
 };
 
-const AchievementItem: React.FC<{ label: string }> = ({ label }) => (
-    <div className="flex items-center gap-3 bg-amber-50 dark:bg-amber-900/30 p-3 rounded-xl">
-        <div className="text-amber-500"><TrophyIcon /></div>
-        <p className="font-semibold text-sm text-amber-800 dark:text-amber-200">{label}</p>
-    </div>
-);
+const AchievementCard: React.FC<{ label: string; icon: React.ReactNode; color: string }> = ({ label, icon, color }) => {
+    const bgClass = `bg-${color}-50 dark:bg-${color}-900/30`;
+    const textClass = `text-${color}-800 dark:text-${color}-200`;
+    const iconColorClass = `text-${color}-500`;
+
+    // A small hack because Tailwind CSS purges dynamic classes. We list them all here so they are preserved.
+    const hiddenClasses = "bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 text-amber-500 bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-red-500 bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-blue-500 bg-teal-50 dark:bg-teal-900/30 text-teal-800 dark:text-teal-200 text-teal-500";
+
+    return (
+        <div className={`flex items-center gap-3 p-3 rounded-xl ${bgClass}`}>
+            <div className={iconColorClass}>{icon}</div>
+            <p className={`font-semibold text-sm ${textClass}`}>{label}</p>
+        </div>
+    );
+};
 
 
 const DashboardView: React.FC = observer(() => {
@@ -135,13 +144,17 @@ const DashboardView: React.FC = observer(() => {
 
     // Streaks & Achievements
     const { adherenceStreak, hydrationStreak, achievements } = store;
-
-    const achievementTranslations: { [key: string]: string } = {
-        firstWeekComplete: t('achievementFirstWeek'),
-        fiveKgLost: t('achievement5kgLost'),
-        perfectWeekAdherence: t('achievementPerfectWeekAdherence'),
-        perfectWeekHydration: t('achievementPerfectWeekHydration'),
+    
+    const achievementsConfig: { [key: string]: { label: string; icon: React.ReactNode; color: string } } = {
+        firstWeekComplete: { label: t('achievementFirstWeek'), icon: <TrophyIcon />, color: 'amber' },
+        fiveKgLost: { label: t('achievement5kgLost'), icon: <TrophyIcon />, color: 'blue' },
+        perfectWeekAdherence: { label: t('achievementPerfectWeekAdherence'), icon: <TrophyIcon />, color: 'amber' },
+        perfectWeekHydration: { label: t('achievementPerfectWeekHydration'), icon: <TrophyIcon />, color: 'amber' },
+        achievementMonthComplete: { label: t('achievementMonthComplete'), icon: <TrophyIcon />, color: 'red' },
+        achievement10kgLost: { label: t('achievement10kgLost'), icon: <TrophyIcon />, color: 'blue' },
+        achievementStepMarathon: { label: t('achievementStepMarathon'), icon: <FootprintIcon />, color: 'teal' },
     };
+
 
     return (
         <div className="max-w-6xl mx-auto animate-slide-in-up space-y-6">
@@ -182,7 +195,11 @@ const DashboardView: React.FC = observer(() => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <StreakItem count={adherenceStreak} label={t('adherenceStreak')} icon={<FlameIcon />} />
                                 <StreakItem count={hydrationStreak} label={t('hydrationStreak')} icon={<WaterDropIcon />} />
-                                {achievements.map(ach => <AchievementItem key={ach} label={achievementTranslations[ach]} />)}
+                                {achievements.map(achKey => {
+                                    const config = achievementsConfig[achKey];
+                                    if (!config) return null;
+                                    return <AchievementCard key={achKey} label={config.label} icon={config.icon} color={config.color} />;
+                                })}
                             </div>
                         </div>
                     )}

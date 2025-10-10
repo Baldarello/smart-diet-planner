@@ -301,6 +301,9 @@ const translations = {
     achievement5kgLost: "5kg Persi!",
     achievementPerfectWeekAdherence: "Settimana di Aderenza Perfetta",
     achievementPerfectWeekHydration: "Settimana di Idratazione Perfetta",
+    achievementMonthComplete: "Un Mese di Fuoco!",
+    achievement10kgLost: "Traguardo 10kg!",
+    achievementStepMarathon: "Maratoneta dei Passi",
     hydration: "Idratazione",
   },
   en: {
@@ -600,6 +603,9 @@ const translations = {
     achievement5kgLost: "5kg Lost!",
     achievementPerfectWeekAdherence: "Perfect Adherence Week",
     achievementPerfectWeekHydration: "Perfect Hydration Week",
+    achievementMonthComplete: "Fiery Month Complete!",
+    achievement10kgLost: "10kg Milestone!",
+    achievementStepMarathon: "Step Marathoner",
     hydration: "Hydration",
   }
 };

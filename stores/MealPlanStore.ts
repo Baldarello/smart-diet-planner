@@ -1395,22 +1395,39 @@ export class MealPlanStore {
     const earned: string[] = [];
     if (this.progressHistory.length === 0) return earned;
 
+    // Time-based
     if (this.progressHistory.length >= 7) {
         earned.push('firstWeekComplete');
     }
-
-    const initialWeight = this.progressHistory[0]?.weightKg;
-    const currentWeight = this.progressHistory[this.progressHistory.length - 1]?.weightKg;
-    if (initialWeight && currentWeight && initialWeight - currentWeight >= 5) {
-        earned.push('fiveKgLost');
+    if (this.progressHistory.length >= 30) {
+        earned.push('achievementMonthComplete');
     }
 
+    // Weight-based
+    const initialWeight = this.progressHistory[0]?.weightKg;
+    const currentWeight = this.progressHistory[this.progressHistory.length - 1]?.weightKg;
+    if (initialWeight && currentWeight) {
+        if (initialWeight - currentWeight >= 5) {
+            earned.push('fiveKgLost');
+        }
+        if (initialWeight - currentWeight >= 10) {
+            earned.push('achievement10kgLost');
+        }
+    }
+    
+    // Streak-based
     if (this.adherenceStreak >= 7) {
          earned.push('perfectWeekAdherence');
     }
 
     if (this.hydrationStreak >= 7) {
         earned.push('perfectWeekHydration');
+    }
+    
+    // Cumulative
+    const totalSteps = this.progressHistory.reduce((sum, record) => sum + (record.stepsTaken || 0), 0);
+    if (totalSteps >= 250000) {
+        earned.push('achievementStepMarathon');
     }
 
     return earned;
