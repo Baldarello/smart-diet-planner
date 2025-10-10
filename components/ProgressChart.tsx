@@ -343,57 +343,62 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets })
     };
 
     return (
-        <div ref={containerRef} className="relative">
-             <div className="absolute top-0 right-0 z-10 flex items-center gap-0.5 p-1 bg-slate-100/80 dark:bg-gray-900/50 backdrop-blur-sm rounded-lg border border-slate-200 dark:border-gray-700">
-                <button onClick={() => handlePan('left')} title="Pan Left" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><ChevronLeftIcon /></button>
-                <button onClick={() => handlePan('right')} title="Pan Right" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><ChevronRightIcon /></button>
-                <button onClick={() => handleZoom('in')} title="Zoom In" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><PlusIcon /></button>
-                <button onClick={() => handleZoom('out')} title="Zoom Out" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><MinusIcon /></button>
-                <button onClick={handleReset} title="Reset View" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><RefreshIcon className="h-5 w-5"/></button>
-            </div>
-            <svg
-                width={width}
-                height={height}
-                onMouseMove={handleMouseMove}
-                onMouseLeave={handleMouseLeave}
-                onMouseDown={handleMouseDown}
-                onMouseUp={handleMouseUp}
-                onWheel={handleWheel}
-                style={{ cursor: 'grab' }}
-            >
-                <defs>
-                    {datasets.map((_, i) => (
-                        <clipPath key={i} id={`clip-path-${i}`}>
-                            <rect x={padding.left} y={padding.top} width={width - padding.left - padding.right} height={height - padding.top - padding.bottom} />
-                        </clipPath>
-                    ))}
-                </defs>
-
-                {renderYAxis()}
-                {renderXAxis()}
-                
-                { (type === 'line' || type === 'area') && renderPaths() }
-                { type === 'bar' && renderBars() }
-
-                {tooltip && tooltip.visible && (
-                    <line x1={tooltip.x} y1={padding.top} x2={tooltip.x} y2={height - padding.bottom} stroke="currentColor" className="text-gray-400 dark:text-gray-500" />
-                )}
-            </svg>
-            
-            {tooltip && tooltip.visible && (
-                <div
-                    className="absolute p-2 bg-white dark:bg-gray-900/80 backdrop-blur-sm border dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-md shadow-lg text-sm pointer-events-none"
-                    style={{
-                        left: `${tooltip.x + 10}px`,
-                        top: `${tooltip.y - 10}px`,
-                        transform: tooltip.x > width / 1.5 ? `translateX(calc(-100% - 20px))` : 'translateX(0)',
-                        opacity: tooltip.visible ? 1 : 0,
-                        transition: 'opacity 0.1s ease'
-                    }}
-                >
-                    {tooltip.content}
+        <div ref={containerRef}>
+            <div className="flex justify-end mb-2">
+                <div className="inline-flex items-center gap-0.5 p-1 bg-slate-100/80 dark:bg-gray-900/50 backdrop-blur-sm rounded-lg border border-slate-200 dark:border-gray-700">
+                    <button onClick={() => handlePan('left')} title="Pan Left" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><ChevronLeftIcon /></button>
+                    <button onClick={() => handlePan('right')} title="Pan Right" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><ChevronRightIcon /></button>
+                    <button onClick={() => handleZoom('in')} title="Zoom In" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><PlusIcon /></button>
+                    <button onClick={() => handleZoom('out')} title="Zoom Out" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><MinusIcon /></button>
+                    <button onClick={handleReset} title="Reset View" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><RefreshIcon className="h-5 w-5"/></button>
                 </div>
-            )}
+            </div>
+            <div className="relative">
+                <svg
+                    width={width}
+                    height={height}
+                    onMouseMove={handleMouseMove}
+                    onMouseLeave={handleMouseLeave}
+                    onMouseDown={handleMouseDown}
+                    onMouseUp={handleMouseUp}
+                    onWheel={handleWheel}
+                    style={{ cursor: 'grab' }}
+                    className="select-none"
+                >
+                    <defs>
+                        {datasets.map((_, i) => (
+                            <clipPath key={i} id={`clip-path-${i}`}>
+                                <rect x={padding.left} y={padding.top} width={width - padding.left - padding.right} height={height - padding.top - padding.bottom} />
+                            </clipPath>
+                        ))}
+                    </defs>
+
+                    {renderYAxis()}
+                    {renderXAxis()}
+                    
+                    { (type === 'line' || type === 'area') && renderPaths() }
+                    { type === 'bar' && renderBars() }
+
+                    {tooltip && tooltip.visible && (
+                        <line x1={tooltip.x} y1={padding.top} x2={tooltip.x} y2={height - padding.bottom} stroke="currentColor" className="text-gray-400 dark:text-gray-500" />
+                    )}
+                </svg>
+                
+                {tooltip && tooltip.visible && (
+                    <div
+                        className="absolute p-2 bg-white dark:bg-gray-900/80 backdrop-blur-sm border dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-md shadow-lg text-sm pointer-events-none"
+                        style={{
+                            left: `${tooltip.x + 10}px`,
+                            top: `${tooltip.y - 10}px`,
+                            transform: tooltip.x > width / 1.5 ? `translateX(calc(-100% - 20px))` : 'translateX(0)',
+                            opacity: tooltip.visible ? 1 : 0,
+                            transition: 'opacity 0.1s ease'
+                        }}
+                    >
+                        {tooltip.content}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
