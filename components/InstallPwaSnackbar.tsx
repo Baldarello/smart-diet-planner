@@ -9,7 +9,7 @@ interface InstallPwaSnackbarProps {
 
 const InstallPwaSnackbar: React.FC<InstallPwaSnackbarProps> = ({ onInstall, onDismiss }) => {
     return (
-        <div
+        <div 
             className="fixed bottom-8 inset-x-0 mx-auto w-[calc(100%-2rem)] sm:w-11/12 max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 flex flex-col sm:flex-row items-center justify-between z-50 animate-slide-in-up border dark:border-gray-700"
             role="alert"
             aria-live="assertive"
@@ -23,7 +23,7 @@ const InstallPwaSnackbar: React.FC<InstallPwaSnackbarProps> = ({ onInstall, onDi
                 </p>
             </div>
             <div className="flex gap-4 flex-shrink-0">
-                <button
+                 <button
                     onClick={onDismiss}
                     className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold px-4 py-2 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                 >
