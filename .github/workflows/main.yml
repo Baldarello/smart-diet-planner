@@ -48,6 +48,7 @@ jobs:
           # Remove the cache option to avoid the lock file error
       - run: npm i
       - run: npm run build --if-present
+      - run: ls
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
@@ -55,7 +56,6 @@ jobs:
         with:
           # Upload entire repository
           path: './dist'
-      - run: ls
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
