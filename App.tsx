@@ -233,7 +233,7 @@ const App: React.FC = observer(() => {
         const renderExitSimulationButton = () => {
             if (store.currentPlanId === 'simulated_plan_123') {
                 return (
-                    <div className="border-t dark:border-gray-700 pt-6">
+                    <div className="border-t dark:border-gray-700 pt-6 pb-2">
                          <button
                             onClick={() => {
                                 store.exitSimulation();
