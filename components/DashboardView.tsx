@@ -3,7 +3,7 @@ import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { authStore } from '../stores/AuthStore';
 import { t } from '../i18n';
-import { ClockIcon, FlameIcon, TrophyIcon, WaterDropIcon, StepsIcon } from './Icons';
+import { ClockIcon, FlameIcon, TrophyIcon, WaterDropIcon, StepsIcon, TodayIcon } from './Icons';
 import ProgressChart from './ProgressChart';
 import { Meal } from '../types';
 
@@ -97,6 +97,13 @@ const DashboardView: React.FC = observer(() => {
     const store = mealPlanStore;
     const user = authStore.userProfile;
 
+    const getTodayDateString = () => new Date().toLocaleDateString('en-CA');
+
+    const handleGoToToday = () => {
+        store.setCurrentDate(getTodayDateString());
+        store.setActiveTab('daily');
+    };
+
     // Upcoming meals
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -148,7 +155,17 @@ const DashboardView: React.FC = observer(() => {
                 <div className="lg:col-span-2 space-y-6">
                     {/* Upcoming Meals */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                        <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4">{t('upcomingMeals')}</h2>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300">{t('upcomingMeals')}</h2>
+                            <button 
+                                onClick={handleGoToToday} 
+                                className="flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors"
+                                title={t('goToTodayView')}
+                            >
+                                <TodayIcon />
+                                <span className="hidden sm:inline">{t('goToToday')}</span>
+                            </button>
+                        </div>
                         {upcomingMeals && upcomingMeals.length > 0 ? (
                             <div className="space-y-3">
                                 {upcomingMeals.map((meal, index) => <UpcomingMealCard key={index} meal={meal} />)}

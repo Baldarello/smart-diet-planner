@@ -11,6 +11,8 @@ const translations = {
     exportPlanTitle: "Esporta i dati del piano in formato JSON",
     tabDashboard: "Dashboard",
     tabDaily: "Oggi",
+    goToToday: "Vai a Oggi",
+    goToTodayView: "Visualizza e modifica il piano di oggi",
     tabWeekly: "Piano Principale",
     tabShopping: "Spesa",
     tabPantry: "Dispensa",
@@ -49,6 +51,14 @@ const translations = {
     simulateAppDescription: "Prova l'App",
     exitSimulation: "Esci dalla Simulazione",
     exitSimulationTitle: "Termina la simulazione e cancella tutti i dati di esempio",
+    notifications: "Notifiche",
+    pushNotifications: "Notifiche Push",
+    pushNotificationsDescription: "Ricevi promemoria anche quando l'app è chiusa.",
+    enablePushNotifications: "Abilita Notifiche Push",
+    pushNotificationsSubscribed: "Abilitate",
+    pushNotificationsDenied: "Bloccate",
+    pushNotificationsUnsupported: "Non supportate",
+    pushNotificationsError: "Errore",
 
 
     // SetPlanDatesModal.tsx
@@ -303,6 +313,8 @@ const translations = {
     exportPlanTitle: "Export plan data to a JSON file",
     tabDashboard: "Dashboard",
     tabDaily: "Today",
+    goToToday: "Go to Today",
+    goToTodayView: "View and edit today's plan",
     tabWeekly: "Master Plan",
     tabShopping: "Shopping",
     tabPantry: "Pantry",
@@ -341,6 +353,14 @@ const translations = {
     simulateAppDescription: "Try the App",
     exitSimulation: "Exit Simulation",
     exitSimulationTitle: "End the simulation and delete all sample data",
+    notifications: "Notifications",
+    pushNotifications: "Push Notifications",
+    pushNotificationsDescription: "Get reminders even when the app is closed.",
+    enablePushNotifications: "Enable Push Notifications",
+    pushNotificationsSubscribed: "Subscribed",
+    pushNotificationsDenied: "Denied",
+    pushNotificationsUnsupported: "Unsupported",
+    pushNotificationsError: "Error",
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Set Plan Duration",

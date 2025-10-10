@@ -33,8 +33,6 @@ const App: React.FC = observer(() => {
     const store = mealPlanStore;
     setI18nLocaleGetter(() => store.locale);
     
-    const notificationPermission = useRef(Notification.permission);
-    
     const [showNewPlanFlow, setShowNewPlanFlow] = useState(false);
     const [showManualForm, setShowManualForm] = useState(false);
     const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -109,12 +107,6 @@ const App: React.FC = observer(() => {
     }, [store.currentPlanId]);
 
     useEffect(() => {
-        if (store.currentPlanId && notificationPermission.current === 'default') {
-            Notification.requestPermission().then(permission => {
-                notificationPermission.current = permission;
-            });
-        }
-
         const mealTimer = setInterval(() => {
             if (!store.currentPlanId || !store.dailyPlan) return;
 
@@ -123,7 +115,7 @@ const App: React.FC = observer(() => {
             
             store.resetSentNotificationsIfNeeded();
             
-            if (notificationPermission.current === 'granted') {
+            if (Notification.permission === 'granted') {
                 store.dailyPlan?.meals.forEach((meal, mealIndex) => {
                     if (meal.time === currentTime) {
                         const dayIndex = store.masterMealPlan.findIndex(d => d.day === store.dailyPlan?.day);
@@ -131,6 +123,7 @@ const App: React.FC = observer(() => {
                         if (!store.sentNotifications.has(key)) {
                             new Notification(t('notificationMealTitle', { mealName: meal.name }), {
                                 body: t('notificationMealBody', { mealTitle: meal.title || meal.name }),
+                                icon: 'icon-192x192.png'
                             });
                             store.markNotificationSent(key);
                         }
