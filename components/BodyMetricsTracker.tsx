@@ -3,7 +3,6 @@ import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
 import { BodyIcon } from './Icons';
-import { BodyMetrics, ProgressRecord } from '../types';
 
 interface MetricInputProps {
     label: string;
@@ -58,7 +57,7 @@ const MetricInput: React.FC<MetricInputProps> = ({ label, value: propValue, onSa
 
 
 const BodyMetricsTracker: React.FC = observer(() => {
-    const { currentDayProgress, updateCurrentDayProgress, bodyMetrics, setBodyMetric } = mealPlanStore;
+    const { currentDayProgress, updateCurrentDayProgress } = mealPlanStore;
 
     return (
         <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg mt-6">
@@ -73,12 +72,6 @@ const BodyMetricsTracker: React.FC = observer(() => {
                     unit={t('unitKg')}
                     value={currentDayProgress?.weightKg}
                     onSave={(val) => updateCurrentDayProgress('weightKg', val)}
-                />
-                 <MetricInput 
-                    label={t('height')} 
-                    unit={t('unitCm')}
-                    value={bodyMetrics.heightCm}
-                    onSave={(val) => setBodyMetric('heightCm', val)}
                 />
                 <MetricInput 
                     label={t('bodyFat')} 

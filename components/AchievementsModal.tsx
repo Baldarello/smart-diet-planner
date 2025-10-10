@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
@@ -64,6 +64,18 @@ const AchievementItem: React.FC<{
 const AchievementsModal: React.FC<AchievementsModalProps> = observer(({ isOpen, onClose }) => {
     const { earnedAchievements } = mealPlanStore;
 
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        // Cleanup function to reset the style when the component unmounts
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     const unlocked = Object.keys(allAchievementsConfig).filter(key => earnedAchievements.includes(key));
@@ -79,7 +91,7 @@ const AchievementsModal: React.FC<AchievementsModalProps> = observer(({ isOpen, 
                     </button>
                 </div>
 
-                <div className="overflow-y-auto pr-2">
+                <div className="overflow-y-auto pr-2 -mr-2">
                     {unlocked.length > 0 && (
                         <div className="mb-6">
                             <h3 className="text-lg font-semibold text-violet-600 dark:text-violet-400 mb-3">{t('unlockedAchievements')} ({unlocked.length})</h3>

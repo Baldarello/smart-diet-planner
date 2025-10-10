@@ -8,6 +8,7 @@ import { parseMealStructure, getNutritionForMeal, getPlanDetailsAndShoppingList,
 import { parseQuantity, formatQuantity } from '../utils/quantityParser';
 import { db } from '../services/db';
 import { calculateCaloriesBurned } from '../utils/calories';
+import { authStore } from './AuthStore';
 
 export enum AppStatus {
   INITIAL,
@@ -186,6 +187,13 @@ export class MealPlanStore {
 
   public startSimulation = async () => {
     runInAction(() => {
+        authStore.setLoggedIn({
+            id: 'simulated_user',
+            name: 'Mario Rossi',
+            email: 'mario.rossi@example.com',
+            picture: `https://api.dicebear.com/8.x/initials/svg?seed=Mario%20Rossi`,
+        }, 'simulated_token');
+
         const planData = MOCK_MEAL_PLAN_DATA;
         
         const sanitizedPlan = planData.weeklyPlan.map(day => ({
@@ -278,7 +286,8 @@ export class MealPlanStore {
             estimatedCaloriesBurned: calculateCaloriesBurned(stepsTaken, activityHours, weightKg) ?? 0,
         };
         mockProgress.push(record);
-
+        
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
         if (isWeekend && Math.random() > 0.6) {
              const dayIndex = (date.getDay() + 6) % 7;
              const log: DailyLog = {
@@ -912,6 +921,8 @@ export class MealPlanStore {
     await db.dailyLogs.clear();
     await db.progressHistory.clear();
     
+    authStore.setLoggedOut();
+
     this.saveToDB();
   }
 
@@ -1503,7 +1514,15 @@ export class MealPlanStore {
     if (this.progressHistory.length >= 1) earned.push('firstDayComplete');
     if (this.progressHistory.length >= 7) earned.push('firstWeekComplete');
     if (this.progressHistory.length >= 30) earned.push('achievementMonthComplete');
-    if (this.progressHistory.some(p => new Date(p.date).getDay() === 1)) earned.push('firstMondayComplete');
+    if (this.progressHistory.some(p => {
+        // By adding 'T12:00:00' we create the date object at noon in the local timezone,
+        // which avoids any issues with DST or timezone boundaries at midnight.
+        // getDay() will reliably return the correct day of the week for the date string.
+        const date = new Date(`${p.date}T12:00:00`);
+        return date.getDay() === 1; // 1 = Monday
+    })) {
+        earned.push('firstMondayComplete');
+    }
 
     // Weight-based
     const initialWeight = this.progressHistory[0]?.weightKg;
