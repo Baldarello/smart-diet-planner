@@ -43,6 +43,10 @@ const translations = {
     settingsUserGoals: "Obiettivi Utente",
     settingsAppPreferences: "Preferenze App",
     settingsStatus: "Stato",
+    simulateApp: "Simula App",
+    simulateAppTitle: "Popola l'app con dati di esempio per vedere tutte le funzionalità.",
+    simulateAppDescription: "Prova l'App",
+
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Imposta Durata del Piano",
@@ -311,6 +315,9 @@ const translations = {
     settingsUserGoals: "User Goals",
     settingsAppPreferences: "App Preferences",
     settingsStatus: "Status",
+    simulateApp: "Simulate App",
+    simulateAppTitle: "Populate the app with sample data to see all features.",
+    simulateAppDescription: "Try the App",
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Set Plan Duration",

@@ -28,6 +28,42 @@ interface ImportedJsonData {
 
 const getTodayDateString = () => new Date().toLocaleDateString('en-CA');
 
+const MOCK_MEAL_PLAN_DATA = {
+    planName: 'Demo Plan',
+    weeklyPlan: [
+        {
+            day: 'LUNEDI',
+            meals: [
+                { name: 'COLAZIONE', title: 'Yogurt & Cereali', items: [{ ingredientName: 'Yogurt Greco', fullDescription: '150g di Yogurt Greco', used: false }, { ingredientName: 'Miele', fullDescription: '1 cucchiaino di miele', used: false }, { ingredientName: 'Noci', fullDescription: '3 noci', used: false }], done: false, time: '08:00', nutrition: { carbs: 25, protein: 15, fat: 10, calories: 250 } },
+                { name: 'PRANZO', title: 'Insalata di Riso', items: [{ ingredientName: 'Riso Integrale', fullDescription: '80g di riso integrale', used: false }, { ingredientName: 'Pomodorini', fullDescription: '100g di pomodorini', used: false }, { ingredientName: 'Mais', fullDescription: '50g di mais', used: false }], done: false, time: '13:00', nutrition: { carbs: 70, protein: 10, fat: 5, calories: 365 } },
+                { name: 'CENA', title: 'Salmone & Asparagi', items: [{ ingredientName: 'Filetto di Salmone', fullDescription: '150g di filetto di salmone', used: false }, { ingredientName: 'Asparagi', fullDescription: '200g di asparagi', used: false }, { ingredientName: 'Olio EVO', fullDescription: '1 cucchiaio di Olio EVO', used: false }], done: false, time: '20:00', nutrition: { carbs: 5, protein: 30, fat: 25, calories: 365 } },
+            ]
+        },
+        // Fill other days with a simplified version to make it feel complete
+        ...['MARTEDI', 'MERCOLEDI', 'GIOVEDI', 'VENERDI', 'SABATO', 'DOMENICA'].map(day => ({
+            day,
+            meals: [
+                { name: 'COLAZIONE', title: 'Fette Biscottate & Marmellata', items: [{ ingredientName: 'Fette Biscottate Integrali', fullDescription: '4 fette biscottate integrali', used: false }, { ingredientName: 'Marmellata', fullDescription: '2 cucchiaini di marmellata', used: false }], done: false, time: '08:00', nutrition: { carbs: 30, protein: 4, fat: 2, calories: 154 } },
+                { name: 'PRANZO', title: 'Pasta al Pesto', items: [{ ingredientName: 'Pasta Integrale', fullDescription: '80g di pasta integrale', used: false }, { ingredientName: 'Pesto', fullDescription: '2 cucchiai di pesto', used: false }], done: false, time: '13:00', nutrition: { carbs: 60, protein: 12, fat: 15, calories: 423 } },
+                { name: 'CENA', title: 'Petto di Pollo & Verdure Grigliate', items: [{ ingredientName: 'Petto di Pollo', fullDescription: '150g di petto di pollo', used: false }, { ingredientName: 'Verdure Miste', fullDescription: '250g di verdure miste', used: false }], done: false, time: '20:00', nutrition: { carbs: 10, protein: 35, fat: 8, calories: 252 } },
+            ]
+        })),
+    ],
+    shoppingList: [
+        { category: 'Proteine (Carne, Pesce, Legumi)', items: [{ item: 'Filetto di Salmone', quantity: '150g' }, { item: 'Petto di Pollo', quantity: '900g' }] },
+        { category: 'Carboidrati e Cereali', items: [{ item: 'Riso Integrale', quantity: '80g' }, { item: 'Fette Biscottate Integrali', quantity: '24 fette' }, { item: 'Pasta Integrale', quantity: '480g' }] },
+        { category: 'Latticini e Derivati', items: [{ item: 'Yogurt Greco', quantity: '150g' }] },
+        { category: 'Verdura e Ortaggi', items: [{ item: 'Pomodorini', quantity: '100g' }, { item: 'Asparagi', quantity: '200g' }, { item: 'Verdure Miste', quantity: '1.5kg' }] },
+        { category: 'Condimenti e Spezie', items: [{ item: 'Miele', quantity: '1 cucchiaino' }, { item: 'Pesto', quantity: '12 cucchiai' }] },
+        { category: 'Grassi e Frutta Secca', items: [{ item: 'Noci', quantity: '3' }] },
+    ],
+    pantry: [
+        { item: 'Olio EVO', quantity: '1 bottiglia', originalCategory: 'Condimenti e Spezie' },
+        { item: 'Mais', quantity: '1 scatoletta', originalCategory: 'Dispensa (Secchi, Scatolati, Pasta, Cereali)' },
+        { item: 'Marmellata', quantity: '1 vasetto', originalCategory: 'Condimenti e Spezie' }
+    ]
+};
+
 export class MealPlanStore {
   status: AppStatus = AppStatus.HYDRATING;
   error: string | null = null;
@@ -140,6 +176,47 @@ export class MealPlanStore {
             this.error = "Failed to load data from the database.";
         });
     }
+  }
+
+  public startSimulation = async () => {
+    runInAction(() => {
+        const planData = MOCK_MEAL_PLAN_DATA;
+        
+        const sanitizedPlan = planData.weeklyPlan.map(day => ({
+            ...day,
+            meals: day.meals.map(meal => ({
+                ...meal,
+                done: false,
+                cheat: false,
+                cheatMealDescription: undefined,
+                actualNutrition: null,
+                items: meal.items.map(item => ({ ...item, used: false }))
+            }))
+        }));
+        
+        this.masterMealPlan = sanitizedPlan;
+        this.presetMealPlan = JSON.parse(JSON.stringify(sanitizedPlan));
+        this.shoppingList = planData.shoppingList;
+        this.pantry = planData.pantry;
+        this.currentPlanName = planData.planName;
+        
+        const today = new Date();
+        const endDate = new Date(today);
+        const startDate = new Date(today);
+        startDate.setDate(today.getDate() - 89);
+        
+        this.startDate = startDate.toLocaleDateString('en-CA');
+        this.endDate = endDate.toLocaleDateString('en-CA');
+        
+        this.currentPlanId = 'simulated_plan_123';
+        this.shoppingListManaged = true;
+        this.status = AppStatus.SUCCESS;
+        this.activeTab = 'daily';
+    });
+    
+    await db.dailyLogs.clear();
+    await this.saveToDB();
+    this.loadPlanForDate(this.currentDate);
   }
 
   private async _generateAndInjectMockData() {
