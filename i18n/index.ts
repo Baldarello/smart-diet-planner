@@ -9,6 +9,7 @@ const translations = {
     changeDietTitle: "Crea o ripristina un piano",
     exportPlan: "Esporta",
     exportPlanTitle: "Esporta i dati del piano in formato JSON",
+    tabDashboard: "Dashboard",
     tabDaily: "Oggi",
     tabWeekly: "Piano Principale",
     tabShopping: "Spesa",
@@ -274,6 +275,23 @@ const translations = {
     caloriesBurned: "Calorie Bruciate",
     cheatMeals: "Sgarri",
     unitCount: "n.",
+
+    // Dashboard
+    dashboardWelcome: "Bentornato, {name}!",
+    dashboardSubtitle: "Ecco un riepilogo della tua giornata.",
+    upcomingMeals: "Prossimi Pasti",
+    noUpcomingMeals: "Ottimo lavoro! Nessun pasto rimasto per oggi.",
+    todaysProgress: "Progressi di Oggi",
+    weightTrend: "Andamento Peso (7gg)",
+    streaksAndAchievements: "Serie & Traguardi",
+    adherenceStreak: "Serie di Aderenza",
+    hydrationStreak: "Serie di Idratazione",
+    days: "giorni",
+    achievementFirstWeek: "Prima Settimana Completata!",
+    achievement5kgLost: "5kg Persi!",
+    achievementPerfectWeekAdherence: "Settimana di Aderenza Perfetta",
+    achievementPerfectWeekHydration: "Settimana di Idratazione Perfetta",
+    hydration: "Idratazione",
   },
   en: {
     // App.tsx
@@ -283,6 +301,7 @@ const translations = {
     changeDietTitle: "Create or restore a plan",
     exportPlan: "Export",
     exportPlanTitle: "Export plan data to a JSON file",
+    tabDashboard: "Dashboard",
     tabDaily: "Today",
     tabWeekly: "Master Plan",
     tabShopping: "Shopping",
@@ -545,6 +564,23 @@ const translations = {
     caloriesBurned: "Calories Burned",
     cheatMeals: "Cheat Meals",
     unitCount: "#",
+
+    // Dashboard
+    dashboardWelcome: "Welcome back, {name}!",
+    dashboardSubtitle: "Here’s a summary of your day.",
+    upcomingMeals: "Upcoming Meals",
+    noUpcomingMeals: "Great job! No meals left for today.",
+    todaysProgress: "Today's Progress",
+    weightTrend: "Weight Trend (7d)",
+    streaksAndAchievements: "Streaks & Achievements",
+    adherenceStreak: "Adherence Streak",
+    hydrationStreak: "Hydration Streak",
+    days: "days",
+    achievementFirstWeek: "First Week Complete!",
+    achievement5kgLost: "5kg Lost!",
+    achievementPerfectWeekAdherence: "Perfect Adherence Week",
+    achievementPerfectWeekHydration: "Perfect Hydration Week",
+    hydration: "Hydration",
   }
 };
 

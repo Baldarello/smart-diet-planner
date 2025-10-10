@@ -72,7 +72,7 @@ export class MealPlanStore {
   shoppingList: ShoppingListCategory[] = [];
   pantry: PantryItem[] = [];
   archivedPlans: ArchivedPlan[] = [];
-  activeTab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' | 'settings' = 'daily';
+  activeTab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' | 'settings' | 'dashboard' = 'dashboard';
   pdfParseProgress = 0;
   currentPlanName = 'My Diet Plan';
   theme: Theme = 'light';
@@ -159,6 +159,8 @@ export class MealPlanStore {
                     this.status = AppStatus.SUCCESS;
                     if (!this.shoppingListManaged) {
                         this.activeTab = 'list';
+                    } else {
+                        this.activeTab = 'dashboard';
                     }
                     this.loadPlanForDate(this.currentDate);
                 } else {
@@ -211,7 +213,7 @@ export class MealPlanStore {
         this.currentPlanId = 'simulated_plan_123';
         this.shoppingListManaged = true;
         this.status = AppStatus.SUCCESS;
-        this.activeTab = 'daily';
+        this.activeTab = 'dashboard';
     });
     
     await db.dailyLogs.clear();
@@ -612,7 +614,7 @@ export class MealPlanStore {
   }
 
 
-  setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' | 'settings') => { this.activeTab = tab; }
+  setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' | 'settings' | 'dashboard') => { this.activeTab = tab; }
   setCurrentPlanName = (name: string) => { this.currentPlanName = name; this.saveToDB(); }
   updateArchivedPlanName = (planId: string, newName: string) => {
     const planIndex = this.archivedPlans.findIndex(p => p.id === planId);
@@ -771,7 +773,7 @@ export class MealPlanStore {
         this.shoppingList = [];
         this.pantry = [];
         this.status = AppStatus.INITIAL;
-        this.activeTab = 'daily';
+        this.activeTab = 'dashboard';
         this.pdfParseProgress = 0;
         this.currentPlanName = 'My Diet Plan';
         this.hasUnsavedChanges = false;
@@ -794,7 +796,7 @@ export class MealPlanStore {
         this.shoppingList = [];
         this.pantry = [];
         this.status = AppStatus.INITIAL;
-        this.activeTab = 'daily';
+        this.activeTab = 'dashboard';
         this.pdfParseProgress = 0;
         this.currentPlanName = 'My Diet Plan';
         this.hasUnsavedChanges = false;
@@ -1360,6 +1362,58 @@ export class MealPlanStore {
         console.error("Failed to load or create day plan", e);
         runInAction(() => { this.currentDayPlan = null; });
     }
+  }
+
+  get adherenceStreak(): number {
+    let streak = 0;
+    for (let i = this.progressHistory.length - 1; i >= 0; i--) {
+        const record = this.progressHistory[i];
+        if (record.adherence >= 90) {
+            streak++;
+        } else {
+            break;
+        }
+    }
+    return streak;
+  }
+
+  get hydrationStreak(): number {
+    let streak = 0;
+    const goalMl = this.hydrationGoalLiters * 1000;
+    for (let i = this.progressHistory.length - 1; i >= 0; i--) {
+        const record = this.progressHistory[i];
+        if (record.waterIntakeMl >= goalMl) {
+            streak++;
+        } else {
+            break;
+        }
+    }
+    return streak;
+  }
+
+  get achievements(): string[] {
+    const earned: string[] = [];
+    if (this.progressHistory.length === 0) return earned;
+
+    if (this.progressHistory.length >= 7) {
+        earned.push('firstWeekComplete');
+    }
+
+    const initialWeight = this.progressHistory[0]?.weightKg;
+    const currentWeight = this.progressHistory[this.progressHistory.length - 1]?.weightKg;
+    if (initialWeight && currentWeight && initialWeight - currentWeight >= 5) {
+        earned.push('fiveKgLost');
+    }
+
+    if (this.adherenceStreak >= 7) {
+         earned.push('perfectWeekAdherence');
+    }
+
+    if (this.hydrationStreak >= 7) {
+        earned.push('perfectWeekHydration');
+    }
+
+    return earned;
   }
 }
 

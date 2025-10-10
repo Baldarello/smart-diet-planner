@@ -25,8 +25,9 @@ import {
     CalendarView,
     LoginSuggestionModal,
     SettingsView,
+    DashboardView,
 } from './components';
-import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon } from './components/Icons';
+import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon } from './components/Icons';
 
 const App: React.FC = observer(() => {
     const store = mealPlanStore;
@@ -178,6 +179,7 @@ const App: React.FC = observer(() => {
     const renderDrawerContent = () => {
         const isPlanLocked = !store.shoppingListManaged && !!store.currentPlanId;
         const planSpecificTabs = [
+            { id: 'dashboard', icon: <DashboardIcon />, label: t('tabDashboard'), disabled: isPlanLocked },
             { id: 'daily', icon: <TodayIcon />, label: t('tabDaily'), disabled: isPlanLocked },
             { id: 'calendar', icon: <CalendarIcon />, label: t('tabCalendar'), disabled: isPlanLocked },
             { id: 'plan', icon: <EditIcon />, label: t('tabWeekly') },
@@ -304,6 +306,7 @@ const App: React.FC = observer(() => {
             return (
                 <>
                     <ActivePlanNameEditor />
+                    {store.activeTab === 'dashboard' && <DashboardView />}
                     {store.activeTab === 'daily' && <DailyPlanView />}
                     {store.activeTab === 'calendar' && <CalendarView />}
                     {store.activeTab === 'plan' && <MealPlanView plan={store.masterMealPlan} isMasterPlanView={true} />}
