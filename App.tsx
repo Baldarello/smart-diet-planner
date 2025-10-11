@@ -27,7 +27,7 @@ import {
     SettingsView,
     DashboardView,
 } from './components';
-import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon } from './components/Icons';
+import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon, ArrowLeftIcon } from './components/Icons';
 
 const App: React.FC = observer(() => {
     const store = mealPlanStore;
@@ -295,68 +295,72 @@ const App: React.FC = observer(() => {
 
         const hasActivePlan = store.status === AppStatus.SUCCESS && store.currentPlanId;
 
-        if (hasActivePlan && !showNewPlanFlow) {
+        // If starting a new plan, or if there's no active plan yet (initial state)
+        if (showNewPlanFlow || !hasActivePlan) {
+            if (showManualForm) {
+                return <ManualPlanEntryForm onCancel={() => { setShowManualForm(false); if (store.currentPlanId) setShowNewPlanFlow(false); }} />;
+            }
+            
+            // Show these general tabs even in the initial state
+            if (store.activeTab === 'settings' && !hasActivePlan) {
+                return <SettingsView />;
+            }
+            if (store.activeTab === 'archive' && !hasActivePlan) {
+                return <ArchiveView />;
+            }
+
+            // Otherwise, show the main upload/welcome screen
             return (
-                <>
-                    <ActivePlanNameEditor />
-                    {store.activeTab === 'dashboard' && <DashboardView />}
-                    {store.activeTab === 'daily' && <DailyPlanView />}
-                    {store.activeTab === 'calendar' && <CalendarView />}
-                    {store.activeTab === 'plan' && <MealPlanView plan={store.masterMealPlan} isMasterPlanView={true} />}
-                    {store.activeTab === 'list' && <ShoppingListView />}
-                    {store.activeTab === 'pantry' && <PantryView />}
-                    {store.activeTab === 'progress' && <ProgressView />}
-                    {store.activeTab === 'archive' && <ArchiveView />}
-                    {store.activeTab === 'settings' && <SettingsView />}
-                </>
+                <div className="text-center">
+                    {hasActivePlan && ( // This button only shows if coming from an active plan
+                        <div className="mb-10">
+                            <button 
+                                onClick={() => setShowNewPlanFlow(false)}
+                                className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold px-8 py-3 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md"
+                            >
+                                {t('cancelAndReturn')}
+                            </button>
+                        </div>
+                    )}
+                    <div className="pt-8">
+                        <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('welcomeTitle')}</h2>
+                        <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-2xl mx-auto">{t('welcomeSubtitle')}</p>
+                    </div>
+                    
+                    <div className="max-w-4xl mx-auto">
+                        <FileUpload />
+                    </div>
+                    
+                    {store.archivedPlans.length > 0 && (
+                        <div className="mt-12 max-w-4xl mx-auto">
+                            <h3 className="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4 border-t dark:border-gray-700 pt-8">{t('restoreFromArchiveTitle')}</h3>
+                            <div className="space-y-4">
+                                {store.archivedPlans.slice().reverse().map((archive) => (
+                                    <ArchivedPlanItem key={archive.id} archive={archive} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {store.archivedPlans.length === 0 && <ExamplePdf />}
+                </div>
             );
         }
-
-        if (showManualForm) {
-            return <ManualPlanEntryForm onCancel={() => { setShowManualForm(false); if (store.currentPlanId) setShowNewPlanFlow(false); }} />;
-        }
         
-        if (store.activeTab === 'settings') {
-            return <SettingsView />;
-        }
-        if (store.activeTab === 'archive') {
-            return <ArchiveView />;
-        }
-
+        // If we have an active plan and are not in the "new plan" flow
         return (
-            <div className="text-center">
-                 {hasActivePlan && (
-                    <div className="mb-10">
-                        <button 
-                            onClick={() => setShowNewPlanFlow(false)}
-                            className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold px-8 py-3 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md"
-                        >
-                            {t('cancelAndReturn')}
-                        </button>
-                    </div>
-                )}
-                <div className="pt-8">
-                    <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('welcomeTitle')}</h2>
-                    <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-2xl mx-auto">{t('welcomeSubtitle')}</p>
-                </div>
-                
-                <div className="max-w-4xl mx-auto">
-                    <FileUpload />
-                </div>
-                
-                 {store.archivedPlans.length > 0 && (
-                    <div className="mt-12 max-w-4xl mx-auto">
-                        <h3 className="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4 border-t dark:border-gray-700 pt-8">{t('restoreFromArchiveTitle')}</h3>
-                        <div className="space-y-4">
-                            {store.archivedPlans.slice().reverse().map((archive) => (
-                                <ArchivedPlanItem key={archive.id} archive={archive} />
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {store.archivedPlans.length === 0 && <ExamplePdf />}
-            </div>
+            <>
+                <ActivePlanNameEditor />
+                {store.activeTab === 'dashboard' && <DashboardView />}
+                {store.activeTab === 'daily' && <DailyPlanView />}
+                {store.activeTab === 'calendar' && <CalendarView />}
+                {store.activeTab === 'plan' && <MealPlanView plan={store.masterMealPlan} isMasterPlanView={true} />}
+                {store.activeTab === 'list' && <ShoppingListView />}
+                {store.activeTab === 'pantry' && <PantryView />}
+                {store.activeTab === 'progress' && <ProgressView />}
+                {store.activeTab === 'archive' && <ArchiveView />}
+                {store.activeTab === 'settings' && <SettingsView />}
+            </>
         );
     };
 
@@ -369,7 +373,7 @@ const App: React.FC = observer(() => {
             <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-30 shadow-sm border-b border-slate-200 dark:border-gray-800">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-3 items-center h-16">
-                        <div className="justify-self-start">
+                        <div className="justify-self-start flex items-center gap-1">
                             <button
                                 onClick={() => setIsDrawerOpen(true)}
                                 className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
@@ -377,6 +381,15 @@ const App: React.FC = observer(() => {
                             >
                                 <MenuIcon />
                             </button>
+                            {store.navigationHistory.length > 0 && (
+                                <button
+                                    onClick={store.goBack}
+                                    className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
+                                    aria-label="Go back"
+                                >
+                                    <ArrowLeftIcon />
+                                </button>
+                            )}
                         </div>
                         
                         <div className="text-center">

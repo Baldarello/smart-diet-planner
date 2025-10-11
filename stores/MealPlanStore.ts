@@ -67,6 +67,8 @@ const MOCK_MEAL_PLAN_DATA = {
     ]
 };
 
+export type NavigableTab = 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' | 'settings' | 'dashboard';
+
 export class MealPlanStore {
   status: AppStatus = AppStatus.HYDRATING;
   error: string | null = null;
@@ -75,7 +77,7 @@ export class MealPlanStore {
   shoppingList: ShoppingListCategory[] = [];
   pantry: PantryItem[] = [];
   archivedPlans: ArchivedPlan[] = [];
-  activeTab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' | 'settings' | 'dashboard' = 'dashboard';
+  activeTab: NavigableTab = 'dashboard';
   pdfParseProgress = 0;
   currentPlanName = 'My Diet Plan';
   theme: Theme = 'light';
@@ -111,6 +113,8 @@ export class MealPlanStore {
   sentNotifications = new Map<string, boolean>();
   lastActiveDate: string = getTodayDateString();
   lastModified: number = 0;
+  navigationHistory: NavigableTab[] = [];
+
 
   constructor() {
     makeAutoObservable(this, {}, { autoBind: true });
@@ -796,8 +800,23 @@ export class MealPlanStore {
     }
   }
 
+  setActiveTab = (tab: NavigableTab) => {
+    if (tab !== this.activeTab) {
+      this.navigationHistory.push(this.activeTab);
+      if (this.navigationHistory.length > 10) {
+        this.navigationHistory.shift();
+      }
+      this.activeTab = tab;
+    }
+  }
 
-  setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' | 'settings' | 'dashboard') => { this.activeTab = tab; }
+  goBack = () => {
+    const previousTab = this.navigationHistory.pop();
+    if (previousTab) {
+      this.activeTab = previousTab;
+    }
+  }
+  
   setCurrentPlanName = (name: string) => { this.currentPlanName = name; this.saveToDB(); }
   updateArchivedPlanName = (planId: string, newName: string) => {
     const planIndex = this.archivedPlans.findIndex(p => p.id === planId);
