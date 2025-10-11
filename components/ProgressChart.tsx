@@ -59,17 +59,33 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
         yMin = visibleData.length > 0 ? Math.min(...visibleData) : 0;
         yMax = visibleData.length > 0 ? Math.max(...visibleData) : 1;
         
+        // For bar and area charts with all non-negative data, force the y-axis to start at 0.
+        const isNonNegativeBarOrArea = (type === 'bar' || type === 'area') && (visibleData.length === 0 || yMin >= 0);
+        if (isNonNegativeBarOrArea) {
+            yMin = 0;
+        }
+
         const yRange = yMax - yMin;
         if (yRange === 0) {
-            yMax += 1;
-            yMin -= 1;
+            // If all data points are the same value (e.g., all are 0 or all are 50)
+            yMax = yMax + 1; // Add some space above
+            if (!isNonNegativeBarOrArea) {
+                 yMin = yMin - 1; // And some space below if not anchored to 0
+            }
         } else {
+            // Add 10% padding
             yMax += yRange * 0.1;
-            yMin -= yRange * 0.1;
+            if (!isNonNegativeBarOrArea) { // Only add bottom padding if not a non-negative bar/area chart
+                yMin -= yRange * 0.1;
+            }
         }
-        if (yMax > 0 && yMin > 0) yMin = 0; // If all data is positive, start axis at 0
+
         yMin = Math.floor(yMin);
         yMax = Math.ceil(yMax);
+        
+        if (yMin === yMax) {
+            yMax += 1;
+        }
     }
 
 
