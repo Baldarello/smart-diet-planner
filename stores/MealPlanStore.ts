@@ -8,6 +8,7 @@ import { parseMealStructure, getNutritionForMeal, getPlanDetailsAndShoppingList,
 import { parseQuantity, formatQuantity } from '../utils/quantityParser';
 import { db } from '../services/db';
 import { calculateCaloriesBurned } from '../utils/calories';
+import { authStore } from './AuthStore';
 
 export enum AppStatus {
   INITIAL,
@@ -60,7 +61,9 @@ const MOCK_MEAL_PLAN_DATA = {
     pantry: [
         { item: 'Olio EVO', quantity: '1 bottiglia', originalCategory: 'Condimenti e Spezie' },
         { item: 'Mais', quantity: '1 scatoletta', originalCategory: 'Dispensa (Secchi, Scatolati, Pasta, Cereali)' },
-        { item: 'Marmellata', quantity: '1 vasetto', originalCategory: 'Condimenti e Spezie' }
+        { item: 'Marmellata', quantity: '1 vasetto', originalCategory: 'Condimenti e Spezie' },
+        { item: 'Caffè', quantity: '1 confezione', originalCategory: 'Bevande' },
+        { item: 'Sale', quantity: '1kg', originalCategory: 'Condimenti e Spezie' }
     ]
 };
 
@@ -72,7 +75,7 @@ export class MealPlanStore {
   shoppingList: ShoppingListCategory[] = [];
   pantry: PantryItem[] = [];
   archivedPlans: ArchivedPlan[] = [];
-  activeTab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' | 'settings' = 'daily';
+  activeTab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' | 'settings' | 'dashboard' = 'dashboard';
   pdfParseProgress = 0;
   currentPlanName = 'My Diet Plan';
   theme: Theme = 'light';
@@ -103,6 +106,7 @@ export class MealPlanStore {
   bodyMetrics: BodyMetrics = {}; // Holds the LATEST known body metrics for carry-over
   hydrationSnackbar: HydrationSnackbarInfo | null = null;
   progressHistory: ProgressRecord[] = [];
+  earnedAchievements: string[] = [];
 
   sentNotifications = new Map<string, boolean>();
   lastActiveDate: string = getTodayDateString();
@@ -154,11 +158,14 @@ export class MealPlanStore {
                 }
 
                 this.resetSentNotificationsIfNeeded();
+                this.updateAchievements();
 
                 if (this.masterMealPlan.length > 0 && this.currentPlanId) {
                     this.status = AppStatus.SUCCESS;
                     if (!this.shoppingListManaged) {
                         this.activeTab = 'list';
+                    } else {
+                        this.activeTab = 'dashboard';
                     }
                     this.loadPlanForDate(this.currentDate);
                 } else {
@@ -180,6 +187,13 @@ export class MealPlanStore {
 
   public startSimulation = async () => {
     runInAction(() => {
+        authStore.setLoggedIn({
+            id: 'simulated_user',
+            name: 'Mario Rossi',
+            email: 'mario.rossi@example.com',
+            picture: `https://api.dicebear.com/8.x/initials/svg?seed=Mario%20Rossi`,
+        }, 'simulated_token');
+
         const planData = MOCK_MEAL_PLAN_DATA;
         
         const sanitizedPlan = planData.weeklyPlan.map(day => ({
@@ -211,12 +225,96 @@ export class MealPlanStore {
         this.currentPlanId = 'simulated_plan_123';
         this.shoppingListManaged = true;
         this.status = AppStatus.SUCCESS;
-        this.activeTab = 'daily';
+        this.activeTab = 'dashboard';
     });
     
+    // Generate and inject 90 days of rich progress history
+    const mockProgress: ProgressRecord[] = [];
+    const mockLogs: DailyLog[] = [];
+    const today = new Date();
+    const daysToGenerate = 90;
+    const DAY_KEYWORDS_FOR_MOCK = ['LUNEDI', 'MARTEDI', 'MERCOLEDI', 'GIOVEDI', 'VENERDI', 'SABATO', 'DOMENICA'];
+    let currentWeight = 85;
+    let currentBodyFat = 25;
+    let currentBodyWater = 55;
+
+    for (let i = daysToGenerate - 1; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dateStr = date.toLocaleDateString('en-CA');
+
+        currentWeight -= (Math.random() * 0.15);
+        if (date.getDay() === 0 || date.getDay() === 6) { 
+            currentWeight += (Math.random() * 0.3 - 0.1);
+        }
+        currentBodyFat -= (Math.random() * 0.05);
+        currentBodyWater += (Math.random() * 0.04);
+        
+        let adherence: number;
+        let waterIntakeMl: number;
+
+        // Ensure the last 7 days (i < 7) fulfill streak achievements
+        if (i < 7) { 
+            adherence = 90 + Math.random() * 10;
+            waterIntakeMl = 3000 + Math.random() * 500;
+        } else {
+            adherence = 70 + Math.random() * 30;
+            waterIntakeMl = 2000 + Math.random() * 1500;
+        }
+        
+        const plannedCalories = 1850;
+        const actualCalories = plannedCalories * (adherence / 100) + (Math.random() * 200 - 100);
+        const stepsTaken = 4000 + Math.random() * 8000;
+        const activityHours = 1 + Math.random() * 1.5;
+        const weightKg = parseFloat(currentWeight.toFixed(2));
+        const bodyFatPercentage = parseFloat(currentBodyFat.toFixed(2));
+        const bodyWaterPercentage = parseFloat(currentBodyWater.toFixed(2));
+        const leanMassKg = parseFloat((weightKg * (1 - bodyFatPercentage / 100)).toFixed(2));
+        
+        const record: ProgressRecord = {
+            date: dateStr,
+            adherence: Math.round(adherence),
+            plannedCalories: Math.round(plannedCalories),
+            actualCalories: Math.round(actualCalories),
+            weightKg: weightKg,
+            bodyFatPercentage: bodyFatPercentage,
+            leanMassKg: leanMassKg,
+            stepsTaken: Math.round(stepsTaken),
+            waterIntakeMl: Math.round(waterIntakeMl),
+            bodyWaterPercentage: bodyWaterPercentage,
+            activityHours: parseFloat(activityHours.toFixed(2)),
+            estimatedCaloriesBurned: calculateCaloriesBurned(stepsTaken, activityHours, weightKg) ?? 0,
+        };
+        mockProgress.push(record);
+        
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+        if (isWeekend && Math.random() > 0.6) {
+             const dayIndex = (date.getDay() + 6) % 7;
+             const log: DailyLog = {
+                date: dateStr, day: DAY_KEYWORDS_FOR_MOCK[dayIndex],
+                meals: [ { name: 'COLAZIONE', items: [], done: true, time: '08:00' }, { name: 'PRANZO', items: [], done: true, time: '13:00' }, { name: 'CENA', items: [], done: false, cheat: true, cheatMealDescription: 'Pizza night!', time: '20:00' }, ]
+            };
+            mockLogs.push(log);
+        }
+    }
+    
     await db.dailyLogs.clear();
+    await db.progressHistory.clear();
+
+    try {
+        await (db as Dexie).transaction('rw', [db.progressHistory, db.dailyLogs], async () => {
+            await db.progressHistory.bulkPut(mockProgress);
+            await db.dailyLogs.bulkPut(mockLogs);
+        });
+        runInAction(() => { this.progressHistory = mockProgress; });
+        console.log("Mock simulation data injected and saved to DB.");
+    } catch (error) {
+        console.error("Failed to inject mock simulation data into the database:", error);
+    }
+    
     await this.saveToDB();
-    this.loadPlanForDate(this.currentDate);
+    await this.loadPlanForDate(this.currentDate);
+    await this.updateAchievements();
   }
 
   private async _generateAndInjectMockData() {
@@ -245,11 +343,21 @@ export class MealPlanStore {
         currentBodyFat -= (Math.random() * 0.05);
         currentBodyWater += (Math.random() * 0.04);
         
-        const adherence = 70 + Math.random() * 30;
+        let adherence: number;
+        let waterIntakeMl: number;
+
+        // Ensure the last 7 days (i < 7) fulfill streak achievements
+        if (i < 7) { 
+            adherence = 90 + Math.random() * 10;
+            waterIntakeMl = 3000 + Math.random() * 500;
+        } else {
+            adherence = 70 + Math.random() * 30;
+            waterIntakeMl = 2000 + Math.random() * 1500;
+        }
+        
         const plannedCalories = 1850;
         const actualCalories = plannedCalories * (adherence / 100) + (Math.random() * 200 - 100);
         const stepsTaken = 4000 + Math.random() * 8000;
-        const waterIntakeMl = 2000 + Math.random() * 1500;
         const activityHours = 1 + Math.random() * 1.5;
         const weightKg = parseFloat(currentWeight.toFixed(2));
         const bodyFatPercentage = parseFloat(currentBodyFat.toFixed(2));
@@ -453,6 +561,7 @@ export class MealPlanStore {
                 this.progressHistory.sort((a, b) => a.date.localeCompare(b.date));
             }
         });
+        this.updateAchievements();
     } catch (error) {
         console.error("Failed to save progress record to DB", error);
     }
@@ -576,6 +685,7 @@ export class MealPlanStore {
                 this.progressHistory.sort((a, b) => a.date.localeCompare(b.date));
             }
         });
+        this.updateAchievements();
     } catch (error) {
         console.error("Failed to save progress record to DB", error);
     }
@@ -612,7 +722,7 @@ export class MealPlanStore {
   }
 
 
-  setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' | 'settings') => { this.activeTab = tab; }
+  setActiveTab = (tab: 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' | 'settings' | 'dashboard') => { this.activeTab = tab; }
   setCurrentPlanName = (name: string) => { this.currentPlanName = name; this.saveToDB(); }
   updateArchivedPlanName = (planId: string, newName: string) => {
     const planIndex = this.archivedPlans.findIndex(p => p.id === planId);
@@ -771,7 +881,7 @@ export class MealPlanStore {
         this.shoppingList = [];
         this.pantry = [];
         this.status = AppStatus.INITIAL;
-        this.activeTab = 'daily';
+        this.activeTab = 'dashboard';
         this.pdfParseProgress = 0;
         this.currentPlanName = 'My Diet Plan';
         this.hasUnsavedChanges = false;
@@ -794,7 +904,7 @@ export class MealPlanStore {
         this.shoppingList = [];
         this.pantry = [];
         this.status = AppStatus.INITIAL;
-        this.activeTab = 'daily';
+        this.activeTab = 'dashboard';
         this.pdfParseProgress = 0;
         this.currentPlanName = 'My Diet Plan';
         this.hasUnsavedChanges = false;
@@ -811,6 +921,8 @@ export class MealPlanStore {
     await db.dailyLogs.clear();
     await db.progressHistory.clear();
     
+    authStore.setLoggedOut();
+
     this.saveToDB();
   }
 
@@ -853,6 +965,7 @@ export class MealPlanStore {
     }
     runInAction(() => { this.shoppingListManaged = true; });
     this.saveToDB();
+    this.updateAchievements();
   }
 
   movePantryItemToShoppingList = (pantryItemToMove: PantryItem) => {
@@ -1132,6 +1245,7 @@ export class MealPlanStore {
     }
     runInAction(() => { this.currentDayPlan = plan; });
     await db.dailyLogs.put(plan);
+    this.updateAchievements();
   }
   
   undoCheatMeal = async (mealIndex: number) => {
@@ -1360,6 +1474,82 @@ export class MealPlanStore {
         console.error("Failed to load or create day plan", e);
         runInAction(() => { this.currentDayPlan = null; });
     }
+  }
+
+  get adherenceStreak(): number {
+    let streak = 0;
+    for (let i = this.progressHistory.length - 1; i >= 0; i--) {
+        const record = this.progressHistory[i];
+        if (record.adherence >= 90) {
+            streak++;
+        } else {
+            break;
+        }
+    }
+    return streak;
+  }
+
+  get hydrationStreak(): number {
+    let streak = 0;
+    const goalMl = this.hydrationGoalLiters * 1000;
+    for (let i = this.progressHistory.length - 1; i >= 0; i--) {
+        const record = this.progressHistory[i];
+        if (record.waterIntakeMl >= goalMl) {
+            streak++;
+        } else {
+            break;
+        }
+    }
+    return streak;
+  }
+
+  updateAchievements = async () => {
+    const earned: string[] = [];
+    if (this.progressHistory.length === 0 && this.pantry.length === 0) {
+        runInAction(() => this.earnedAchievements = []);
+        return;
+    };
+
+    // Time-based & Simple Milestones
+    if (this.progressHistory.length >= 1) earned.push('firstDayComplete');
+    if (this.progressHistory.length >= 7) earned.push('firstWeekComplete');
+    if (this.progressHistory.length >= 30) earned.push('achievementMonthComplete');
+    if (this.progressHistory.some(p => {
+        // By adding 'T12:00:00' we create the date object at noon in the local timezone,
+        // which avoids any issues with DST or timezone boundaries at midnight.
+        // getDay() will reliably return the correct day of the week for the date string.
+        const date = new Date(`${p.date}T12:00:00`);
+        return date.getDay() === 1; // 1 = Monday
+    })) {
+        earned.push('firstMondayComplete');
+    }
+
+    // Weight-based
+    const initialWeight = this.progressHistory[0]?.weightKg;
+    const currentWeight = this.progressHistory[this.progressHistory.length - 1]?.weightKg;
+    if (initialWeight && currentWeight) {
+        if (initialWeight - currentWeight >= 5) earned.push('fiveKgLost');
+        if (initialWeight - currentWeight >= 10) earned.push('achievement10kgLost');
+    }
+    
+    // Streak-based
+    if (this.adherenceStreak >= 7) earned.push('perfectWeekAdherence');
+    if (this.hydrationStreak >= 7) earned.push('perfectWeekHydration');
+    
+    // Cumulative
+    const totalSteps = this.progressHistory.reduce((sum, record) => sum + (record.stepsTaken || 0), 0);
+    if (totalSteps >= 250000) earned.push('achievementStepMarathon');
+    
+    // Interaction-based
+    if (this.pantry.length >= 5) earned.push('pantryOrganized');
+    
+    // Async checks (DB queries)
+    const hasCheatMeal = await db.dailyLogs.filter(log => log.meals.some(m => m.cheat)).count();
+    if (hasCheatMeal > 0) earned.push('firstCheatMeal');
+
+    runInAction(() => {
+        this.earnedAchievements = Array.from(new Set(earned));
+    });
   }
 }
 

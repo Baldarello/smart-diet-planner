@@ -25,14 +25,13 @@ import {
     CalendarView,
     LoginSuggestionModal,
     SettingsView,
+    DashboardView,
 } from './components';
-import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon } from './components/Icons';
+import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon } from './components/Icons';
 
 const App: React.FC = observer(() => {
     const store = mealPlanStore;
     setI18nLocaleGetter(() => store.locale);
-    
-    const notificationPermission = useRef(Notification.permission);
     
     const [showNewPlanFlow, setShowNewPlanFlow] = useState(false);
     const [showManualForm, setShowManualForm] = useState(false);
@@ -108,12 +107,6 @@ const App: React.FC = observer(() => {
     }, [store.currentPlanId]);
 
     useEffect(() => {
-        if (store.currentPlanId && notificationPermission.current === 'default') {
-            Notification.requestPermission().then(permission => {
-                notificationPermission.current = permission;
-            });
-        }
-
         const mealTimer = setInterval(() => {
             if (!store.currentPlanId || !store.dailyPlan) return;
 
@@ -122,7 +115,7 @@ const App: React.FC = observer(() => {
             
             store.resetSentNotificationsIfNeeded();
             
-            if (notificationPermission.current === 'granted') {
+            if (Notification.permission === 'granted') {
                 store.dailyPlan?.meals.forEach((meal, mealIndex) => {
                     if (meal.time === currentTime) {
                         const dayIndex = store.masterMealPlan.findIndex(d => d.day === store.dailyPlan?.day);
@@ -130,6 +123,7 @@ const App: React.FC = observer(() => {
                         if (!store.sentNotifications.has(key)) {
                             new Notification(t('notificationMealTitle', { mealName: meal.name }), {
                                 body: t('notificationMealBody', { mealTitle: meal.title || meal.name }),
+                                icon: 'icon-192x192.png'
                             });
                             store.markNotificationSent(key);
                         }
@@ -178,6 +172,7 @@ const App: React.FC = observer(() => {
     const renderDrawerContent = () => {
         const isPlanLocked = !store.shoppingListManaged && !!store.currentPlanId;
         const planSpecificTabs = [
+            { id: 'dashboard', icon: <DashboardIcon />, label: t('tabDashboard'), disabled: isPlanLocked },
             { id: 'daily', icon: <TodayIcon />, label: t('tabDaily'), disabled: isPlanLocked },
             { id: 'calendar', icon: <CalendarIcon />, label: t('tabCalendar'), disabled: isPlanLocked },
             { id: 'plan', icon: <EditIcon />, label: t('tabWeekly') },
@@ -304,6 +299,7 @@ const App: React.FC = observer(() => {
             return (
                 <>
                     <ActivePlanNameEditor />
+                    {store.activeTab === 'dashboard' && <DashboardView />}
                     {store.activeTab === 'daily' && <DailyPlanView />}
                     {store.activeTab === 'calendar' && <CalendarView />}
                     {store.activeTab === 'plan' && <MealPlanView plan={store.masterMealPlan} isMasterPlanView={true} />}

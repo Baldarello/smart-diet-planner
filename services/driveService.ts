@@ -9,7 +9,8 @@ const FILENAME = 'diet-plan-data.json';
  * @returns The file ID or null if not found.
  */
 async function findFileId(accessToken: string): Promise<string | null> {
-    const response = await fetch(`${DRIVE_API_URL}?spaces=appDataFolder&fields=files(id,name)`, {
+    const url = `${DRIVE_API_URL}?spaces=appDataFolder&fields=files(id,name)`;
+    const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
     });
     if (!response.ok) {

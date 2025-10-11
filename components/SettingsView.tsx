@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
-import { SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon } from './Icons';
+import { SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon, BellIcon } from './Icons';
+import { subscribeUserToPush } from '../utils/pushNotifications';
 
 const SettingsView: React.FC = observer(() => {
     const store = mealPlanStore;
@@ -10,6 +11,65 @@ const SettingsView: React.FC = observer(() => {
     const [stepGoalState, setStepGoalState] = useState(store.stepGoal.toString());
     const [hydrationGoalState, setHydrationGoalState] = useState(store.hydrationGoalLiters.toString());
     const [heightState, setHeightState] = useState(store.bodyMetrics.heightCm?.toString() ?? '');
+    const [pushState, setPushState] = useState<'default' | 'subscribed' | 'denied' | 'unsupported' | 'loading' | 'error'>('default');
+    
+    useEffect(() => {
+        if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+            setPushState('unsupported');
+            return;
+        }
+
+        if (Notification.permission === 'denied') {
+            setPushState('denied');
+            return;
+        }
+
+        navigator.serviceWorker.ready.then(reg => {
+            reg.pushManager.getSubscription().then(sub => {
+                if (sub) {
+                    setPushState('subscribed');
+                } else {
+                    setPushState(Notification.permission === 'granted' ? 'default' : Notification.permission);
+                }
+            });
+        });
+    }, []);
+
+    const handleEnablePush = async () => {
+        setPushState('loading');
+        try {
+            await subscribeUserToPush();
+            setPushState('subscribed');
+        } catch (error) {
+            console.error('Failed to subscribe to push notifications:', error);
+            if (Notification.permission === 'denied') {
+                setPushState('denied');
+            } else {
+                setPushState('error');
+            }
+        }
+    };
+    
+    const getPushContent = () => {
+        switch (pushState) {
+            case 'loading':
+                return <div className="animate-spin h-5 w-5 border-b-2 border-violet-600 rounded-full"></div>;
+            case 'subscribed':
+                return <span className="font-semibold text-green-600 dark:text-green-400">{t('pushNotificationsSubscribed')}</span>;
+            case 'denied':
+                return <span className="font-semibold text-red-500">{t('pushNotificationsDenied')}</span>;
+            case 'unsupported':
+                return <span className="font-semibold text-gray-500">{t('pushNotificationsUnsupported')}</span>;
+            case 'error':
+                 return <span className="font-semibold text-red-500">{t('pushNotificationsError')}</span>;
+            default:
+                return (
+                    <button onClick={handleEnablePush} className="bg-violet-600 text-white font-semibold px-4 py-2 rounded-full hover:bg-violet-700 transition-colors">
+                        {t('enablePushNotifications')}
+                    </button>
+                );
+        }
+    };
 
     useEffect(() => { setStepGoalState(store.stepGoal.toString()); }, [store.stepGoal]);
     useEffect(() => { setHydrationGoalState(store.hydrationGoalLiters.toString()); }, [store.hydrationGoalLiters]);
@@ -123,17 +183,32 @@ const SettingsView: React.FC = observer(() => {
                         </div>
                     </div>
 
-                    <div>
-                        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('settingsStatus')}</h3>
-                         <div className="space-y-4">
-                            <div className="flex items-center justify-between bg-slate-50 dark:bg-gray-700/50 p-3 rounded-lg" title={store.onlineMode ? t('onlineModeTitle') : t('offlineModeTitle')}>
-                                <span className="font-medium text-gray-700 dark:text-gray-300">{t('connectionStatus')}</span>
-                                <div className="p-2 rounded-full bg-white dark:bg-gray-800 shadow-md flex items-center gap-2">
-                                    {store.onlineMode ? <CloudOnlineIcon /> : <CloudOfflineIcon />}
-                                    <span className="font-semibold text-sm">{store.onlineMode ? 'Online' : 'Offline'}</span>
+                    <div className="space-y-10">
+                         <div>
+                            <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('notifications')}</h3>
+                            <div className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg flex items-center justify-between">
+                                <div className="flex items-center">
+                                    <BellIcon />
+                                    <div className="ml-3">
+                                        <p className="font-medium text-gray-700 dark:text-gray-300">{t('pushNotifications')}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('pushNotificationsDescription')}</p>
+                                    </div>
                                 </div>
+                                <div className="flex-shrink-0">{getPushContent()}</div>
                             </div>
-                         </div>
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('settingsStatus')}</h3>
+                             <div className="space-y-4">
+                                <div className="flex items-center justify-between bg-slate-50 dark:bg-gray-700/50 p-3 rounded-lg" title={store.onlineMode ? t('onlineModeTitle') : t('offlineModeTitle')}>
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">{t('connectionStatus')}</span>
+                                    <div className="p-2 rounded-full bg-white dark:bg-gray-800 shadow-md flex items-center gap-2">
+                                        {store.onlineMode ? <CloudOnlineIcon /> : <CloudOfflineIcon />}
+                                        <span className="font-semibold text-sm">{store.onlineMode ? 'Online' : 'Offline'}</span>
+                                    </div>
+                                </div>
+                             </div>
+                        </div>
                     </div>
                 </div>
             </div>
