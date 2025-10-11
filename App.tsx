@@ -192,6 +192,7 @@ const App: React.FC = observer(() => {
                 key={tab.id}
                 onClick={() => {
                     store.setActiveTab(tab.id as any);
+                    setShowNewPlanFlow(false);
                     setIsDrawerOpen(false);
                 }}
                 disabled={tab.disabled}
@@ -284,6 +285,45 @@ const App: React.FC = observer(() => {
             </div>
         );
     }
+    
+    const renderUploadScreen = () => {
+        const hasActivePlan = store.status === AppStatus.SUCCESS && store.currentPlanId;
+        return (
+            <div className="text-center">
+                {hasActivePlan && showNewPlanFlow && (
+                    <div className="mb-10">
+                        <button 
+                            onClick={() => setShowNewPlanFlow(false)}
+                            className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold px-8 py-3 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md"
+                        >
+                            {t('cancelAndReturn')}
+                        </button>
+                    </div>
+                )}
+                <div className="pt-8">
+                    <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('welcomeTitle')}</h2>
+                    <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-2xl mx-auto">{t('welcomeSubtitle')}</p>
+                </div>
+                
+                <div className="max-w-4xl mx-auto">
+                    <FileUpload />
+                </div>
+                
+                {store.archivedPlans.length > 0 && (
+                    <div className="mt-12 max-w-4xl mx-auto">
+                        <h3 className="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4 border-t dark:border-gray-700 pt-8">{t('restoreFromArchiveTitle')}</h3>
+                        <div className="space-y-4">
+                            {store.archivedPlans.slice().reverse().map((archive) => (
+                                <ArchivedPlanItem key={archive.id} archive={archive} />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {store.archivedPlans.length === 0 && <ExamplePdf />}
+            </div>
+        );
+    };
 
     const renderMainContent = () => {
         if (store.status === AppStatus.HYDRATING || store.status === AppStatus.SYNCING) return <Loader />;
@@ -293,73 +333,43 @@ const App: React.FC = observer(() => {
             return ( <div className="text-center"><ErrorMessage message={store.error!} /><div className="mt-8"><h2 className="text-2xl font-bold dark:text-gray-200 text-gray-800 mb-4">{t('errorAndUpload')}</h2><FileUpload /></div></div> );
         }
 
-        const hasActivePlan = store.status === AppStatus.SUCCESS && store.currentPlanId;
-
-        // If starting a new plan, or if there's no active plan yet (initial state)
-        if (showNewPlanFlow || !hasActivePlan) {
+        // New plan flow is a special state that overrides tab navigation
+        if (showNewPlanFlow) {
             if (showManualForm) {
                 return <ManualPlanEntryForm onCancel={() => { setShowManualForm(false); if (store.currentPlanId) setShowNewPlanFlow(false); }} />;
             }
-            
-            // Show these general tabs even in the initial state
-            if (store.activeTab === 'settings' && !hasActivePlan) {
-                return <SettingsView />;
-            }
-            if (store.activeTab === 'archive' && !hasActivePlan) {
-                return <ArchiveView />;
-            }
+            return renderUploadScreen();
+        }
 
-            // Otherwise, show the main upload/welcome screen
-            return (
-                <div className="text-center">
-                    {hasActivePlan && ( // This button only shows if coming from an active plan
-                        <div className="mb-10">
-                            <button 
-                                onClick={() => setShowNewPlanFlow(false)}
-                                className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold px-8 py-3 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md"
-                            >
-                                {t('cancelAndReturn')}
-                            </button>
-                        </div>
-                    )}
-                    <div className="pt-8">
-                        <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('welcomeTitle')}</h2>
-                        <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-2xl mx-auto">{t('welcomeSubtitle')}</p>
-                    </div>
-                    
-                    <div className="max-w-4xl mx-auto">
-                        <FileUpload />
-                    </div>
-                    
-                    {store.archivedPlans.length > 0 && (
-                        <div className="mt-12 max-w-4xl mx-auto">
-                            <h3 className="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4 border-t dark:border-gray-700 pt-8">{t('restoreFromArchiveTitle')}</h3>
-                            <div className="space-y-4">
-                                {store.archivedPlans.slice().reverse().map((archive) => (
-                                    <ArchivedPlanItem key={archive.id} archive={archive} />
-                                ))}
-                            </div>
-                        </div>
-                    )}
+        const hasActivePlan = store.status === AppStatus.SUCCESS && store.currentPlanId;
 
-                    {store.archivedPlans.length === 0 && <ExamplePdf />}
-                </div>
-            );
+        // If no active plan, show a limited set of views
+        if (!hasActivePlan) {
+            if (store.activeTab === 'settings') return <SettingsView />;
+            if (store.activeTab === 'archive') return <ArchiveView />;
+            return renderUploadScreen(); // Default for initial state
         }
         
-        // If we have an active plan and are not in the "new plan" flow
+        // Main router for when a plan is active
+        const ActivePlanContent = () => {
+             switch(store.activeTab) {
+                case 'dashboard': return <DashboardView />;
+                case 'daily': return <DailyPlanView />;
+                case 'calendar': return <CalendarView />;
+                case 'plan': return <MealPlanView plan={store.masterMealPlan} isMasterPlanView={true} />;
+                case 'list': return <ShoppingListView />;
+                case 'pantry': return <PantryView />;
+                case 'progress': return <ProgressView />;
+                case 'archive': return <ArchiveView />;
+                case 'settings': return <SettingsView />;
+                default: return <DashboardView />;
+            }
+        };
+
         return (
             <>
                 <ActivePlanNameEditor />
-                {store.activeTab === 'dashboard' && <DashboardView />}
-                {store.activeTab === 'daily' && <DailyPlanView />}
-                {store.activeTab === 'calendar' && <CalendarView />}
-                {store.activeTab === 'plan' && <MealPlanView plan={store.masterMealPlan} isMasterPlanView={true} />}
-                {store.activeTab === 'list' && <ShoppingListView />}
-                {store.activeTab === 'pantry' && <PantryView />}
-                {store.activeTab === 'progress' && <ProgressView />}
-                {store.activeTab === 'archive' && <ArchiveView />}
-                {store.activeTab === 'settings' && <SettingsView />}
+                <ActivePlanContent />
             </>
         );
     };

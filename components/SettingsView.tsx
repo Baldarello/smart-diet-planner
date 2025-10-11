@@ -3,7 +3,8 @@ import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
 import { SunIcon, MoonIcon, CloudOnlineIcon, CloudOfflineIcon, BellIcon } from './Icons';
-import { subscribeUserToPush } from '../utils/pushNotifications';
+import { subscribeUserToPush, unsubscribeUserFromPush } from '../utils/pushNotifications';
+import Switch from './Switch';
 
 const SettingsView: React.FC = observer(() => {
     const store = mealPlanStore;
@@ -49,28 +50,26 @@ const SettingsView: React.FC = observer(() => {
             }
         }
     };
-    
-    const getPushContent = () => {
-        switch (pushState) {
-            case 'loading':
-                return <div className="animate-spin h-5 w-5 border-b-2 border-violet-600 rounded-full"></div>;
-            case 'subscribed':
-                return <span className="font-semibold text-green-600 dark:text-green-400">{t('pushNotificationsSubscribed')}</span>;
-            case 'denied':
-                return <span className="font-semibold text-red-500">{t('pushNotificationsDenied')}</span>;
-            case 'unsupported':
-                return <span className="font-semibold text-gray-500">{t('pushNotificationsUnsupported')}</span>;
-            case 'error':
-                 return <span className="font-semibold text-red-500">{t('pushNotificationsError')}</span>;
-            default:
-                return (
-                    <button onClick={handleEnablePush} className="bg-violet-600 text-white font-semibold px-4 py-2 rounded-full hover:bg-violet-700 transition-colors">
-                        {t('enablePushNotifications')}
-                    </button>
-                );
+
+    const handleDisablePush = async () => {
+        setPushState('loading');
+        try {
+            await unsubscribeUserFromPush();
+            setPushState('default');
+        } catch (error) {
+            console.error('Failed to unsubscribe from push notifications:', error);
+            setPushState('error');
         }
     };
 
+    const handlePushToggle = (checked: boolean) => {
+        if (checked) {
+            handleEnablePush();
+        } else {
+            handleDisablePush();
+        }
+    };
+    
     useEffect(() => { setStepGoalState(store.stepGoal.toString()); }, [store.stepGoal]);
     useEffect(() => { setHydrationGoalState(store.hydrationGoalLiters.toString()); }, [store.hydrationGoalLiters]);
     useEffect(() => { setHeightState(store.bodyMetrics.heightCm?.toString() ?? ''); }, [store.bodyMetrics.heightCm]);
@@ -186,15 +185,28 @@ const SettingsView: React.FC = observer(() => {
                     <div className="space-y-10">
                          <div>
                             <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('notifications')}</h3>
-                            <div className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg flex items-center justify-between gap-4">
-                                <div className="flex items-center min-w-0">
-                                    <BellIcon />
-                                    <div className="ml-3">
-                                        <p className="font-medium text-gray-700 dark:text-gray-300">{t('pushNotifications')}</p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('pushNotificationsDescription')}</p>
+                            <div className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center min-w-0">
+                                        <BellIcon />
+                                        <div className="ml-3">
+                                            <label htmlFor="push-toggle" className="font-medium text-gray-700 dark:text-gray-300 cursor-pointer">{t('pushNotifications')}</label>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">{t('pushNotificationsDescription')}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex-shrink-0 flex items-center gap-2">
+                                        {pushState === 'loading' && <div className="animate-spin h-5 w-5 border-b-2 border-violet-600 rounded-full"></div>}
+                                        <Switch
+                                            id="push-toggle"
+                                            checked={pushState === 'subscribed'}
+                                            onChange={handlePushToggle}
+                                            disabled={pushState === 'denied' || pushState === 'unsupported' || pushState === 'loading'}
+                                        />
                                     </div>
                                 </div>
-                                <div className="flex-shrink-0">{getPushContent()}</div>
+                                {pushState === 'denied' && <p className="mt-2 text-sm font-semibold text-red-500">{t('pushNotificationsDenied')}</p>}
+                                {pushState === 'unsupported' && <p className="mt-2 text-sm font-semibold text-gray-500">{t('pushNotificationsUnsupported')}</p>}
+                                {pushState === 'error' && <p className="mt-2 text-sm font-semibold text-red-500">{t('pushNotificationsError')}</p>}
                             </div>
                         </div>
                         <div>

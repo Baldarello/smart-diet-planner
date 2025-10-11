@@ -326,13 +326,12 @@ export class MealPlanStore {
         const plannedCalories = 1850;
         let actualCalories: number;
 
-        // Special case for today to show in-progress stats
         if (i === 0) {
-            adherence = 33; // ~1 of 3 meals done
-            waterIntakeMl = 1200 + Math.random() * 300; // ~40% of 3L goal
-            stepsTaken = 2500 + Math.random() * 1000; // ~40-50% of 6k goal
+            adherence = 91; // Stay above 90 to maintain streak
+            waterIntakeMl = 3050; // Stay above 3000ml goal to maintain streak
+            stepsTaken = 6200 + Math.random() * 1000; // Slightly above goal
             actualCalories = plannedCalories * (adherence / 100);
-        } else if (i < 7) { // Ensure the last 7 days fulfill streak achievements
+        } else if (i < 8) { // Ensure the last 7 days also fulfill streak achievements
             adherence = 90 + Math.random() * 10;
             waterIntakeMl = 3000 + Math.random() * 500; // At or above goal
             stepsTaken = 6000 + Math.random() * 6000; // At or above goal
