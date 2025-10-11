@@ -351,25 +351,43 @@ const App: React.FC = observer(() => {
         }
         
         // Main router for when a plan is active
-        const ActivePlanContent = () => {
-             switch(store.activeTab) {
-                case 'dashboard': return <DashboardView />;
-                case 'daily': return <DailyPlanView />;
-                case 'calendar': return <CalendarView />;
-                case 'plan': return <MealPlanView plan={store.masterMealPlan} isMasterPlanView={true} />;
-                case 'list': return <ShoppingListView />;
-                case 'pantry': return <PantryView />;
-                case 'progress': return <ProgressView />;
-                case 'archive': return <ArchiveView />;
-                case 'settings': return <SettingsView />;
-                default: return <DashboardView />;
-            }
-        };
+        let activeContent;
+        switch(store.activeTab) {
+            case 'dashboard':
+                activeContent = <DashboardView />;
+                break;
+            case 'daily':
+                activeContent = <DailyPlanView />;
+                break;
+            case 'calendar':
+                activeContent = <CalendarView />;
+                break;
+            case 'plan':
+                activeContent = <MealPlanView plan={store.masterMealPlan} isMasterPlanView={true} />;
+                break;
+            case 'list':
+                activeContent = <ShoppingListView />;
+                break;
+            case 'pantry':
+                activeContent = <PantryView />;
+                break;
+            case 'progress':
+                activeContent = <ProgressView />;
+                break;
+            case 'archive':
+                activeContent = <ArchiveView />;
+                break;
+            case 'settings':
+                activeContent = <SettingsView />;
+                break;
+            default:
+                activeContent = <DashboardView />;
+        }
 
         return (
             <>
                 <ActivePlanNameEditor />
-                <ActivePlanContent />
+                {activeContent}
             </>
         );
     };
