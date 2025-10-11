@@ -103,11 +103,13 @@ export function singularize(word: string): string {
 
 /**
  * Generates a categorized shopping list by aggregating all ingredients from a weekly plan.
- * Instead of summing quantities, it now concatenates the original full descriptions to avoid parsing errors
- * and show the user the exact text from their plan.
+ * It attempts to parse and sum numeric quantities. Unparsable quantities (e.g., "q.b.") are listed as text.
  * @param plan The weekly meal plan.
  * @returns A categorized shopping list.
  */
+// Fix: Corrected function to handle the updated ShoppingListItem type. It now
+// correctly parses and sums quantities where possible, and handles unparsable
+// descriptions gracefully, resolving the TypeScript error.
 export function generateShoppingList(plan: DayPlan[]): ShoppingListCategory[] {
     const aggregatedMap: Map<string, { descriptions: string[], category: string, originalItemName: string }> = new Map();
 
@@ -136,12 +138,42 @@ export function generateShoppingList(plan: DayPlan[]): ShoppingListCategory[] {
             categoryMap.set(value.category, []);
         }
         
-        const quantityStr = value.descriptions.join(', ');
+        const quantitiesByUnit: { [unit: string]: { total: number; originalUnit: string } } = {};
+        const unparsedDescriptions: string[] = [];
 
-        categoryMap.get(value.category)!.push({
-            item: value.originalItemName.charAt(0).toUpperCase() + value.originalItemName.slice(1),
-            quantity: quantityStr
+        value.descriptions.forEach(desc => {
+            const parsed = parseQuantity(desc);
+            if (parsed && parsed.value !== null) {
+                const singularUnit = singularize(parsed.unit);
+                if (!quantitiesByUnit[singularUnit]) {
+                    quantitiesByUnit[singularUnit] = { total: 0, originalUnit: parsed.unit };
+                }
+                quantitiesByUnit[singularUnit].total += parsed.value;
+            } else {
+                unparsedDescriptions.push(desc);
+            }
         });
+
+        const itemName = value.originalItemName.charAt(0).toUpperCase() + value.originalItemName.slice(1);
+
+        // Add summed quantities for each unit type
+        Object.values(quantitiesByUnit).forEach(({ total, originalUnit }) => {
+            categoryMap.get(value.category)!.push({
+                item: itemName,
+                quantityValue: total,
+                quantityUnit: originalUnit
+            });
+        });
+        
+        // For unparsed items, add them with their description as the "unit" and a null value.
+        // This preserves the information from the plan.
+        if (unparsedDescriptions.length > 0) {
+            categoryMap.get(value.category)!.push({
+                item: itemName,
+                quantityValue: null,
+                quantityUnit: unparsedDescriptions.join(', ')
+            });
+        }
     });
 
     const shoppingList: ShoppingListCategory[] = [];

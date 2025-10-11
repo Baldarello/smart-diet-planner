@@ -35,19 +35,25 @@ export interface DailyLog extends DayPlan {
 
 export interface ShoppingListItem {
   item: string;
-  quantity: string;
+  quantityValue: number | null;
+  quantityUnit: string;
 }
 
 export interface ShoppingListCategory {
   category: string;
   items: ShoppingListItem[];
+  sortOrder?: number;
 }
 
 export interface PantryItem {
   item: string;
-  quantity: string;
+  quantityValue: number | null;
+  quantityUnit: string;
   originalCategory: string;
-  originalQuantity?: string;
+  originalQuantityValue?: number | null;
+  originalQuantityUnit?: string;
+  expiryDate?: string;
+  lowStockThreshold?: string;
 }
 
 export interface MealPlanData {

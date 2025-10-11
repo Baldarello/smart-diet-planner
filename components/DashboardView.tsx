@@ -3,10 +3,11 @@ import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { authStore } from '../stores/AuthStore';
 import { t } from '../i18n';
-import { ClockIcon, FlameIcon, WaterDropIcon, StepsIcon, TodayIcon } from './Icons';
+import { ClockIcon, FlameIcon, WaterDropIcon, StepsIcon, TodayIcon, WarningIcon, PantryIcon } from './Icons';
 import ProgressChart from './ProgressChart';
-import { Meal } from '../types';
+import { Meal, PantryItem } from '../types';
 import AchievementsModal from './AchievementsModal';
+import { formatQuantity } from '../utils/quantityParser';
 
 const CircularProgress: React.FC<{
     progress: number;
@@ -86,6 +87,38 @@ const StreakItem: React.FC<{ count: number, label: string, icon: React.ReactNode
     );
 };
 
+const AlertItem: React.FC<{ item: PantryItem, type: 'expired' | 'expiring' | 'stock', onClick: () => void }> = ({ item, type, onClick }) => {
+    const isDateAlert = type === 'expiring' || type === 'expired';
+    const date = isDateAlert ? new Date(item.expiryDate!).toLocaleDateString(mealPlanStore.locale, { day: '2-digit', month: '2-digit' }) : '';
+
+    const config = {
+        expired: {
+            iconBg: 'bg-red-100 text-red-500 dark:bg-red-900/50',
+            text: `${t('itemExpired')} (${date})`,
+        },
+        expiring: {
+            iconBg: 'bg-orange-100 text-orange-500 dark:bg-orange-900/50',
+            text: t('expiresOn', { date }),
+        },
+        stock: {
+            iconBg: 'bg-yellow-100 text-yellow-500 dark:bg-yellow-900/50',
+            text: formatQuantity(item.quantityValue, item.quantityUnit),
+        }
+    }[type];
+
+    return (
+        <button onClick={onClick} className="w-full text-left p-3 rounded-lg flex items-center gap-3 bg-slate-50 dark:bg-gray-700/50 hover:bg-slate-100 dark:hover:bg-gray-700">
+            <div className={`flex-shrink-0 p-1.5 rounded-full ${config.iconBg}`}>
+                <WarningIcon />
+            </div>
+            <div>
+                <p className="font-semibold text-sm text-gray-800 dark:text-gray-200">{item.item}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{config.text}</p>
+            </div>
+        </button>
+    );
+};
+
 const DashboardView: React.FC = observer(() => {
     const store = mealPlanStore;
     const user = authStore.userProfile;
@@ -96,6 +129,10 @@ const DashboardView: React.FC = observer(() => {
     const handleGoToToday = () => {
         store.setCurrentDate(getTodayDateString());
         store.setActiveTab('daily');
+    };
+    
+    const handleGoToPantry = () => {
+        store.setActiveTab('pantry');
     };
 
     // Upcoming meals
@@ -127,8 +164,9 @@ const DashboardView: React.FC = observer(() => {
         yAxisMax = Math.ceil(maxWeight + 5);
     }
 
-    // Streaks
-    const { adherenceStreak, hydrationStreak } = store;
+    // Streaks & Alerts
+    const { adherenceStreak, hydrationStreak, expiringSoonItems, lowStockItems, expiredItems } = store;
+    const hasAlerts = expiredItems.length > 0 || expiringSoonItems.length > 0 || lowStockItems.length > 0;
 
     return (
         <>
@@ -160,6 +198,51 @@ const DashboardView: React.FC = observer(() => {
                                 </div>
                             ) : (
                                 <p className="text-center text-gray-500 dark:text-gray-400 py-4">{t('noUpcomingMeals')}</p>
+                            )}
+                        </div>
+
+                         {/* Pantry Alerts */}
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                             <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300">{t('dashboardPantryAlerts')}</h2>
+                                <button 
+                                    onClick={handleGoToPantry} 
+                                    className="flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors"
+                                    title={t('tabPantry')}
+                                >
+                                    <PantryIcon />
+                                    <span className="hidden sm:inline">{t('tabPantry')}</span>
+                                </button>
+                            </div>
+                            {hasAlerts ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                                    {expiredItems.length > 0 && (
+                                        <div className="sm:col-span-2 md:col-span-1">
+                                            <h3 className="font-semibold text-red-600 dark:text-red-400 mb-2">{t('dashboardExpired')}</h3>
+                                            <div className="space-y-2">
+                                                {expiredItems.map(item => <AlertItem key={item.item} item={item} type="expired" onClick={handleGoToPantry} />)}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {expiringSoonItems.length > 0 && (
+                                        <div className="sm:col-span-2 md:col-span-1">
+                                            <h3 className="font-semibold text-orange-600 dark:text-orange-400 mb-2">{t('dashboardExpiringSoon')}</h3>
+                                            <div className="space-y-2">
+                                                {expiringSoonItems.map(item => <AlertItem key={item.item} item={item} type="expiring" onClick={handleGoToPantry} />)}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {lowStockItems.length > 0 && (
+                                        <div className="sm:col-span-2 md:col-span-1">
+                                            <h3 className="font-semibold text-yellow-600 dark:text-yellow-400 mb-2">{t('dashboardLowStock')}</h3>
+                                            <div className="space-y-2">
+                                                {lowStockItems.map(item => <AlertItem key={item.item} item={item} type="stock" onClick={handleGoToPantry} />)}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="text-center text-gray-500 dark:text-gray-400 py-4">{t('dashboardNoAlerts')}</p>
                             )}
                         </div>
                         

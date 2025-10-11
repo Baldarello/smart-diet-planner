@@ -1,7 +1,7 @@
 
 
 export interface ParsedQuantity {
-  value: number;
+  value: number | null;
   unit: string;
 }
 
@@ -34,7 +34,7 @@ export function parseQuantity(description: string): ParsedQuantity | null {
     if (numberWords[words[0]]) {
         return {
             value: numberWords[words[0]],
-            unit: words.length > 1 ? words[1] : words[0]
+            unit: words.length > 1 ? words[1] : 'unità'
         };
     }
 
@@ -44,7 +44,7 @@ export function parseQuantity(description: string): ParsedQuantity | null {
     if (standardMatch) {
         const value = parseFloat(standardMatch[1].replace(',', '.'));
         // The unit is the word following the number, or 'units' if it's just a number.
-        const unit = (standardMatch[2] || 'units').trim();
+        const unit = (standardMatch[2] || 'unità').trim();
         return { value, unit };
     }
 
@@ -54,18 +54,9 @@ export function parseQuantity(description: string): ParsedQuantity | null {
 /**
  * Formats a parsed quantity back into a string.
  */
-export function formatQuantity(pq: ParsedQuantity): string {
+export function formatQuantity(value: number | null, unit: string): string {
+    if (value === null) return '-';
     // Round to 2 decimal places to avoid floating point issues
-    const value = Math.round(pq.value * 100) / 100;
-    
-    // For generic counts, just return the number.
-    if (pq.unit === 'units' || !isNaN(Number(pq.unit))) return `${value}`;
-    
-    // For units that are words (e.g., 'mela', 'vasetto'), add a space.
-    if (/^[a-zA-ZÀ-ú]/.test(pq.unit)) {
-        return `${value} ${pq.unit}`;
-    }
-    
-    // For standard units like 'g', 'ml', don't add a space.
-    return `${value}${pq.unit}`;
+    const roundedValue = Math.round(value * 100) / 100;
+    return `${roundedValue} ${unit}`;
 }

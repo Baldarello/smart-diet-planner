@@ -2,19 +2,23 @@ import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { ShoppingListItem, ShoppingListCategory } from '../types';
-import { PantryIcon, EditIcon, TrashIcon, CheckIcon, CloseIcon, PlusCircleIcon, TodayIcon } from './Icons';
+import { PantryIcon, EditIcon, TrashIcon, CheckIcon, CloseIcon, PlusCircleIcon, TodayIcon, ShareIcon, ArrowUpIcon, ArrowDownIcon } from './Icons';
 import { t } from '../i18n';
+import UnitPicker from './UnitPicker';
+import { formatQuantity } from '../utils/quantityParser';
 
 const ShoppingListView: React.FC = observer(() => {
     const store = mealPlanStore;
     const { shoppingList, hasUnsavedChanges, recalculateShoppingList, recalculating, onlineMode, shoppingListManaged } = store;
+    
     const [checkedItems, setCheckedItems] = useState<Map<string, { item: ShoppingListItem, category: string }>>(new Map());
-
-    const [editingItem, setEditingItem] = useState<{ catIndex: number, itemIndex: number, item: string, quantity: string } | null>(null);
+    const [editingItem, setEditingItem] = useState<{ catIndex: number, itemIndex: number, item: string, quantityValue: string, quantityUnit: string } | null>(null);
     const [addingToCategory, setAddingToCategory] = useState<string | null>(null);
-    const [newItem, setNewItem] = useState({ item: '', quantity: '' });
+    const [newItem, setNewItem] = useState({ item: '', quantityValue: '', quantityUnit: 'g' });
     const [newCategoryName, setNewCategoryName] = useState('');
     const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+    const [isShoppingMode, setIsShoppingMode] = useState(false);
+    const [showCopiedMessage, setShowCopiedMessage] = useState(false);
 
     const totalItemsCount = shoppingList.reduce((acc, cat) => acc + cat.items.length, 0);
 
@@ -28,35 +32,6 @@ const ShoppingListView: React.FC = observer(() => {
         }
         setCheckedItems(newCheckedItems);
     };
-    
-    const handleSelectAllToggle = () => {
-        const newCheckedItems = new Map<string, { item: ShoppingListItem, category: string }>();
-        if (checkedItems.size < totalItemsCount) {
-            shoppingList.forEach(category => {
-                category.items.forEach(item => {
-                    const key = `${category.category}-${item.item}`;
-                    newCheckedItems.set(key, { item, category: category.category });
-                });
-            });
-        }
-        setCheckedItems(newCheckedItems);
-    };
-
-    const handleCategoryToggle = (category: ShoppingListCategory) => {
-        const newCheckedItems = new Map(checkedItems);
-        const categoryItemsKeys = category.items.map(item => `${category.category}-${item.item}`);
-        const allInCategoryChecked = categoryItemsKeys.every(key => newCheckedItems.has(key));
-
-        if (allInCategoryChecked) {
-            categoryItemsKeys.forEach(key => newCheckedItems.delete(key));
-        } else {
-            category.items.forEach(item => {
-                const key = `${category.category}-${item.item}`;
-                newCheckedItems.set(key, { item, category: category.category });
-            });
-        }
-        setCheckedItems(newCheckedItems);
-    };
 
     const handleMoveToPantry = () => {
         checkedItems.forEach(({ item, category }) => {
@@ -66,25 +41,31 @@ const ShoppingListView: React.FC = observer(() => {
     };
 
     const handleStartEdit = (catIndex: number, itemIndex: number, item: ShoppingListItem) => {
-        setEditingItem({ catIndex, itemIndex, ...item });
+        setEditingItem({ catIndex, itemIndex, item: item.item, quantityValue: item.quantityValue?.toString() ?? '', quantityUnit: item.quantityUnit });
     };
 
-    const handleCancelEdit = () => {
-        setEditingItem(null);
-    };
+    const handleCancelEdit = () => { setEditingItem(null); };
 
     const handleSaveEdit = () => {
         if (editingItem) {
             const category = shoppingList[editingItem.catIndex];
-            store.updateShoppingListItem(category.category, editingItem.itemIndex, { item: editingItem.item, quantity: editingItem.quantity });
+            store.updateShoppingListItem(category.category, editingItem.itemIndex, { 
+                item: editingItem.item, 
+                quantityValue: parseFloat(editingItem.quantityValue) || null,
+                quantityUnit: editingItem.quantityUnit
+            });
             setEditingItem(null);
         }
     };
 
     const handleAddItem = (categoryName: string) => {
-        if (newItem.item.trim() && newItem.quantity.trim()) {
-            store.addShoppingListItem(categoryName, newItem);
-            setNewItem({ item: '', quantity: '' });
+        if (newItem.item.trim()) {
+            store.addShoppingListItem(categoryName, {
+                item: newItem.item,
+                quantityValue: parseFloat(newItem.quantityValue) || null,
+                quantityUnit: newItem.quantityUnit
+            });
+            setNewItem({ item: '', quantityValue: '', quantityUnit: 'g' });
             setAddingToCategory(null);
         }
     };
@@ -97,8 +78,119 @@ const ShoppingListView: React.FC = observer(() => {
         }
     };
     
+    const handleShare = async () => {
+        const listText = store.shoppingList.map(cat => {
+            const itemsText = cat.items.map(item => `- ${item.item} (${formatQuantity(item.quantityValue, item.quantityUnit)})`).join('\n');
+            return `${cat.category}:\n${itemsText}`;
+        }).join('\n\n');
+
+        const shareData = {
+            title: t('listShareTitle', { planName: store.currentPlanName }),
+            text: listText,
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (error) {
+                console.error('Error sharing:', error);
+            }
+        } else {
+            try {
+                await navigator.clipboard.writeText(listText);
+                setShowCopiedMessage(true);
+                setTimeout(() => setShowCopiedMessage(false), 2000);
+            } catch (error) {
+                console.error('Error copying to clipboard:', error);
+            }
+        }
+    };
+    
+    const renderCategoryList = (categories: ShoppingListCategory[], isCompletedList = false) => (
+        <div className="space-y-6">
+            {categories.map((category, catIndex) => {
+                if (category.items.length === 0) return null;
+                const originalCatIndex = store.shoppingList.findIndex(c => c.category === category.category);
+
+                return (
+                    <details key={category.category} className="group" open={!isCompletedList}>
+                        <summary className="font-bold text-xl text-violet-700 dark:text-violet-400 cursor-pointer list-none flex items-center justify-between group/summary">
+                            <div className="flex items-center">
+                                <span className="transform transition-transform duration-200 group-open:rotate-90 text-violet-400 dark:text-violet-500 mr-2">&#9656;</span>
+                                <span>{category.category}</span>
+                            </div>
+                            {!isShoppingMode && !isCompletedList && (
+                                <div className="opacity-0 group-hover/summary:opacity-100 transition-opacity">
+                                    <button onClick={(e) => { e.preventDefault(); store.updateShoppingListCategoryOrder(category.category, 'up'); }} title={t('reorderCategoryUp')} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-gray-700"><ArrowUpIcon /></button>
+                                    <button onClick={(e) => { e.preventDefault(); store.updateShoppingListCategoryOrder(category.category, 'down'); }} title={t('reorderCategoryDown')} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-gray-700"><ArrowDownIcon /></button>
+                                </div>
+                            )}
+                        </summary>
+                        <ul className="mt-4 pl-6 border-l-2 border-violet-100 dark:border-gray-700 space-y-3">
+                            {category.items.map((item, itemIndex) => {
+                                const key = `${category.category}-${item.item}`;
+                                const isEditing = editingItem?.catIndex === originalCatIndex && editingItem?.itemIndex === itemIndex;
+                                return (
+                                    <li key={itemIndex} className="flex items-center group/item shopping-list-item-container">
+                                        <input type="checkbox" id={`item-${catIndex}-${itemIndex}`} className="shopping-list-item-checkbox h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500 cursor-pointer bg-transparent dark:bg-gray-600 flex-shrink-0" onChange={() => handleCheck(item, category.category)} checked={checkedItems.has(key)} aria-labelledby={`label-item-${catIndex}-${itemIndex}`} />
+                                        {isEditing ? (
+                                            <div className="ml-3 flex-grow flex items-center gap-2">
+                                                <input type="text" value={editingItem.item} onChange={(e) => setEditingItem({...editingItem, item: e.target.value})} className="p-1 rounded bg-white dark:bg-gray-700 border border-violet-300 dark:border-violet-500 w-full" />
+                                                <input type="number" value={editingItem.quantityValue} onChange={(e) => setEditingItem({...editingItem, quantityValue: e.target.value})} className="p-1 rounded bg-white dark:bg-gray-700 border border-violet-300 dark:border-violet-500 w-20" />
+                                                <UnitPicker value={editingItem.quantityUnit} onChange={(unit) => setEditingItem({...editingItem, quantityUnit: unit})} />
+                                                <button onClick={handleSaveEdit} className="p-1 text-green-500 hover:bg-green-100 dark:hover:bg-gray-600 rounded-full"><CheckIcon /></button>
+                                                <button onClick={handleCancelEdit} className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-gray-600 rounded-full"><CloseIcon /></button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div id={`label-item-${catIndex}-${itemIndex}`} className={`shopping-list-item-label ml-3 flex-grow cursor-pointer ${checkedItems.has(key) ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                                                    <span className="font-medium">{item.item}</span>: <span className="text-gray-600 dark:text-gray-400">{formatQuantity(item.quantityValue, item.quantityUnit)}</span>
+                                                </div>
+                                                {!isShoppingMode && (
+                                                    <div className="flex items-center opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                                        <button onClick={() => handleStartEdit(originalCatIndex, itemIndex, item)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full" title={t('editItemTitle')}><EditIcon /></button>
+                                                        <button onClick={() => store.deleteShoppingListItem(category.category, itemIndex)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full" title={t('deleteItemTitle')}><TrashIcon /></button>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </li>
+                                );
+                            })}
+                            {!isShoppingMode && addingToCategory === category.category && (
+                                <li className="flex items-center gap-2">
+                                    <div className="flex-grow flex items-center gap-2">
+                                        <input type="text" placeholder={t('ingredientPlaceholder')} value={newItem.item} onChange={(e) => setNewItem({...newItem, item: e.target.value})} className="p-1 rounded bg-white dark:bg-gray-700 border border-violet-300 dark:border-violet-500 w-full" />
+                                        <input type="number" placeholder={t('quantityPlaceholder')} value={newItem.quantityValue} onChange={(e) => setNewItem({...newItem, quantityValue: e.target.value})} className="p-1 rounded bg-white dark:bg-gray-700 border border-violet-300 dark:border-violet-500 w-20" />
+                                        <UnitPicker value={newItem.quantityUnit} onChange={(unit) => setNewItem({...newItem, quantityUnit: unit})} />
+                                        <button onClick={() => handleAddItem(category.category)} className="p-1 text-green-500 hover:bg-green-100 dark:hover:bg-gray-600 rounded-full"><CheckIcon /></button>
+                                        <button onClick={() => setAddingToCategory(null)} className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-gray-600 rounded-full"><CloseIcon /></button>
+                                    </div>
+                                </li>
+                            )}
+                            {!isShoppingMode && !isCompletedList && (
+                                <li>
+                                    <button onClick={() => setAddingToCategory(category.category)} className="mt-2 flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300">
+                                        <PlusCircleIcon /> {t('addItem')}
+                                    </button>
+                                </li>
+                            )}
+                        </ul>
+                    </details>
+                );
+            })}
+        </div>
+    );
+    
+    // In shopping mode, separate checked and unchecked items. In normal mode, show all.
+    const uncheckedCategories = isShoppingMode ? shoppingList.map(cat => ({ ...cat, items: cat.items.filter(item => !checkedItems.has(`${cat.category}-${item.item}`)) })) : [];
+    const checkedCategories = isShoppingMode ? shoppingList.map(cat => ({ ...cat, items: cat.items.filter(item => checkedItems.has(`${cat.category}-${item.item}`)) })) : [];
+    const hasCheckedItems = isShoppingMode && checkedCategories.some(cat => cat.items.length > 0);
+
+    const categoriesToRender = isShoppingMode ? uncheckedCategories : shoppingList;
+
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-4xl mx-auto">
+        <div className={`bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-4xl mx-auto ${isShoppingMode ? 'shopping-mode' : ''}`}>
             {!shoppingListManaged && (
                  <div className="bg-blue-100 dark:bg-blue-900/30 border-l-4 border-blue-500 text-blue-800 dark:text-blue-200 p-4 rounded-md mb-6">
                     <p className="font-bold">{t('shoppingListSetupTitle')}</p>
@@ -111,143 +203,65 @@ const ShoppingListView: React.FC = observer(() => {
                         <p className="font-bold">{t('shoppingListStaleTitle')}</p>
                         <p>{t('shoppingListStaleMessage')}</p>
                     </div>
-                    <button 
-                        onClick={() => recalculateShoppingList()}
-                        disabled={recalculating}
-                        className="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors flex-shrink-0 disabled:bg-yellow-400 disabled:cursor-not-allowed"
-                    >
+                    <button onClick={() => recalculateShoppingList()} disabled={recalculating} className="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors flex-shrink-0 disabled:bg-yellow-400 disabled:cursor-not-allowed">
                         {recalculating ? t('recalculating') : t('recalculateList')}
                     </button>
                 </div>
             )}
-            <div className="flex justify-between items-center border-b dark:border-gray-700 pb-4 mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b dark:border-gray-700 pb-4 mb-6 gap-4">
                 <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{t('shoppingListTitle')}</h2>
-                {checkedItems.size > 0 && (
-                    <button onClick={handleMoveToPantry} className="bg-violet-600 text-white font-semibold px-4 py-2 rounded-full hover:bg-violet-700 transition-colors shadow-md flex items-center">
-                        <PantryIcon /> {t('moveToPantry')}
-                    </button>
-                )}
-            </div>
-            {shoppingList.length > 0 && (
-                <div className="mb-4 flex items-center p-2 bg-slate-50 dark:bg-gray-700/50 rounded-lg">
-                    <input
-                        type="checkbox"
-                        id="select-all"
-                        className="h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500 cursor-pointer"
-                        onChange={handleSelectAllToggle}
-                        checked={totalItemsCount > 0 && checkedItems.size === totalItemsCount}
-                        ref={el => {
-                            if (el) {
-                                el.indeterminate = checkedItems.size > 0 && checkedItems.size < totalItemsCount;
-                            }
-                        }}
-                    />
-                    <label htmlFor="select-all" className="ml-3 font-semibold text-gray-700 dark:text-gray-300 cursor-pointer">
-                        {t('selectAll')}
-                    </label>
+                <div className="flex items-center gap-2 self-end sm:self-center">
+                    {showCopiedMessage && <span className="text-sm text-green-600 dark:text-green-400 animate-pulse">{t('listCopied')}</span>}
+                    <button onClick={handleShare} title={t('shareList')} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-gray-700"><ShareIcon /></button>
+                    {checkedItems.size > 0 && (<button onClick={handleMoveToPantry} className="bg-violet-600 text-white font-semibold px-4 py-2 rounded-full hover:bg-violet-700 transition-colors shadow-md flex items-center"><PantryIcon /> <span className="ml-2">{t('moveToPantry')}</span></button>)}
                 </div>
-            )}
+            </div>
+
+            <div className="flex items-center justify-end mb-6">
+                <label htmlFor="shopping-mode-toggle" className="font-semibold text-gray-700 dark:text-gray-300 mr-3">{t('shoppingMode')}</label>
+                <button onClick={() => setIsShoppingMode(!isShoppingMode)} id="shopping-mode-toggle" className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isShoppingMode ? 'bg-violet-600' : 'bg-gray-200 dark:bg-gray-600'}`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isShoppingMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+            </div>
+            
             {shoppingList.length === 0 ? (
                 <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-green-100 dark:bg-green-900/40 rounded-full mx-auto flex items-center justify-center mb-4">
-                        <CheckIcon />
-                    </div>
+                    <div className="w-16 h-16 bg-green-100 dark:bg-green-900/40 rounded-full mx-auto flex items-center justify-center mb-4"><CheckIcon /></div>
                     <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">{t('shoppingListEmptyTitle')}</h3>
                     <p className="text-gray-500 dark:text-gray-400 mt-2 mb-6">{t('shoppingListEmptyMessage')}</p>
-                    <button 
-                        onClick={() => store.setActiveTab('daily')}
-                        className="bg-violet-600 text-white font-semibold px-6 py-3 rounded-full hover:bg-violet-700 transition-colors shadow-md flex items-center mx-auto"
-                    >
-                        <TodayIcon />
-                        <span className="ml-2">{t('shoppingListEmptyButton')}</span>
+                    <button onClick={() => store.setActiveTab('daily')} className="bg-violet-600 text-white font-semibold px-6 py-3 rounded-full hover:bg-violet-700 transition-colors shadow-md flex items-center mx-auto">
+                        <TodayIcon /><span className="ml-2">{t('shoppingListEmptyButton')}</span>
                     </button>
                 </div>
             ) : (
-                <div className="space-y-6">
-                    {shoppingList.map((category, catIndex) => {
-                        const categoryItemsKeys = category.items.map(item => `${category.category}-${item.item}`);
-                        const checkedInCategoryCount = categoryItemsKeys.filter(key => checkedItems.has(key)).length;
-                        const isCategoryChecked = category.items.length > 0 && checkedInCategoryCount === category.items.length;
-                        const isCategoryIndeterminate = checkedInCategoryCount > 0 && checkedInCategoryCount < category.items.length;
-
-                        return (
-                        <details key={catIndex} className="group" open>
-                            <summary className="font-bold text-xl text-violet-700 dark:text-violet-400 cursor-pointer list-none flex items-center">
-                                 <input
-                                    type="checkbox"
-                                    className="h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500 cursor-pointer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    onChange={() => handleCategoryToggle(category)}
-                                    checked={isCategoryChecked}
-                                    ref={el => { if (el) { el.indeterminate = isCategoryIndeterminate; } }}
-                                    aria-label={`Select all items in ${category.category}`}
-                                 />
-                                 <span className="transform transition-transform duration-200 group-open:rotate-90 text-violet-400 dark:text-violet-500 ml-2">&#9656;</span>
-                                 <span className="ml-2">{category.category}</span>
-                            </summary>
-                            <ul className="mt-4 pl-6 border-l-2 border-violet-100 dark:border-gray-700 space-y-3">
-                                {category.items.map((item, itemIndex) => {
-                                    const key = `${category.category}-${item.item}`;
-                                    const isEditing = editingItem?.catIndex === catIndex && editingItem?.itemIndex === itemIndex;
-                                    return (
-                                        <li key={itemIndex} className="flex items-center group/item">
-                                            <input type="checkbox" id={`item-${catIndex}-${itemIndex}`} className="h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500 cursor-pointer bg-transparent dark:bg-gray-600 flex-shrink-0" onChange={() => handleCheck(item, category.category)} checked={checkedItems.has(key)} aria-labelledby={`label-item-${catIndex}-${itemIndex}`} />
-                                            {isEditing ? (
-                                                <div className="ml-3 flex-grow flex items-center gap-2">
-                                                    <input type="text" value={editingItem.item} onChange={(e) => setEditingItem({...editingItem, item: e.target.value})} className="p-1 rounded bg-white dark:bg-gray-700 border border-violet-300 dark:border-violet-500 w-full" />
-                                                    <input type="text" value={editingItem.quantity} onChange={(e) => setEditingItem({...editingItem, quantity: e.target.value})} className="p-1 rounded bg-white dark:bg-gray-700 border border-violet-300 dark:border-violet-500 w-32" />
-                                                    <button onClick={handleSaveEdit} className="p-1 text-green-500 hover:bg-green-100 dark:hover:bg-gray-600 rounded-full"><CheckIcon /></button>
-                                                    <button onClick={handleCancelEdit} className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-gray-600 rounded-full"><CloseIcon /></button>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <div id={`label-item-${catIndex}-${itemIndex}`} className={`ml-3 flex-grow cursor-pointer ${checkedItems.has(key) ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
-                                                        <span className="font-medium">{item.item}</span>: <span className="text-gray-600 dark:text-gray-400">{item.quantity}</span>
-                                                    </div>
-                                                    <div className="flex items-center opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                                        <button onClick={() => handleStartEdit(catIndex, itemIndex, item)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full" title={t('editItemTitle')}><EditIcon /></button>
-                                                        <button onClick={() => store.deleteShoppingListItem(category.category, itemIndex)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full" title={t('deleteItemTitle')}><TrashIcon /></button>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </li>
-                                    );
-                                })}
-                                {addingToCategory === category.category ? (
-                                    <li className="flex items-center gap-2">
-                                        <div className="flex-grow flex items-center gap-2">
-                                            <input type="text" placeholder={t('ingredientPlaceholder')} value={newItem.item} onChange={(e) => setNewItem({...newItem, item: e.target.value})} className="p-1 rounded bg-white dark:bg-gray-700 border border-violet-300 dark:border-violet-500 w-full" />
-                                            <input type="text" placeholder={t('quantityPlaceholder')} value={newItem.quantity} onChange={(e) => setNewItem({...newItem, quantity: e.target.value})} className="p-1 rounded bg-white dark:bg-gray-700 border border-violet-300 dark:border-violet-500 w-32" />
-                                            <button onClick={() => handleAddItem(category.category)} className="p-1 text-green-500 hover:bg-green-100 dark:hover:bg-gray-600 rounded-full"><CheckIcon /></button>
-                                            <button onClick={() => setAddingToCategory(null)} className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-gray-600 rounded-full"><CloseIcon /></button>
-                                        </div>
-                                    </li>
-                                ) : (
-                                    <li>
-                                        <button onClick={() => setAddingToCategory(category.category)} className="mt-2 flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300">
-                                            <PlusCircleIcon /> {t('addItem')}
-                                        </button>
-                                    </li>
-                                )}
-                            </ul>
+                <>
+                    {renderCategoryList(categoriesToRender)}
+                    {hasCheckedItems && (
+                        <details className="mt-8" open>
+                            <summary className="font-bold text-xl text-gray-500 dark:text-gray-400 cursor-pointer">{t('completedItems')} ({checkedItems.size})</summary>
+                            <div className="mt-4 opacity-60">
+                                {renderCategoryList(checkedCategories, true)}
+                            </div>
                         </details>
-                        );
-                    })}
+                    )}
+                </>
+            )}
+            
+            {!isShoppingMode && (
+                <div className="mt-8 border-t dark:border-gray-700 pt-6">
+                    {showNewCategoryInput ? (
+                        <div className="flex items-center gap-2">
+                            <input type="text" placeholder={t('newCategoryPrompt')} value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="p-2 rounded bg-white dark:bg-gray-700 border border-violet-300 dark:border-violet-500 flex-grow" autoFocus />
+                            <button onClick={handleAddCategory} className="p-1.5 text-green-500 hover:bg-green-100 dark:hover:bg-gray-600 rounded-full"><CheckIcon /></button>
+                            <button onClick={() => setShowNewCategoryInput(false)} className="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-gray-600 rounded-full"><CloseIcon /></button>
+                        </div>
+                    ) : (
+                        <button onClick={() => setShowNewCategoryInput(true)} className="bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-slate-200 font-semibold px-4 py-2 rounded-full hover:bg-slate-200 dark:hover:bg-gray-600 transition-colors shadow-sm flex items-center">
+                           <PlusCircleIcon /> <span className="ml-2">{t('addCategory')}</span>
+                        </button>
+                    )}
                 </div>
             )}
-             <div className="mt-8 border-t dark:border-gray-700 pt-6">
-                {showNewCategoryInput ? (
-                    <div className="flex items-center gap-2">
-                        <input type="text" placeholder={t('newCategoryPrompt')} value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="p-2 rounded bg-white dark:bg-gray-700 border border-violet-300 dark:border-violet-500 flex-grow" autoFocus />
-                        <button onClick={handleAddCategory} className="p-1.5 text-green-500 hover:bg-green-100 dark:hover:bg-gray-600 rounded-full"><CheckIcon /></button>
-                        <button onClick={() => setShowNewCategoryInput(false)} className="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-gray-600 rounded-full"><CloseIcon /></button>
-                    </div>
-                ) : (
-                    <button onClick={() => setShowNewCategoryInput(true)} className="bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-slate-200 font-semibold px-4 py-2 rounded-full hover:bg-slate-200 dark:hover:bg-gray-600 transition-colors shadow-sm flex items-center">
-                       <PlusCircleIcon /> <span className="ml-2">{t('addCategory')}</span>
-                    </button>
-                )}
-            </div>
         </div>
     );
 });

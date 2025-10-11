@@ -51,19 +51,19 @@ const MOCK_MEAL_PLAN_DATA = {
         })),
     ],
     shoppingList: [
-        { category: 'Proteine (Carne, Pesce, Legumi)', items: [{ item: 'Filetto di Salmone', quantity: '150g' }, { item: 'Petto di Pollo', quantity: '900g' }] },
-        { category: 'Carboidrati e Cereali', items: [{ item: 'Riso Integrale', quantity: '80g' }, { item: 'Fette Biscottate Integrali', quantity: '24 fette' }, { item: 'Pasta Integrale', quantity: '480g' }] },
-        { category: 'Latticini e Derivati', items: [{ item: 'Yogurt Greco', quantity: '150g' }] },
-        { category: 'Verdura e Ortaggi', items: [{ item: 'Pomodorini', quantity: '100g' }, { item: 'Asparagi', quantity: '200g' }, { item: 'Verdure Miste', quantity: '1.5kg' }] },
-        { category: 'Condimenti e Spezie', items: [{ item: 'Miele', quantity: '1 cucchiaino' }, { item: 'Pesto', quantity: '12 cucchiai' }] },
-        { category: 'Grassi e Frutta Secca', items: [{ item: 'Noci', quantity: '3' }] },
+        { category: 'Proteine (Carne, Pesce, Legumi)', items: [{ item: 'Filetto di Salmone', quantityValue: 150, quantityUnit: 'g' }, { item: 'Petto di Pollo', quantityValue: 900, quantityUnit: 'g' }] },
+        { category: 'Carboidrati e Cereali', items: [{ item: 'Riso Integrale', quantityValue: 80, quantityUnit: 'g' }, { item: 'Fette Biscottate Integrali', quantityValue: 24, quantityUnit: 'fetta/e' }, { item: 'Pasta Integrale', quantityValue: 480, quantityUnit: 'g' }] },
+        { category: 'Latticini e Derivati', items: [{ item: 'Yogurt Greco', quantityValue: 150, quantityUnit: 'g' }] },
+        { category: 'Verdura e Ortaggi', items: [{ item: 'Pomodorini', quantityValue: 100, quantityUnit: 'g' }, { item: 'Asparagi', quantityValue: 200, quantityUnit: 'g' }, { item: 'Verdure Miste', quantityValue: 1.5, quantityUnit: 'kg' }] },
+        { category: 'Condimenti e Spezie', items: [{ item: 'Miele', quantityValue: 1, quantityUnit: 'cucchiaino/i' }, { item: 'Pesto', quantityValue: 12, quantityUnit: 'cucchiaio/i' }] },
+        { category: 'Grassi e Frutta Secca', items: [{ item: 'Noci', quantityValue: 3, quantityUnit: 'pezzo/i' }] },
     ],
     pantry: [
-        { item: 'Olio EVO', quantity: '1 bottiglia', originalCategory: 'Condimenti e Spezie' },
-        { item: 'Mais', quantity: '1 scatoletta', originalCategory: 'Dispensa (Secchi, Scatolati, Pasta, Cereali)' },
-        { item: 'Marmellata', quantity: '1 vasetto', originalCategory: 'Condimenti e Spezie' },
-        { item: 'Caffè', quantity: '1 confezione', originalCategory: 'Bevande' },
-        { item: 'Sale', quantity: '1kg', originalCategory: 'Condimenti e Spezie' }
+        { item: 'Olio EVO', quantityValue: 1, quantityUnit: 'bottiglia/e', originalCategory: 'Condimenti e Spezie' },
+        { item: 'Mais', quantityValue: 1, quantityUnit: 'scatoletta/e', originalCategory: 'Dispensa (Secchi, Scatolati, Pasta, Cereali)' },
+        { item: 'Marmellata', quantityValue: 1, quantityUnit: 'vasetto/i', originalCategory: 'Condimenti e Spezie' },
+        { item: 'Caffè', quantityValue: 1, quantityUnit: 'confezione/i', originalCategory: 'Bevande' },
+        { item: 'Sale', quantityValue: 1, quantityUnit: 'kg', originalCategory: 'Condimenti e Spezie' }
     ]
 };
 
@@ -130,10 +130,42 @@ export class MealPlanStore {
 
             if (savedState) {
                 const data = savedState.value;
+
+                // Migration for quantity structure
+                const migratedPantry = (data.pantry || []).map((p: any) => {
+                    if (p.quantity && p.quantityValue === undefined) {
+                        const parsed = parseQuantity(p.quantity);
+                        p.quantityValue = parsed?.value ?? null;
+                        p.quantityUnit = parsed?.unit ?? 'unità';
+                    }
+                    if (p.originalQuantity && p.originalQuantityValue === undefined) {
+                        const parsed = parseQuantity(p.originalQuantity);
+                        p.originalQuantityValue = parsed?.value ?? null;
+                        p.originalQuantityUnit = parsed?.unit ?? 'unità';
+                    }
+                    delete p.quantity;
+                    delete p.originalQuantity;
+                    return p as PantryItem;
+                });
+
+                const migratedShoppingList = (data.shoppingList || []).map((cat: any) => ({
+                    ...cat,
+                    items: cat.items.map((item: any) => {
+                        if (item.quantity && item.quantityValue === undefined) {
+                            const parsed = parseQuantity(item.quantity);
+                            item.quantityValue = parsed?.value ?? null;
+                            item.quantityUnit = parsed?.unit ?? 'unità';
+                        }
+                        delete item.quantity;
+                        return item as ShoppingListItem;
+                    })
+                }));
+
+
                 this.masterMealPlan = data.masterMealPlan || [];
                 this.presetMealPlan = data.presetMealPlan || [];
-                this.shoppingList = data.shoppingList || [];
-                this.pantry = data.pantry || [];
+                this.shoppingList = (migratedShoppingList || []).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+                this.pantry = migratedPantry || [];
                 this.archivedPlans = data.archivedPlans || [];
                 this.currentPlanName = data.currentPlanName || 'My Diet Plan';
                 this.theme = data.theme || 'light';
@@ -210,7 +242,7 @@ export class MealPlanStore {
         
         this.masterMealPlan = sanitizedPlan;
         this.presetMealPlan = JSON.parse(JSON.stringify(sanitizedPlan));
-        this.shoppingList = planData.shoppingList;
+        this.shoppingList = planData.shoppingList.map((cat, index) => ({...cat, sortOrder: index}));
         this.pantry = planData.pantry;
         this.currentPlanName = planData.planName;
         
@@ -752,7 +784,7 @@ export class MealPlanStore {
 
         runInAction(() => {
             this.masterMealPlan = result.weeklyPlan.map((day: DayPlan) => ({ ...day, meals: day.meals.map((meal: Meal) => ({ ...meal, done: false, items: meal.items.map(item => ({ ...item, used: false })) })) }));
-            this.shoppingList = result.shoppingList;
+            this.shoppingList = result.shoppingList.map((cat, index) => ({ ...cat, sortOrder: index }));
             this.pantry = [];
         });
 
@@ -934,7 +966,7 @@ export class MealPlanStore {
         this.planToSet = restoredPlan;
         this.status = AppStatus.AWAITING_DATES;
         this.currentPlanName = planToRestore.name;
-        this.shoppingList = planToRestore.shoppingList;
+        this.shoppingList = (planToRestore.shoppingList || []).map((cat, index) => ({...cat, sortOrder: index}));
         this.pantry = [];
         this.archivedPlans = this.archivedPlans.filter(p => p.id !== planId);
     });
@@ -942,20 +974,22 @@ export class MealPlanStore {
 
   moveShoppingItemToPantry = (itemToMove: ShoppingListItem, categoryName: string) => {
     const existingPantryItem = this.pantry.find(p => p.item.toLowerCase() === itemToMove.item.toLowerCase());
-    if (existingPantryItem) {
-        const pantryQuantity = parseQuantity(existingPantryItem.quantity);
-        const itemQuantity = parseQuantity(itemToMove.quantity);
-        if (pantryQuantity && itemQuantity && pantryQuantity.unit === itemQuantity.unit) {
-            pantryQuantity.value += itemQuantity.value;
-            existingPantryItem.quantity = formatQuantity(pantryQuantity);
-        } else {
-            existingPantryItem.quantity += `, ${itemToMove.quantity}`;
-        }
-        // When merging, the "original" quantity for restocking should be the size of the new package just bought.
-        existingPantryItem.originalQuantity = itemToMove.quantity;
+    
+    if (existingPantryItem && itemToMove.quantityValue !== null && existingPantryItem.quantityValue !== null && singularize(existingPantryItem.quantityUnit) === singularize(itemToMove.quantityUnit)) {
+        existingPantryItem.quantityValue += itemToMove.quantityValue;
+        existingPantryItem.originalQuantityValue = itemToMove.quantityValue;
+        existingPantryItem.originalQuantityUnit = itemToMove.quantityUnit;
     } else {
-        this.pantry.push({ ...itemToMove, originalCategory: categoryName, originalQuantity: itemToMove.quantity });
+        this.pantry.push({
+            item: itemToMove.item,
+            quantityValue: itemToMove.quantityValue,
+            quantityUnit: itemToMove.quantityUnit,
+            originalCategory: categoryName,
+            originalQuantityValue: itemToMove.quantityValue,
+            originalQuantityUnit: itemToMove.quantityUnit
+        });
     }
+    
     const category = this.shoppingList.find(c => c.category === categoryName);
     if (category) {
         category.items = category.items.filter(i => i.item !== itemToMove.item);
@@ -963,71 +997,74 @@ export class MealPlanStore {
             this.shoppingList = this.shoppingList.filter(c => c.category !== categoryName);
         }
     }
+    
     runInAction(() => { this.shoppingListManaged = true; });
     this.saveToDB();
     this.updateAchievements();
   }
 
+
   movePantryItemToShoppingList = (pantryItemToMove: PantryItem) => {
     runInAction(() => {
-        const { originalCategory, ...shoppingItemToMove } = pantryItemToMove;
+        const { originalCategory, quantityValue, quantityUnit, ...shoppingItemData } = pantryItemToMove;
         
+        const shoppingItemToMove: ShoppingListItem = {
+            item: shoppingItemData.item,
+            quantityValue,
+            quantityUnit
+        };
+
         const categoryIndex = this.shoppingList.findIndex(c => c.category === originalCategory);
         
         if (categoryIndex === -1) {
-            // Category does not exist, create it and add the item.
-            // This re-assignment is key for MobX reactivity.
             this.shoppingList = [
                 ...this.shoppingList,
-                { category: originalCategory, items: [shoppingItemToMove] }
+                { category: originalCategory, items: [shoppingItemToMove], sortOrder: this.shoppingList.length }
             ];
         } else {
-            // Category exists, find if item exists to merge or add.
             const category = this.shoppingList[categoryIndex];
             const existingShoppingItem = category.items.find(i => i.item.toLowerCase() === shoppingItemToMove.item.toLowerCase());
 
-            if (existingShoppingItem) {
-                // Item exists, merge quantity.
-                const shoppingQuantity = parseQuantity(existingShoppingItem.quantity);
-                const itemQuantity = parseQuantity(shoppingItemToMove.quantity);
-                if (shoppingQuantity && itemQuantity && shoppingQuantity.unit === itemQuantity.unit) {
-                    shoppingQuantity.value += itemQuantity.value;
-                    existingShoppingItem.quantity = formatQuantity(shoppingQuantity);
-                } else {
-                    existingShoppingItem.quantity += `, ${shoppingItemToMove.quantity}`;
-                }
+            if (existingShoppingItem && existingShoppingItem.quantityValue !== null && shoppingItemToMove.quantityValue !== null && singularize(existingShoppingItem.quantityUnit) === singularize(shoppingItemToMove.quantityUnit)) {
+                existingShoppingItem.quantityValue += shoppingItemToMove.quantityValue;
             } else {
-                // Item does not exist, add it. This mutation is fine because the category object is observable.
                 category.items.push(shoppingItemToMove);
             }
         }
 
-        // Remove item from pantry by creating a new array.
         this.pantry = this.pantry.filter(p => p.item.toLowerCase() !== pantryItemToMove.item.toLowerCase());
     });
     this.saveToDB();
   }
 
-  updatePantryItemQuantity = (itemName: string, newQuantity: string) => { const item = this.pantry.find(p => p.item === itemName); if (item) { item.quantity = newQuantity; this.saveToDB(); } }
+
+  updatePantryItem = (itemName: string, updates: Partial<PantryItem>) => {
+    const item = this.pantry.find(p => p.item === itemName);
+    if (item) {
+        Object.assign(item, updates);
+        this.saveToDB();
+    }
+  }
+
+  updatePantryItemLowStockThreshold = (itemName: string, newThreshold: string) => { const item = this.pantry.find(p => p.item === itemName); if (item) { item.lowStockThreshold = newThreshold; this.saveToDB(); } }
   
-  addPantryItem = (itemName: string, quantity: string, category: string) => {
+  addPantryItem = (itemName: string, quantityValue: number | null, quantityUnit: string, category: string) => {
     const trimmedItemName = itemName.trim();
-    if (!trimmedItemName || !quantity.trim() || !category.trim()) return;
+    if (!trimmedItemName || quantityValue === null || !category.trim()) return;
     
     const existingPantryItem = this.pantry.find(p => p.item.toLowerCase() === trimmedItemName.toLowerCase());
     
-    if (existingPantryItem) {
-        const pantryQuantity = parseQuantity(existingPantryItem.quantity);
-        const itemQuantity = parseQuantity(quantity);
-        
-        if (pantryQuantity && itemQuantity && pantryQuantity.unit === itemQuantity.unit) {
-            pantryQuantity.value += itemQuantity.value;
-            existingPantryItem.quantity = formatQuantity(pantryQuantity);
-        } else {
-            existingPantryItem.quantity += `, ${quantity}`;
-        }
+    if (existingPantryItem && existingPantryItem.quantityValue !== null && quantityValue !== null && singularize(existingPantryItem.quantityUnit) === singularize(quantityUnit)) {
+        existingPantryItem.quantityValue += quantityValue;
     } else {
-        this.pantry.push({ item: trimmedItemName, quantity: quantity, originalCategory: category });
+        this.pantry.push({ 
+            item: trimmedItemName, 
+            quantityValue, 
+            quantityUnit, 
+            originalCategory: category,
+            originalQuantityValue: quantityValue,
+            originalQuantityUnit: quantityUnit,
+        });
     }
     this.saveToDB();
   }
@@ -1062,14 +1099,61 @@ export class MealPlanStore {
   addShoppingListCategory = (categoryName: string) => {
     const trimmedName = categoryName.trim();
     if (trimmedName && !this.shoppingList.some(c => c.category.toLowerCase() === trimmedName.toLowerCase())) {
-        this.shoppingList.push({ category: trimmedName, items: [] });
+        this.shoppingList.push({ category: trimmedName, items: [], sortOrder: this.shoppingList.length });
         this.saveToDB();
     }
   }
+
+  updateShoppingListCategoryOrder = (categoryName: string, direction: 'up' | 'down') => {
+      const index = this.shoppingList.findIndex(c => c.category === categoryName);
+      if (index === -1) return;
+
+      const list = toJS(this.shoppingList);
+      if (direction === 'up' && index > 0) {
+          [list[index - 1], list[index]] = [list[index], list[index - 1]];
+      } else if (direction === 'down' && index < list.length - 1) {
+          [list[index], list[index + 1]] = [list[index + 1], list[index]];
+      }
+      
+      runInAction(() => {
+          this.shoppingList = list.map((cat, i) => ({ ...cat, sortOrder: i }));
+      });
+      this.saveToDB();
+  }
   
+  private addPantryItemToShoppingList = (pantryItem: PantryItem) => {
+    const { originalCategory } = pantryItem;
+    const itemToRestock: ShoppingListItem = {
+        item: pantryItem.item,
+        quantityValue: pantryItem.originalQuantityValue || pantryItem.quantityValue,
+        quantityUnit: pantryItem.originalQuantityUnit || pantryItem.quantityUnit,
+    };
+
+    // Prevent duplicates
+    const alreadyInList = this.shoppingList.some(cat =>
+        cat.items.some(item => item.item.toLowerCase() === pantryItem.item.toLowerCase())
+    );
+    if (alreadyInList) {
+        return;
+    }
+
+    runInAction(() => {
+        const categoryIndex = this.shoppingList.findIndex(c => c.category === originalCategory);
+        if (categoryIndex === -1) {
+            this.shoppingList.push({
+                category: originalCategory,
+                items: [itemToRestock],
+                sortOrder: this.shoppingList.length
+            });
+        } else {
+            this.shoppingList[categoryIndex].items.push(itemToRestock);
+        }
+    });
+  }
+
   private _updatePantryOnItemToggle = (mealItem: MealItem, isConsumed: boolean) => {
     const consumedQty = parseQuantity(mealItem.fullDescription);
-    if (!consumedQty) {
+    if (!consumedQty || consumedQty.value === null) {
         console.warn(`Could not parse quantity for "${mealItem.fullDescription}", skipping pantry update.`);
         return;
     }
@@ -1083,83 +1167,43 @@ export class MealPlanStore {
     }
 
     runInAction(() => {
-        if (isConsumed) { // Deduct from pantry
-            const pantryItem = this.pantry[pantryIndex];
-            const pantryQuantities = pantryItem.quantity.split(',').map(s => s.trim());
-            let deducted = false;
+        let pantryItem = this.pantry[pantryIndex];
+        
+        if (isConsumed) {
+            if (!pantryItem) return;
+            
+            if (pantryItem.quantityValue !== null && singularize(pantryItem.quantityUnit) === singularize(consumedQty.unit)) {
+                const newPantryValue = pantryItem.quantityValue - consumedQty.value;
 
-            const updatedQuantities = pantryQuantities.map(pantryQtyStr => {
-                if (deducted) return pantryQtyStr;
-
-                const pantryQty = parseQuantity(pantryQtyStr);
-                const unitsMatch = pantryQty && (singularize(pantryQty.unit) === singularize(consumedQty.unit));
-
-                if (unitsMatch) {
-                    const newPantryValue = pantryQty.value - consumedQty.value;
-                    const roundedNewPantryValue = Math.round(newPantryValue * 100) / 100;
-                    
-                    deducted = true;
-                    if (roundedNewPantryValue > 0) {
-                        return formatQuantity({ value: roundedNewPantryValue, unit: pantryQty.unit });
-                    }
-                    return null; // This quantity part is depleted
-                }
-                return pantryQtyStr;
-            }).filter((q): q is string => q !== null);
-
-            if (!deducted) {
-                console.warn(`Could not deduct "${mealItem.fullDescription}" from pantry item "${pantryItem.item}" with quantity "${pantryItem.quantity}". Units might not match.`);
-                return;
-            }
-
-            if (updatedQuantities.length === 0) {
-                // Item is fully depleted, move to shopping list
-                const itemToRestock: ShoppingListItem = {
-                    item: pantryItem.item,
-                    quantity: pantryItem.originalQuantity || pantryItem.quantity,
-                };
-                const { originalCategory } = pantryItem;
-                const category = this.shoppingList.find(c => c.category === originalCategory);
-                if (category) {
-                    category.items.push(itemToRestock);
+                if (newPantryValue <= 0) {
+                     this.addPantryItemToShoppingList(pantryItem);
+                     this.pantry.splice(pantryIndex, 1);
                 } else {
-                    this.shoppingList.push({ category: originalCategory, items: [itemToRestock] });
+                    pantryItem.quantityValue = newPantryValue;
+                    const thresholdStr = pantryItem.lowStockThreshold;
+                    if (thresholdStr && thresholdStr.trim() !== '') {
+                        const thresholdQty = parseQuantity(thresholdStr);
+                        if (thresholdQty && thresholdQty.value !== null && singularize(pantryItem.quantityUnit) === singularize(thresholdQty.unit) && pantryItem.quantityValue <= thresholdQty.value) {
+                            this.addPantryItemToShoppingList(pantryItem);
+                        }
+                    }
                 }
-                this.pantry.splice(pantryIndex, 1);
             } else {
-                pantryItem.quantity = updatedQuantities.join(', ');
+                console.warn(`Could not deduct "${mealItem.fullDescription}" from pantry item "${pantryItem.item}". Units might not match: Pantry(${pantryItem.quantityUnit}) vs Consumed(${consumedQty.unit})`);
             }
-
         } else { // Add back to pantry
-            let pantryItem = this.pantry[pantryIndex];
-
             if (pantryItem) {
-                const pantryQuantities = pantryItem.quantity.split(',').map(s => s.trim());
-                let added = false;
-
-                const restoredQuantities = pantryQuantities.map(pantryQtyStr => {
-                    if (added) return pantryQtyStr;
-                    const pantryQty = parseQuantity(pantryQtyStr);
-                    const unitsMatch = pantryQty && (singularize(pantryQty.unit) === singularize(consumedQty.unit));
-                    if (unitsMatch) {
-                        const newValue = pantryQty.value + consumedQty.value;
-                        added = true;
-                        return formatQuantity({ value: newValue, unit: pantryQty.unit });
-                    }
-                    return pantryQtyStr;
-                });
-
-                if (added) {
-                    pantryItem.quantity = restoredQuantities.join(', ');
-                } else {
-                    pantryItem.quantity = [...pantryQuantities, formatQuantity(consumedQty)].join(', ');
-                }
+                 if (pantryItem.quantityValue !== null && singularize(pantryItem.quantityUnit) === singularize(consumedQty.unit)) {
+                    pantryItem.quantityValue += consumedQty.value;
+                 } else {
+                    console.warn(`Could not add back "${mealItem.fullDescription}" to pantry item "${pantryItem.item}". Units mismatch.`);
+                 }
             } else {
-                // Item wasn't in pantry, add it back.
                 const category = categorizeIngredient(mealItem.ingredientName);
                 this.pantry.push({
                     item: mealItem.ingredientName,
-                    quantity: formatQuantity(consumedQty),
+                    quantityValue: consumedQty.value,
+                    quantityUnit: consumedQty.unit,
                     originalCategory: category
                 });
             }
@@ -1287,7 +1331,7 @@ export class MealPlanStore {
         if (result) {
             runInAction(() => {
                 this.masterMealPlan = result.weeklyPlan;
-                this.shoppingList = result.shoppingList;
+                this.shoppingList = result.shoppingList.map((cat, index) => ({ ...cat, sortOrder: index }));
                 this.saveToDB();
             });
         }
@@ -1322,7 +1366,7 @@ export class MealPlanStore {
             const sanitizedPlan = data.weeklyPlan.map(day => ({ ...day, meals: day.meals.map(meal => ({ ...meal, done: false, cheat: false, cheatMealDescription: undefined, actualNutrition: null, items: meal.items.map(item => ({...item, used: false})) })) }));
             runInAction(() => {
                 this.planToSet = sanitizedPlan;
-                this.shoppingList = data.shoppingList;
+                this.shoppingList = (data.shoppingList || []).map((cat, index) => ({ ...cat, sortOrder: index }));
                 this.pantry = data.pantry || [];
                 this.currentPlanName = data.planName || 'My Diet Plan';
                 this.status = AppStatus.AWAITING_DATES;
@@ -1367,7 +1411,7 @@ export class MealPlanStore {
             runInAction(() => {
                 this.pdfParseProgress = 80;
                 this.planToSet = weeklyPlan;
-                this.shoppingList = shoppingList;
+                this.shoppingList = shoppingList.map((cat, index) => ({ ...cat, sortOrder: index }));
                 this.status = AppStatus.AWAITING_DATES;
             });
         }
@@ -1417,7 +1461,7 @@ export class MealPlanStore {
         this._enrichPlanDataInBackground(this.masterMealPlan);
     } else {
         const shoppingList = generateShoppingListOffline(this.masterMealPlan);
-        runInAction(() => { this.shoppingList = shoppingList; });
+        runInAction(() => { this.shoppingList = shoppingList.map((cat, index) => ({ ...cat, sortOrder: index })); });
         this.saveToDB();
     }
   }
@@ -1502,6 +1546,53 @@ export class MealPlanStore {
     }
     return streak;
   }
+  
+  get expiredItems(): PantryItem[] {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return this.pantry
+        .filter(item => {
+            if (!item.expiryDate) return false;
+            const expiryDate = new Date(item.expiryDate);
+            expiryDate.setHours(0, 0, 0, 0);
+            return expiryDate < today;
+        })
+        .sort((a, b) => new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime());
+  }
+
+  get expiringSoonItems(): PantryItem[] {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(today.getDate() + 7);
+
+    return this.pantry
+      .filter(item => {
+        if (!item.expiryDate) return false;
+        const expiryDate = new Date(item.expiryDate);
+        expiryDate.setHours(0,0,0,0);
+        return expiryDate >= today && expiryDate <= sevenDaysFromNow;
+      })
+      .sort((a, b) => new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime());
+  }
+
+  get lowStockItems(): PantryItem[] {
+    return this.pantry.filter(item => {
+        if (!item.lowStockThreshold || item.quantityValue === null) return false;
+        
+        const threshold = parseQuantity(item.lowStockThreshold);
+        if (!threshold || threshold.value === null) return false;
+        
+        // Only compare if units are the same for simplicity
+        if (singularize(item.quantityUnit) === singularize(threshold.unit)) {
+            return item.quantityValue <= threshold.value;
+        }
+        
+        return false;
+    });
+  }
+
 
   updateAchievements = async () => {
     const earned: string[] = [];

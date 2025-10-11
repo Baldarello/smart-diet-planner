@@ -146,9 +146,18 @@ const translations = {
     deleteItemTitle: "Elimina Voce",
     editItemTitle: "Modifica Voce",
     quantityPlaceholder: "Quantità",
+    quantityValuePlaceholder: "Valore",
+    quantityUnitLabel: "Unità",
     selectAll: "Seleziona Tutto",
     shoppingListSetupTitle: "Prepara il tuo piano!",
     shoppingListSetupMessage: "Controlla la tua lista della spesa. Sposta gli articoli che hai già nella tua dispensa per iniziare.",
+    shoppingMode: "Modalità Spesa",
+    shareList: "Condividi Lista",
+    listCopied: "Lista copiata negli appunti!",
+    completedItems: "Articoli Acquistati",
+    reorderCategoryUp: "Sposta Su",
+    reorderCategoryDown: "Sposta Giù",
+    listShareTitle: "Lista della Spesa per {planName}",
 
 
     // PantryView.tsx
@@ -160,6 +169,11 @@ const translations = {
     selectCategoryPrompt: "Seleziona una categoria",
     newCategoryOption: "Crea nuova categoria...",
     uncategorized: "Altro",
+    pantryExpiryDate: "Data di Scadenza",
+    pantryLowStockThreshold: "Avviso Scorte Basse",
+    pantryThresholdPlaceholder: "es. 100",
+    itemExpiresSoon: "In scadenza!",
+    itemExpired: "Scaduto!",
 
     // ArchiveView.tsx
     archiveEmpty: "Archivio Vuoto",
@@ -299,6 +313,12 @@ const translations = {
     days: "giorni",
     hydration: "Idratazione",
     viewAllAchievements: "Mostra Tutti",
+    dashboardPantryAlerts: "Avvisi Dispensa",
+    dashboardExpiringSoon: "In Scadenza",
+    dashboardLowStock: "Scorte Basse",
+    dashboardNoAlerts: "La tua dispensa è in ordine!",
+    expiresOn: "Scade il {date}",
+    dashboardExpired: "Scaduti",
     
     // Achievements
     achievementFirstDayComplete: "Primo Giorno Andato!",
@@ -473,9 +493,18 @@ const translations = {
     deleteItemTitle: "Delete Item",
     editItemTitle: "Edit Item",
     quantityPlaceholder: "Quantity",
+    quantityValuePlaceholder: "Value",
+    quantityUnitLabel: "Unit",
     selectAll: "Select All",
     shoppingListSetupTitle: "Get your plan ready!",
     shoppingListSetupMessage: "Review your shopping list. Move any items you already have to your pantry to get started.",
+    shoppingMode: "Shopping Mode",
+    shareList: "Share List",
+    listCopied: "List copied to clipboard!",
+    completedItems: "Completed Items",
+    reorderCategoryUp: "Move Up",
+    reorderCategoryDown: "Move Down",
+    listShareTitle: "Shopping List for {planName}",
 
     // PantryView.tsx
     pantryTitle: "My Pantry",
@@ -486,6 +515,11 @@ const translations = {
     selectCategoryPrompt: "Select a category",
     newCategoryOption: "Create new category...",
     uncategorized: "Uncategorized",
+    pantryExpiryDate: "Expiry Date",
+    pantryLowStockThreshold: "Low Stock Alert",
+    pantryThresholdPlaceholder: "e.g., 100",
+    itemExpiresSoon: "Expires soon!",
+    itemExpired: "Expired!",
 
     // ArchiveView.tsx
     archiveEmpty: "Archive is Empty",
@@ -625,6 +659,12 @@ const translations = {
     days: "days",
     hydration: "Hydration",
     viewAllAchievements: "View All",
+    dashboardPantryAlerts: "Pantry Alerts",
+    dashboardExpiringSoon: "Expiring Soon",
+    dashboardLowStock: "Low Stock",
+    dashboardNoAlerts: "Your pantry is in good shape!",
+    expiresOn: "Expires on {date}",
+    dashboardExpired: "Expired",
 
     // Achievements
     achievementFirstDayComplete: "First Day Done!",
