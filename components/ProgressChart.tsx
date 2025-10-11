@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { PlusIcon, MinusIcon, ChevronLeftIcon, ChevronRightIcon, RefreshIcon } from './Icons';
 
 type ChartType = 'line' | 'bar' | 'area';
@@ -21,11 +21,15 @@ interface ProgressChartProps {
 const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, yAxisMin: yAxisMinProp, yAxisMax: yAxisMaxProp }) => {
     const [tooltip, setTooltip] = useState<{ x: number; y: number; content: React.ReactNode; visible: boolean } | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const svgRef = useRef<SVGSVGElement>(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 250 });
     
     const [viewDomain, setViewDomain] = useState({ min: 0, max: labels.length > 1 ? labels.length - 1 : 1 });
     const [isPanning, setIsPanning] = useState(false);
     const panStartRef = useRef({ x: 0, domainMin: 0, domainMax: 0 });
+
+    // Fix: Moved the 'padding' constant declaration before its use in the useEffect hook.
+    const padding = { top: 20, right: 30, bottom: 50, left: 60 };
 
     useLayoutEffect(() => {
         const updateSize = () => {
@@ -38,8 +42,58 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
         return () => window.removeEventListener('resize', updateSize);
     }, []);
 
+    useEffect(() => {
+        const svgElement = svgRef.current;
+        if (!svgElement) return;
+
+        const handleWheel = (e: WheelEvent) => {
+            e.preventDefault();
+            const zoomIntensity = 0.1;
+            const direction = e.deltaY < 0 ? 1 : -1;
+
+            const svgRect = svgElement.getBoundingClientRect();
+            const mouseX = e.clientX - svgRect.left;
+            
+            setViewDomain(currentViewDomain => {
+                const currentDomainWidth = currentViewDomain.max - currentViewDomain.min;
+                const mouseRatio = (mouseX - padding.left) / (dimensions.width - padding.left - padding.right);
+                
+                if (mouseRatio < 0 || mouseRatio > 1) return currentViewDomain;
+
+                const mouseIndex = currentViewDomain.min + mouseRatio * currentDomainWidth;
+                let newDomainWidth = currentDomainWidth * (1 - direction * zoomIntensity);
+
+                if (newDomainWidth < 2 && direction > 0) return currentViewDomain;
+                if (newDomainWidth > (labels.length - 1) && direction < 0) {
+                    return { min: 0, max: labels.length > 1 ? labels.length - 1 : 1 };
+                }
+
+                let newMin = mouseIndex - mouseRatio * newDomainWidth;
+                let newMax = newMin + newDomainWidth;
+
+                if (newMin < 0) {
+                    newMax = newMax - newMin;
+                    newMin = 0;
+                }
+                if (newMax > labels.length - 1) {
+                    newMin = newMin - (newMax - (labels.length - 1));
+                    newMax = labels.length - 1;
+                }
+                if (newMin < 0) newMin = 0;
+                
+                return { min: newMin, max: newMax };
+            });
+        };
+
+        svgElement.addEventListener('wheel', handleWheel, { passive: false });
+
+        return () => {
+            svgElement.removeEventListener('wheel', handleWheel);
+        };
+    }, [dimensions.width, padding.left, padding.right, labels.length, setViewDomain]);
+
+
     const { width, height } = dimensions;
-    const padding = { top: 20, right: 30, bottom: 50, left: 60 };
 
     if (width === 0) return <div ref={containerRef} style={{ height: `${height}px` }} />;
 
@@ -59,7 +113,6 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
         yMin = visibleData.length > 0 ? Math.min(...visibleData) : 0;
         yMax = visibleData.length > 0 ? Math.max(...visibleData) : 1;
         
-        // For bar and area charts with all non-negative data, force the y-axis to start at 0.
         const isNonNegativeBarOrArea = (type === 'bar' || type === 'area') && (visibleData.length === 0 || yMin >= 0);
         if (isNonNegativeBarOrArea) {
             yMin = 0;
@@ -67,15 +120,13 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
 
         const yRange = yMax - yMin;
         if (yRange === 0) {
-            // If all data points are the same value (e.g., all are 0 or all are 50)
-            yMax = yMax + 1; // Add some space above
+            yMax = yMax + 1;
             if (!isNonNegativeBarOrArea) {
-                 yMin = yMin - 1; // And some space below if not anchored to 0
+                 yMin = yMin - 1;
             }
         } else {
-            // Add 10% padding
             yMax += yRange * 0.1;
-            if (!isNonNegativeBarOrArea) { // Only add bottom padding if not a non-negative bar/area chart
+            if (!isNonNegativeBarOrArea) {
                 yMin -= yRange * 0.1;
             }
         }
@@ -103,9 +154,9 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
         return height - padding.bottom - ratio * (height - padding.top - padding.bottom);
     };
     
-    const handlePan = (direction: 'left' | 'right') => {
+    const handlePanButtons = (direction: 'left' | 'right') => {
         const domainWidth = viewDomain.max - viewDomain.min;
-        const shiftAmount = domainWidth * 0.2; // Shift by 20%
+        const shiftAmount = domainWidth * 0.2;
         const shift = direction === 'left' ? -shiftAmount : shiftAmount;
 
         let newMin = viewDomain.min + shift;
@@ -130,6 +181,10 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
         let newDomainWidth = direction === 'in' ? domainWidth / zoomFactor : domainWidth * zoomFactor;
 
         if (newDomainWidth < 2 && direction === 'in') return;
+        if (newDomainWidth > labels.length - 1 && direction === 'out') {
+             handleReset();
+             return;
+        }
 
         let newMin = centerIndex - newDomainWidth / 2;
         let newMax = centerIndex + newDomainWidth / 2;
@@ -149,84 +204,55 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
         setViewDomain({ min: 0, max: labels.length > 1 ? labels.length - 1 : 1 });
     };
     
-    const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
-        e.preventDefault();
-        const zoomIntensity = 0.1;
-        const direction = e.deltaY < 0 ? 1 : -1;
+    const handlePanStart = (clientX: number) => {
+        setIsPanning(true);
+        panStartRef.current = { x: clientX, domainMin: viewDomain.min, domainMax: viewDomain.max };
+    };
 
-        const svgRect = e.currentTarget.getBoundingClientRect();
-        const mouseX = e.clientX - svgRect.left;
+    const handlePanMove = (clientX: number) => {
+        if (!isPanning) return;
+        setTooltip(null);
+        const dx = clientX - panStartRef.current.x;
+        const domainWidth = panStartRef.current.domainMax - panStartRef.current.domainMin;
+        const domainDelta = (dx / (width - padding.left - padding.right)) * domainWidth;
         
-        const currentDomainWidth = viewDomain.max - viewDomain.min;
-        const mouseRatio = (mouseX - padding.left) / (width - padding.left - padding.right);
-        
-        if (mouseRatio < 0 || mouseRatio > 1) return;
-
-        const mouseIndex = viewDomain.min + mouseRatio * currentDomainWidth;
-        const newDomainWidth = currentDomainWidth * (1 - direction * zoomIntensity);
-
-        if (newDomainWidth < 2 && direction > 0) return;
-        if (newDomainWidth > (labels.length - 1) && direction < 0) {
-            handleReset();
-            return;
-        }
-
-        let newMin = mouseIndex - mouseRatio * newDomainWidth;
-        let newMax = newMin + newDomainWidth;
+        let newMin = panStartRef.current.domainMin - domainDelta;
+        let newMax = panStartRef.current.domainMax - domainDelta;
 
         if (newMin < 0) {
-            newMax = newMax - newMin;
             newMin = 0;
+            newMax = newMin + domainWidth;
         }
         if (newMax > labels.length - 1) {
-            newMin = newMin - (newMax - (labels.length - 1));
             newMax = labels.length - 1;
+            newMin = newMax - domainWidth;
         }
-        if (newMin < 0) newMin = 0;
-        
         setViewDomain({ min: newMin, max: newMax });
+    };
+    
+    const handlePanEnd = () => {
+        setIsPanning(false);
     };
 
     const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
         e.currentTarget.style.cursor = 'grabbing';
-        setIsPanning(true);
-        panStartRef.current = { x: e.clientX, domainMin: viewDomain.min, domainMax: viewDomain.max };
+        handlePanStart(e.clientX);
     };
-
     const handleMouseUp = (e: React.MouseEvent<SVGSVGElement>) => {
         e.currentTarget.style.cursor = 'grab';
-        setIsPanning(false);
+        handlePanEnd();
     };
-    
     const handleMouseLeave = (e: React.MouseEvent<SVGSVGElement>) => {
         e.currentTarget.style.cursor = 'grab';
-        setIsPanning(false);
+        if (isPanning) handlePanEnd();
         setTooltip(null);
     };
-
     const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-        const svgRect = e.currentTarget.getBoundingClientRect();
         if (isPanning) {
-            setTooltip(null);
-            const dx = e.clientX - panStartRef.current.x;
-            const domainWidth = panStartRef.current.domainMax - panStartRef.current.domainMin;
-            const domainDelta = (dx / (width - padding.left - padding.right)) * domainWidth;
-            
-            let newMin = panStartRef.current.domainMin - domainDelta;
-            let newMax = panStartRef.current.domainMax - domainDelta;
-
-            if (newMin < 0) {
-                newMin = 0;
-                newMax = newMin + domainWidth;
-            }
-            if (newMax > labels.length - 1) {
-                newMax = labels.length - 1;
-                newMin = newMax - domainWidth;
-            }
-            setViewDomain({ min: newMin, max: newMax });
+            handlePanMove(e.clientX);
             return;
         }
-
+        const svgRect = e.currentTarget.getBoundingClientRect();
         const mouseX = e.clientX - svgRect.left;
         const domainWidth = viewDomain.max - viewDomain.min;
         const indexFloat = viewDomain.min + ((mouseX - padding.left) / (width - padding.left - padding.right)) * domainWidth;
@@ -238,7 +264,6 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
                 setTooltip(null);
                 return;
             }
-
             const content = (
                 <>
                     <div className="font-bold mb-1">{labels[index]}</div>
@@ -254,18 +279,23 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
                     })}
                 </>
             );
-            setTooltip({
-                x: x(index),
-                y: e.clientY - svgRect.top,
-                content,
-                visible: true
-            });
+            setTooltip({ x: x(index), y: e.clientY - svgRect.top, content, visible: true });
         } else {
             setTooltip(null);
         }
     };
 
-
+    const handleTouchStart = (e: React.TouchEvent<SVGSVGElement>) => {
+        if (e.touches.length === 1) handlePanStart(e.touches[0].clientX);
+    };
+    const handleTouchMove = (e: React.TouchEvent<SVGSVGElement>) => {
+        if (isPanning && e.touches.length === 1) {
+            e.preventDefault();
+            handlePanMove(e.touches[0].clientX);
+        }
+    };
+    const handleTouchEnd = () => handlePanEnd();
+    
     const renderYAxis = () => {
         const ticks = 5;
         return Array.from({ length: ticks }).map((_, i) => {
@@ -371,8 +401,8 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
         <div ref={containerRef}>
             <div className="flex justify-end mb-2">
                 <div className="inline-flex items-center gap-0.5 p-1 bg-slate-100/80 dark:bg-gray-900/50 backdrop-blur-sm rounded-lg border border-slate-200 dark:border-gray-700">
-                    <button onClick={() => handlePan('left')} title="Pan Left" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><ChevronLeftIcon /></button>
-                    <button onClick={() => handlePan('right')} title="Pan Right" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><ChevronRightIcon /></button>
+                    <button onClick={() => handlePanButtons('left')} title="Pan Left" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><ChevronLeftIcon /></button>
+                    <button onClick={() => handlePanButtons('right')} title="Pan Right" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><ChevronRightIcon /></button>
                     <button onClick={() => handleZoom('in')} title="Zoom In" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><PlusIcon /></button>
                     <button onClick={() => handleZoom('out')} title="Zoom Out" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><MinusIcon /></button>
                     <button onClick={handleReset} title="Reset View" className="p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-gray-600"><RefreshIcon className="h-5 w-5"/></button>
@@ -380,14 +410,17 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
             </div>
             <div className="relative">
                 <svg
+                    ref={svgRef}
                     width={width}
                     height={height}
                     onMouseMove={handleMouseMove}
                     onMouseLeave={handleMouseLeave}
                     onMouseDown={handleMouseDown}
                     onMouseUp={handleMouseUp}
-                    onWheel={handleWheel}
-                    style={{ cursor: 'grab' }}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    style={{ cursor: 'grab', touchAction: 'none' }}
                     className="select-none"
                 >
                     <defs>
