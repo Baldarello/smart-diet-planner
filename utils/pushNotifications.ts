@@ -49,3 +49,22 @@ export async function subscribeUserToPush() {
     
     return subscription;
 }
+
+export async function unsubscribeUserFromPush() {
+    if (!('serviceWorker' in navigator)) {
+        throw new Error('Service Worker not supported');
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+
+    if (subscription) {
+        const successful = await subscription.unsubscribe();
+        if (successful) {
+            console.log('User unsubscribed.');
+            // In a real app, also notify the backend to remove the subscription.
+        } else {
+            throw new Error('Unsubscription failed.');
+        }
+    }
+}

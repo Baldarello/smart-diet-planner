@@ -36,4 +36,5 @@ export { default as SettingsView } from './SettingsView';
 export { default as DashboardView } from './DashboardView';
 export { default as AchievementsModal } from './AchievementsModal';
 export { default as UnitPicker } from './UnitPicker';
+export { default as Switch } from './Switch';
 export * from './Icons';
