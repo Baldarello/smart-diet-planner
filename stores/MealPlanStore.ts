@@ -228,6 +228,40 @@ export class MealPlanStore {
 
         const planData = MOCK_MEAL_PLAN_DATA;
         
+        // Add items to trigger dashboard alerts
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        const threeDaysFromNow = new Date(today);
+        threeDaysFromNow.setDate(today.getDate() + 3);
+
+        const alertItems: PantryItem[] = [
+            { // Expired item
+                item: 'Latte',
+                quantityValue: 0.5,
+                quantityUnit: 'l',
+                originalCategory: 'Latticini e Derivati',
+                expiryDate: yesterday.toLocaleDateString('en-CA'),
+            },
+            { // Expiring soon item
+                item: 'Uova',
+                quantityValue: 6,
+                quantityUnit: 'pezzo/i',
+                originalCategory: 'Proteine (Carne, Pesce, Legumi)',
+                expiryDate: threeDaysFromNow.toLocaleDateString('en-CA'),
+            },
+            { // Low stock item
+                item: 'Pasta',
+                quantityValue: 200,
+                quantityUnit: 'g',
+                originalCategory: 'Carboidrati e Cereali',
+                lowStockThreshold: '250 g', // Threshold is higher than quantity
+            },
+        ];
+
+        // Add the new items to the mock pantry data
+        planData.pantry = [...planData.pantry, ...alertItems];
+
         const sanitizedPlan = planData.weeklyPlan.map(day => ({
             ...day,
             meals: day.meals.map(meal => ({
@@ -246,10 +280,10 @@ export class MealPlanStore {
         this.pantry = planData.pantry;
         this.currentPlanName = planData.planName;
         
-        const today = new Date();
-        const endDate = new Date(today);
-        const startDate = new Date(today);
-        startDate.setDate(today.getDate() - 89);
+        const simToday = new Date();
+        const endDate = new Date(simToday);
+        const startDate = new Date(simToday);
+        startDate.setDate(simToday.getDate() - 89);
         
         this.startDate = startDate.toLocaleDateString('en-CA');
         this.endDate = endDate.toLocaleDateString('en-CA');
