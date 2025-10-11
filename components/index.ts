@@ -35,4 +35,5 @@ export { default as MealActionsPopup } from './MealActionsPopup';
 export { default as SettingsView } from './SettingsView';
 export { default as DashboardView } from './DashboardView';
 export { default as AchievementsModal } from './AchievementsModal';
+export { default as UnitPicker } from './UnitPicker';
 export * from './Icons';
