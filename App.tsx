@@ -374,21 +374,13 @@ const App: React.FC = observer(() => {
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-3 items-center h-16">
                         <div className="justify-self-start">
-                            {store.navigationHistory.length > 0 ? (
+                            {store.navigationHistory.length > 0 && (
                                 <button
                                     onClick={store.goBack}
                                     className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
                                     aria-label="Go back"
                                 >
                                     <ArrowLeftIcon />
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={() => setIsDrawerOpen(true)}
-                                    className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
-                                    aria-label="Open menu"
-                                >
-                                    <MenuIcon />
                                 </button>
                             )}
                         </div>
@@ -399,21 +391,31 @@ const App: React.FC = observer(() => {
                         </div>
 
                         <div className="justify-self-end">
-                            {store.navigationHistory.length > 0 && (
-                                <button
-                                    onClick={() => setIsDrawerOpen(true)}
-                                    className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
-                                    aria-label="Open menu"
-                                >
-                                    <MenuIcon />
-                                </button>
-                            )}
+                            <button
+                                onClick={() => setIsDrawerOpen(true)}
+                                className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
+                                aria-label="Open menu"
+                            >
+                                <MenuIcon />
+                            </button>
                         </div>
                     </div>
                 </div>
             </header>
             <main className="pt-8 p-4 sm:p-6 lg:p-8">{renderMainContent()}</main>
             <footer className="text-center mt-12 text-sm text-gray-400 dark:text-gray-500 p-4"><p>{t('footer')}</p></footer>
+            
+            {store.recalculatingProgress && (
+                <div 
+                    className="fixed bottom-6 right-6 z-50 bg-violet-600 text-white p-4 rounded-full shadow-lg flex items-center justify-center transition-opacity duration-300 animate-pulse"
+                    role="status"
+                    aria-live="polite"
+                    title={t('recalculatingProgressButtonTextLoading')}
+                >
+                    <div className="animate-spin h-6 w-6 border-4 border-solid border-white border-t-transparent rounded-full"></div>
+                </div>
+            )}
+
             {installPrompt && <InstallPwaSnackbar onInstall={handleInstallClick} onDismiss={handleDismissInstall} />}
         </div>
     );
