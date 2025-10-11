@@ -218,7 +218,7 @@ const ProgressView: React.FC = observer(() => {
                      <div>
                         <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('adherenceChartTitle')}</h3>
                         <ProgressChart
-                            type="area"
+                            type="line"
                             labels={chartData.labels}
                             datasets={[{
                                 label: t('adherence'),
