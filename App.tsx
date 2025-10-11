@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore, AppStatus } from './stores/MealPlanStore';
 import { authStore } from './stores/AuthStore';
@@ -38,6 +38,30 @@ const App: React.FC = observer(() => {
     const [installPrompt, setInstallPrompt] = useState<any>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [showLoginSuggestion, setShowLoginSuggestion] = useState(false);
+
+    const handleStartNewPlanFlow = (isManual: boolean) => {
+        if (!showNewPlanFlow) {
+            store.navigationHistory.push(store.activeTab);
+        }
+        setShowNewPlanFlow(true);
+        setShowManualForm(isManual);
+        setIsDrawerOpen(false);
+    };
+
+    const handleBack = () => {
+        if (showManualForm) {
+            setShowManualForm(false);
+            if (store.currentPlanId) {
+                setShowNewPlanFlow(false);
+                store.goBack();
+            }
+        } else if (showNewPlanFlow) {
+            setShowNewPlanFlow(false);
+            store.goBack();
+        } else {
+            store.goBack();
+        }
+    };
 
     useEffect(() => {
         authStore.init();
@@ -268,10 +292,10 @@ const App: React.FC = observer(() => {
                 <div className="py-6 flex-grow">
                     <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('planManagement')}</h3>
                     <div className="flex flex-col space-y-1">
-                        <button onClick={() => { setShowNewPlanFlow(true); setShowManualForm(false); setIsDrawerOpen(false); }} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
+                        <button onClick={() => handleStartNewPlanFlow(false)} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
                             <ChangeDietIcon /> <span className="ml-3">{t('changeDiet')}</span>
                         </button>
-                        <button onClick={() => { setShowManualForm(true); setShowNewPlanFlow(true); setIsDrawerOpen(false); }} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
+                        <button onClick={() => handleStartNewPlanFlow(true)} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
                             <EditIcon /> <span className="ml-3">{t('createManually')}</span>
                         </button>
                         {store.status === AppStatus.SUCCESS && store.currentPlanId && (
@@ -293,7 +317,7 @@ const App: React.FC = observer(() => {
                 {hasActivePlan && showNewPlanFlow && (
                     <div className="mb-10">
                         <button 
-                            onClick={() => setShowNewPlanFlow(false)}
+                            onClick={handleBack}
                             className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold px-8 py-3 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md"
                         >
                             {t('cancelAndReturn')}
@@ -336,7 +360,7 @@ const App: React.FC = observer(() => {
         // New plan flow is a special state that overrides tab navigation
         if (showNewPlanFlow) {
             if (showManualForm) {
-                return <ManualPlanEntryForm onCancel={() => { setShowManualForm(false); if (store.currentPlanId) setShowNewPlanFlow(false); }} />;
+                return <ManualPlanEntryForm onCancel={handleBack} />;
             }
             return renderUploadScreen();
         }
@@ -392,6 +416,9 @@ const App: React.FC = observer(() => {
         );
     };
 
+    const showBackButton = showNewPlanFlow || store.navigationHistory.length > 0;
+    const viewKey = showNewPlanFlow ? (showManualForm ? 'manual-form' : 'upload-screen') : store.activeTab;
+
     return (
         <div className="min-h-screen">
             {showLoginSuggestion && <LoginSuggestionModal onClose={handleCloseLoginSuggestion} />}
@@ -402,9 +429,9 @@ const App: React.FC = observer(() => {
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-3 items-center h-16">
                         <div className="justify-self-start">
-                            {store.navigationHistory.length > 0 && (
+                            {showBackButton && (
                                 <button
-                                    onClick={store.goBack}
+                                    onClick={handleBack}
                                     className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
                                     aria-label="Go back"
                                 >
@@ -430,7 +457,11 @@ const App: React.FC = observer(() => {
                     </div>
                 </div>
             </header>
-            <main className="pt-8 p-4 sm:p-6 lg:p-8">{renderMainContent()}</main>
+            <main className="pt-8 p-4 sm:p-6 lg:p-8">
+                <div key={viewKey} className="animate-slide-in-up">
+                    {renderMainContent()}
+                </div>
+            </main>
             <footer className="text-center mt-12 text-sm text-gray-400 dark:text-gray-500 p-4"><p>{t('footer')}</p></footer>
             
             {store.recalculatingProgress && (

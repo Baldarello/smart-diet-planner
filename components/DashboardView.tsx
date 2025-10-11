@@ -170,7 +170,7 @@ const DashboardView: React.FC = observer(() => {
 
     return (
         <>
-            <div className="max-w-6xl mx-auto animate-slide-in-up space-y-6">
+            <div className="max-w-6xl mx-auto space-y-6">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{t('dashboardWelcome', { name: user?.name.split(' ')[0] || '' })}</h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">{t('dashboardSubtitle')}</p>
