@@ -1544,7 +1544,7 @@ export class MealPlanStore {
     if (this.pantry.length >= 5) earned.push('pantryOrganized');
     
     // Async checks (DB queries)
-    const hasCheatMeal = await db.dailyLogs.where('meals').anySatisfy(meals => meals.some(m => m.cheat)).count();
+    const hasCheatMeal = await db.dailyLogs.filter(log => log.meals.some(m => m.cheat)).count();
     if (hasCheatMeal > 0) earned.push('firstCheatMeal');
 
     runInAction(() => {

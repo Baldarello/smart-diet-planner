@@ -9,7 +9,8 @@ const FILENAME = 'diet-plan-data.json';
  * @returns The file ID or null if not found.
  */
 async function findFileId(accessToken: string): Promise<string | null> {
-    const response = await fetch(`${DRIVE_API_URL}?spaces=appDataFolder&fields=files(id,name)`, {
+    const url = `${DRIVE_API_URL}?spaces=appDataFolder&fields=files(id,name)&key=${process.env.GOOGLE_API_KEY}`;
+    const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
     });
     if (!response.ok) {
@@ -40,8 +41,8 @@ export async function saveStateToDrive(data: SyncedData, accessToken: string): P
     form.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
 
     const uploadUrl = fileId 
-        ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
-        : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
+        ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart&key=${process.env.GOOGLE_API_KEY}`
+        : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&key=${process.env.GOOGLE_API_KEY}`;
 
     const response = await fetch(uploadUrl, {
         method: fileId ? 'PATCH' : 'POST',
@@ -70,7 +71,7 @@ export async function loadStateFromDrive(accessToken: string): Promise<SyncedDat
         return null;
     }
 
-    const response = await fetch(`${DRIVE_API_URL}/${fileId}?alt=media`, {
+    const response = await fetch(`${DRIVE_API_URL}/${fileId}?alt=media&key=${process.env.GOOGLE_API_KEY}`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
     });
 
