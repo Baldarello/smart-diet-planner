@@ -186,8 +186,8 @@ const SettingsView: React.FC = observer(() => {
                     <div className="space-y-10">
                          <div>
                             <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('notifications')}</h3>
-                            <div className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg flex items-center justify-between">
-                                <div className="flex items-center">
+                            <div className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg flex items-center justify-between gap-4">
+                                <div className="flex items-center min-w-0">
                                     <BellIcon />
                                     <div className="ml-3">
                                         <p className="font-medium text-gray-700 dark:text-gray-300">{t('pushNotifications')}</p>

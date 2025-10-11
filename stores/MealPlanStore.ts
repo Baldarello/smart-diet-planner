@@ -1628,6 +1628,7 @@ export class MealPlanStore {
   }
 
 
+
   updateAchievements = async () => {
     const earned: string[] = [];
     if (this.progressHistory.length === 0 && this.pantry.length === 0) {

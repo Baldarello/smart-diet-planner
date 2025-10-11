@@ -21,7 +21,7 @@ const CircularProgress: React.FC<{
     const stroke = 10;
     const normalizedRadius = radius - stroke * 2;
     const circumference = normalizedRadius * 2 * Math.PI;
-    const progressPercentage = goal > 0 ? (progress / goal) * 100 : 0;
+    const progressPercentage = goal > 0 ? Math.min((progress / goal) * 100, 100) : 0;
     const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
 
     return (
@@ -275,7 +275,7 @@ const DashboardView: React.FC = observer(() => {
                             </div>
                         </div>
                         {weightData.some(d => d != null) && (
-                            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg overflow-hidden">
                                 <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4">{t('weightTrend')}</h2>
                                 <ProgressChart
                                     type="line"
