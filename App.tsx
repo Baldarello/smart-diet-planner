@@ -373,21 +373,22 @@ const App: React.FC = observer(() => {
             <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-30 shadow-sm border-b border-slate-200 dark:border-gray-800">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-3 items-center h-16">
-                        <div className="justify-self-start flex items-center gap-1">
-                            <button
-                                onClick={() => setIsDrawerOpen(true)}
-                                className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
-                                aria-label="Open menu"
-                            >
-                                <MenuIcon />
-                            </button>
-                            {store.navigationHistory.length > 0 && (
+                        <div className="justify-self-start">
+                            {store.navigationHistory.length > 0 ? (
                                 <button
                                     onClick={store.goBack}
                                     className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
                                     aria-label="Go back"
                                 >
                                     <ArrowLeftIcon />
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => setIsDrawerOpen(true)}
+                                    className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
+                                    aria-label="Open menu"
+                                >
+                                    <MenuIcon />
                                 </button>
                             )}
                         </div>
@@ -397,7 +398,17 @@ const App: React.FC = observer(() => {
                             <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">{t('mainSubtitle')}</p>
                         </div>
 
-                        <div />
+                        <div className="justify-self-end">
+                            {store.navigationHistory.length > 0 && (
+                                <button
+                                    onClick={() => setIsDrawerOpen(true)}
+                                    className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
+                                    aria-label="Open menu"
+                                >
+                                    <MenuIcon />
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </header>
