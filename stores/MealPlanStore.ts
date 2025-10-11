@@ -318,19 +318,28 @@ export class MealPlanStore {
         
         let adherence: number;
         let waterIntakeMl: number;
+        let stepsTaken: number;
+        const plannedCalories = 1850;
+        let actualCalories: number;
 
-        // Ensure the last 7 days (i < 7) fulfill streak achievements
-        if (i < 7) { 
+        // Special case for today to show in-progress stats
+        if (i === 0) {
+            adherence = 33; // ~1 of 3 meals done
+            waterIntakeMl = 1200 + Math.random() * 300; // ~40% of 3L goal
+            stepsTaken = 2500 + Math.random() * 1000; // ~40-50% of 6k goal
+            actualCalories = plannedCalories * (adherence / 100);
+        } else if (i < 7) { // Ensure the last 7 days fulfill streak achievements
             adherence = 90 + Math.random() * 10;
-            waterIntakeMl = 3000 + Math.random() * 500;
-        } else {
+            waterIntakeMl = 3000 + Math.random() * 500; // At or above goal
+            stepsTaken = 6000 + Math.random() * 6000; // At or above goal
+            actualCalories = plannedCalories * (adherence / 100) + (Math.random() * 200 - 100);
+        } else { // Generic past data
             adherence = 70 + Math.random() * 30;
             waterIntakeMl = 2000 + Math.random() * 1500;
+            stepsTaken = 4000 + Math.random() * 8000;
+            actualCalories = plannedCalories * (adherence / 100) + (Math.random() * 200 - 100);
         }
         
-        const plannedCalories = 1850;
-        const actualCalories = plannedCalories * (adherence / 100) + (Math.random() * 200 - 100);
-        const stepsTaken = 4000 + Math.random() * 8000;
         const activityHours = 1 + Math.random() * 1.5;
         const weightKg = parseFloat(currentWeight.toFixed(2));
         const bodyFatPercentage = parseFloat(currentBodyFat.toFixed(2));
