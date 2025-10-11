@@ -52,7 +52,7 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
     };
 
     return (
-        <div className="max-w-4xl mx-auto animate-slide-in-up">
+        <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6 text-center">{t('manualEntryTitle')}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
                 {planData.map((day, dayIndex) => (
