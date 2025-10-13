@@ -15,6 +15,7 @@ export interface MealItem {
 export interface Meal {
   name: string;
   title?: string;
+  procedure?: string;
   items: MealItem[];
   done: boolean;
   time?: string; // e.g., "08:30"
@@ -139,4 +140,9 @@ export interface SyncedData {
   appState: StoredState;
   progressHistory: ProgressRecord[];
   dailyLogs: DailyLog[];
+}
+
+export interface Ingredient {
+  id?: number;
+  name: string;
 }

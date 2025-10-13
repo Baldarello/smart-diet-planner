@@ -1,7 +1,6 @@
 // Fix: Import the `process` module from `node:process` to resolve type errors for `process.cwd()`.
 // This is necessary because the triple-slash directive for node types was not functioning correctly.
 import process from 'node:process';
-import { URL, fileURLToPath } from 'url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -18,11 +17,7 @@ export default defineConfig(({ mode }) => {
             'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
             'process.env.GOOGLE_CLIENT_ID': JSON.stringify(env.GOOGLE_CLIENT_ID),
             'process.env.GOOGLE_API_KEY': JSON.stringify(env.GOOGLE_API_KEY),
-        },
-        resolve: {
-            alias: {
-                '@': fileURLToPath(new URL('./components', import.meta.url)),
-            }
+            'process.env.BUILD_TYPE': JSON.stringify(env.BUILD_TYPE || 'web'),
         }
     };
 });

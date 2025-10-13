@@ -1,67 +1,103 @@
 import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
-import { mealPlanStore, AppStatus } from './stores/MealPlanStore';
+import { mealPlanStore, AppStatus, NavigableTab } from './stores/MealPlanStore';
 import { authStore } from './stores/AuthStore';
 import { t, setI18nLocaleGetter } from './i18n';
-import {
-    FileUpload,
-    Loader,
-    ErrorMessage,
-    ShoppingListView,
-    PantryView,
-    MealPlanView,
-    DailyPlanView,
-    ArchiveView,
-    ActivePlanNameEditor,
-    ExamplePdf,
-    ManualPlanEntryForm,
-    ArchivedPlanItem,
-    InstallPwaSnackbar,
-    GoogleLogin,
-    Drawer,
-    MenuIcon,
-    ProgressView,
-    SetPlanDatesModal,
-    CalendarView,
-    LoginSuggestionModal,
-    SettingsView,
-    DashboardView,
-} from './components';
-import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon, ArrowLeftIcon } from './components/Icons';
+import { Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 
-const App: React.FC = observer(() => {
+import Loader from './components/Loader';
+import ErrorMessage from './components/ErrorMessage';
+import ShoppingListView from './components/ShoppingListView';
+import PantryView from './components/PantryView';
+import MealPlanView from './components/MealPlanView';
+import DailyPlanView from './components/DailyPlanView';
+import ArchiveView from './components/ArchiveView';
+import ActivePlanNameEditor from './components/ActivePlanNameEditor';
+import InstallPwaSnackbar from './components/InstallPwaSnackbar';
+import GoogleLogin from './components/GoogleLogin';
+import Drawer from './components/Drawer';
+import ProgressView from './components/ProgressView';
+import SetPlanDatesModal from './components/SetPlanDatesModal';
+import CalendarView from './components/CalendarView';
+import LoginSuggestionModal from './components/LoginSuggestionModal';
+import SettingsView from './components/SettingsView';
+import DashboardView from './components/DashboardView';
+import AdminLoginPage from './components/admin/AdminLoginPage';
+import NutritionistPage from './components/admin/NutritionistPage';
+import NotFoundPage from './components/admin/NotFoundPage';
+import FileUploadScreen from './components/FileUploadScreen';
+
+import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon, ArrowLeftIcon, MenuIcon, AdminIcon } from './components/Icons';
+
+const MainAppContent: React.FC = observer(() => {
+    const store = mealPlanStore;
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (store.status === AppStatus.SUCCESS && store.currentPlanId && !store.shoppingListManaged) {
+            navigate('/list', { replace: true });
+        }
+    }, [store.status, store.currentPlanId, store.shoppingListManaged, navigate]);
+
+    if (store.status === AppStatus.HYDRATING || store.status === AppStatus.SYNCING) return <Loader />;
+    if (store.status === AppStatus.LOADING) return <Loader />;
+    if (store.status === AppStatus.AWAITING_DATES) return <SetPlanDatesModal />;
+    if (store.status === AppStatus.ERROR) {
+        return ( <div className="text-center"><ErrorMessage message={store.error!} /><div className="mt-8"><Link to="/upload" className="text-2xl font-bold dark:text-gray-200 text-gray-800 mb-4 hover:underline">{t('errorAndUpload')}</Link><FileUploadScreen /></div></div> );
+    }
+
+    const hasActivePlan = store.status === AppStatus.SUCCESS && store.currentPlanId;
+
+    if (!hasActivePlan) {
+        return (
+            <Routes>
+                <Route path="/settings" element={<SettingsView />} />
+                <Route path="/archive" element={<ArchiveView />} />
+                <Route path="*" element={<FileUploadScreen />} />
+            </Routes>
+        );
+    }
+    
+    return (
+        <>
+            <ActivePlanNameEditor />
+            <Routes>
+                <Route path="/dashboard" element={<DashboardView />} />
+                <Route path="/daily" element={<DailyPlanView />} />
+                <Route path="/calendar" element={<CalendarView />} />
+                <Route path="/plan" element={<MealPlanView plan={store.masterMealPlan} isMasterPlanView={true} />} />
+                <Route path="/list" element={<ShoppingListView />} />
+                <Route path="/pantry" element={<PantryView />} />
+                <Route path="/progress" element={<ProgressView />} />
+                <Route path="/archive" element={<ArchiveView />} />
+                <Route path="/settings" element={<SettingsView />} />
+                <Route path="/upload" element={<FileUploadScreen />} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+        </>
+    );
+});
+
+
+const MainAppLayout: React.FC = observer(() => {
     const store = mealPlanStore;
     setI18nLocaleGetter(() => store.locale);
     
-    const [showNewPlanFlow, setShowNewPlanFlow] = useState(false);
-    const [showManualForm, setShowManualForm] = useState(false);
     const [installPrompt, setInstallPrompt] = useState<any>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [showLoginSuggestion, setShowLoginSuggestion] = useState(false);
 
-    const handleStartNewPlanFlow = (isManual: boolean) => {
-        if (!showNewPlanFlow) {
-            store.navigationHistory.push(store.activeTab);
-        }
-        setShowNewPlanFlow(true);
-        setShowManualForm(isManual);
-        setIsDrawerOpen(false);
-    };
+    const location = useLocation();
+    const navigate = useNavigate();
+    
+    const currentPath = location.pathname.substring(1).split('/')[0] || 'dashboard';
 
-    const handleBack = () => {
-        if (showManualForm) {
-            setShowManualForm(false);
-            if (store.currentPlanId) {
-                setShowNewPlanFlow(false);
-                store.goBack();
-            }
-        } else if (showNewPlanFlow) {
-            setShowNewPlanFlow(false);
-            store.goBack();
-        } else {
-            store.goBack();
-        }
-    };
+    useEffect(() => {
+        store.setActiveTab(currentPath as NavigableTab);
+    }, [currentPath, store]);
+
+    const handleBack = () => navigate(-1);
 
     useEffect(() => {
         authStore.init();
@@ -123,13 +159,6 @@ const App: React.FC = observer(() => {
         root.classList.add(store.theme);
     }, [store.theme]);
     
-    useEffect(() => {
-        if (store.currentPlanId) {
-            setShowNewPlanFlow(false);
-            setShowManualForm(false);
-        }
-    }, [store.currentPlanId]);
-
     useEffect(() => {
         const mealTimer = setInterval(() => {
             if (!store.currentPlanId || !store.dailyPlan) return;
@@ -210,22 +239,18 @@ const App: React.FC = observer(() => {
             { id: 'settings', icon: <SettingsIcon />, label: t('tabSettings') },
         ];
 
-        // Fix: Replace JSX.Element with React.ReactNode to resolve "Cannot find namespace 'JSX'" error.
         const renderTab = (tab: { id: string, icon: React.ReactNode, label: string, disabled?: boolean }) => (
-             <button
+             <Link
                 key={tab.id}
-                onClick={() => {
-                    store.setActiveTab(tab.id as any);
-                    setShowNewPlanFlow(false);
-                    setIsDrawerOpen(false);
-                }}
-                disabled={tab.disabled}
-                className={`flex items-center w-full text-left px-4 py-3 rounded-lg transition-colors ${store.activeTab === tab.id ? 'bg-violet-100 dark:bg-gray-700 text-violet-700 dark:text-violet-300 font-semibold' : 'bg-transparent text-gray-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700/50'} ${tab.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                to={`/${tab.id}`}
+                onClick={() => !tab.disabled && setIsDrawerOpen(false)}
+                className={`flex items-center w-full text-left px-4 py-3 rounded-lg transition-colors ${store.activeTab === tab.id ? 'bg-violet-100 dark:bg-gray-700 text-violet-700 dark:text-violet-300 font-semibold' : 'bg-transparent text-gray-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700/50'} ${tab.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 title={tab.disabled ? t('shoppingListSetupMessage') : ''}
+                aria-disabled={tab.disabled}
             >
                 {tab.icon}
                 <span className="ml-3">{tab.label}</span>
-            </button>
+            </Link>
         );
         
         const renderSimulateButton = () => {
@@ -292,12 +317,9 @@ const App: React.FC = observer(() => {
                 <div className="py-6 flex-grow">
                     <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('planManagement')}</h3>
                     <div className="flex flex-col space-y-1">
-                        <button onClick={() => handleStartNewPlanFlow(false)} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
+                        <Link to="/upload" onClick={() => setIsDrawerOpen(false)} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
                             <ChangeDietIcon /> <span className="ml-3">{t('changeDiet')}</span>
-                        </button>
-                        <button onClick={() => handleStartNewPlanFlow(true)} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
-                            <EditIcon /> <span className="ml-3">{t('createManually')}</span>
-                        </button>
+                        </Link>
                         {store.status === AppStatus.SUCCESS && store.currentPlanId && (
                             <button onClick={handleExport} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
                                 <ExportIcon /> <span className="ml-3">{t('exportPlan')}</span>
@@ -305,119 +327,24 @@ const App: React.FC = observer(() => {
                         )}
                     </div>
                 </div>
+                
+                {/*{process.env.BUILD_TYPE === 'web' && (*/}
+                     {(
+                    <div className="px-4 pb-4 mt-auto">
+                        <Link to="/admin" onClick={() => setIsDrawerOpen(false)} className="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                            <AdminIcon />
+                            <span>{t('adminLoginTitle')}</span>
+                        </Link>
+                    </div>
+                )}
+
+
                 {renderExitSimulationButton()}
             </div>
         );
     }
-    
-    const renderUploadScreen = () => {
-        const hasActivePlan = store.status === AppStatus.SUCCESS && store.currentPlanId;
-        return (
-            <div className="text-center">
-                {hasActivePlan && showNewPlanFlow && (
-                    <div className="mb-10">
-                        <button 
-                            onClick={handleBack}
-                            className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold px-8 py-3 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-md"
-                        >
-                            {t('cancelAndReturn')}
-                        </button>
-                    </div>
-                )}
-                <div className="pt-8">
-                    <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">{t('welcomeTitle')}</h2>
-                    <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-2xl mx-auto">{t('welcomeSubtitle')}</p>
-                </div>
-                
-                <div className="max-w-4xl mx-auto">
-                    <FileUpload />
-                </div>
-                
-                {store.archivedPlans.length > 0 && (
-                    <div className="mt-12 max-w-4xl mx-auto">
-                        <h3 className="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4 border-t dark:border-gray-700 pt-8">{t('restoreFromArchiveTitle')}</h3>
-                        <div className="space-y-4">
-                            {store.archivedPlans.slice().reverse().map((archive) => (
-                                <ArchivedPlanItem key={archive.id} archive={archive} />
-                            ))}
-                        </div>
-                    </div>
-                )}
 
-                {store.archivedPlans.length === 0 && <ExamplePdf />}
-            </div>
-        );
-    };
-
-    const renderMainContent = () => {
-        if (store.status === AppStatus.HYDRATING || store.status === AppStatus.SYNCING) return <Loader />;
-        if (store.status === AppStatus.LOADING) return <Loader />;
-        if (store.status === AppStatus.AWAITING_DATES) return <SetPlanDatesModal />;
-        if (store.status === AppStatus.ERROR) {
-            return ( <div className="text-center"><ErrorMessage message={store.error!} /><div className="mt-8"><h2 className="text-2xl font-bold dark:text-gray-200 text-gray-800 mb-4">{t('errorAndUpload')}</h2><FileUpload /></div></div> );
-        }
-
-        // New plan flow is a special state that overrides tab navigation
-        if (showNewPlanFlow) {
-            if (showManualForm) {
-                return <ManualPlanEntryForm onCancel={handleBack} />;
-            }
-            return renderUploadScreen();
-        }
-
-        const hasActivePlan = store.status === AppStatus.SUCCESS && store.currentPlanId;
-
-        // If no active plan, show a limited set of views
-        if (!hasActivePlan) {
-            if (store.activeTab === 'settings') return <SettingsView />;
-            if (store.activeTab === 'archive') return <ArchiveView />;
-            return renderUploadScreen(); // Default for initial state
-        }
-        
-        // Main router for when a plan is active
-        let activeContent;
-        switch(store.activeTab) {
-            case 'dashboard':
-                activeContent = <DashboardView />;
-                break;
-            case 'daily':
-                activeContent = <DailyPlanView />;
-                break;
-            case 'calendar':
-                activeContent = <CalendarView />;
-                break;
-            case 'plan':
-                activeContent = <MealPlanView plan={store.masterMealPlan} isMasterPlanView={true} />;
-                break;
-            case 'list':
-                activeContent = <ShoppingListView />;
-                break;
-            case 'pantry':
-                activeContent = <PantryView />;
-                break;
-            case 'progress':
-                activeContent = <ProgressView />;
-                break;
-            case 'archive':
-                activeContent = <ArchiveView />;
-                break;
-            case 'settings':
-                activeContent = <SettingsView />;
-                break;
-            default:
-                activeContent = <DashboardView />;
-        }
-
-        return (
-            <>
-                <ActivePlanNameEditor />
-                {activeContent}
-            </>
-        );
-    };
-
-    const showBackButton = showNewPlanFlow || store.navigationHistory.length > 0;
-    const viewKey = showNewPlanFlow ? (showManualForm ? 'manual-form' : 'upload-screen') : store.activeTab;
+    const showBackButton = currentPath === 'upload' && store.currentPlanId;
 
     return (
         <div className="min-h-screen">
@@ -441,7 +368,7 @@ const App: React.FC = observer(() => {
                         </div>
                         
                         <div className="text-center">
-                            <h1 className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600">{t('mainTitle')}</h1>
+                            <Link to="/dashboard" className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600">{t('mainTitle')}</Link>
                             <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">{t('mainSubtitle')}</p>
                         </div>
 
@@ -458,8 +385,8 @@ const App: React.FC = observer(() => {
                 </div>
             </header>
             <main className="pt-8 p-4 sm:p-6 lg:p-8">
-                <div key={viewKey} className="animate-slide-in-up">
-                    {renderMainContent()}
+                <div key={location.pathname} className="animate-slide-in-up">
+                    <MainAppContent />
                 </div>
             </main>
             <footer className="text-center mt-12 text-sm text-gray-400 dark:text-gray-500 p-4"><p>{t('footer')}</p></footer>
@@ -477,6 +404,31 @@ const App: React.FC = observer(() => {
 
             {installPrompt && <InstallPwaSnackbar onInstall={handleInstallClick} onDismiss={handleDismissInstall} />}
         </div>
+    );
+});
+
+const App: React.FC = observer(() => {
+    const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(
+        () => sessionStorage.getItem('isAdminAuthenticated') === 'true'
+    );
+
+    const handleAdminLogin = () => {
+        sessionStorage.setItem('isAdminAuthenticated', 'true');
+        setIsAdminAuthenticated(true);
+    };
+
+    const handleAdminLogout = () => {
+        sessionStorage.removeItem('isAdminAuthenticated');
+        setIsAdminAuthenticated(false);
+    };
+
+    return (
+        <Routes>
+            <Route path="/admin" element={<AdminLoginPage onLoginSuccess={handleAdminLogin} />} />
+            <Route path="/nutritionist" element={isAdminAuthenticated ? <NutritionistPage onLogout={handleAdminLogout} /> : <NotFoundPage />} />
+            <Route path="/404" element={<NotFoundPage />} />
+            <Route path="/*" element={<MainAppLayout />} />
+        </Routes>
     );
 });
 

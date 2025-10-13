@@ -35,7 +35,7 @@ declare global {
 
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const SCOPES = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
+const SCOPES = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
 
 let tokenClient: google.accounts.oauth2.TokenClient | null = null;
 
@@ -126,7 +126,13 @@ export const initGoogleAuth = () => {
                         };
 
                         authStore.setLoggedIn(userProfile, accessToken);
-                        await syncWithDriveOnLogin(accessToken);
+                        
+                        if (authStore.loginRedirectAction) {
+                            await authStore.loginRedirectAction();
+                            authStore.clearLoginRedirectAction();
+                        } else {
+                            await syncWithDriveOnLogin(accessToken);
+                        }
 
                     } catch (error) {
                         console.error("Error fetching user profile or syncing:", error);

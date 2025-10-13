@@ -9,9 +9,7 @@ const FileUpload: React.FC = observer(() => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-        mealPlanStore.processPdf(file);
-    } else if (file.type === 'application/json' || file.name.toLowerCase().endsWith('.json')) {
+    if (file.type === 'application/json' || file.name.toLowerCase().endsWith('.json')) {
         mealPlanStore.processJsonFile(file);
     } else {
         // You could set an error in the store for unsupported file types
@@ -25,9 +23,9 @@ const FileUpload: React.FC = observer(() => {
         <div className="flex flex-col items-center justify-center pt-5 pb-6">
           <UploadIcon />
           <p className="mb-2 text-sm text-gray-500 dark:text-gray-400"><span className="font-semibold">{t('clickToUpload')}</span> {t('dragAndDrop')}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{t('pdfOrJsonFile')}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{t('jsonFile')}</p>
         </div>
-        <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} accept=".pdf,.json" />
+        <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} accept=".json" />
       </label>
     </div>
   );

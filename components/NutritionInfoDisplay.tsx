@@ -18,15 +18,11 @@ interface NutritionInfoDisplayProps {
     dayIndex: number;
     mealIndex: number;
     isMasterPlanView?: boolean;
-    onRecalcClick?: () => void;
 }
 
-const NutritionInfoDisplay: React.FC<NutritionInfoDisplayProps> = observer(({ nutrition, dayIndex, mealIndex, isMasterPlanView = false, onRecalcClick }) => {
-    const { onlineMode, recalculatingMeal } = mealPlanStore;
-
-    const isRecalculatingThisMeal = recalculatingMeal?.dayIndex === dayIndex && recalculatingMeal.mealIndex === mealIndex;
-
-    if (nutrition === undefined || isRecalculatingThisMeal) {
+const NutritionInfoDisplay: React.FC<NutritionInfoDisplayProps> = observer(({ nutrition, dayIndex, mealIndex, isMasterPlanView = false }) => {
+    
+    if (nutrition === undefined) {
         return (
             <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50 grid grid-cols-4 gap-2">
                 <div className="flex flex-col items-center"><SkeletonLoader className="h-2 w-10 mb-1" /><SkeletonLoader className="h-3 w-8" /></div>
@@ -49,16 +45,6 @@ const NutritionInfoDisplay: React.FC<NutritionInfoDisplayProps> = observer(({ nu
                 <NutritionItem label={t('nutritionFat')} value={nutrition.fat} unit={t('nutritionUnitG')} />
                 <NutritionItem label={t('nutritionCalories')} value={nutrition.calories} unit={t('nutritionUnitKcal')} />
             </div>
-            {onlineMode && !isMasterPlanView && (
-                <button
-                    onClick={onRecalcClick}
-                    className="ml-2 p-1.5 rounded-full text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
-                    title={t('recalculateNutritionTitle')}
-                    aria-label={t('recalculateNutritionTitle')}
-                >
-                    <RefreshIcon />
-                </button>
-            )}
         </div>
     );
 });

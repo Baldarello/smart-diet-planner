@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
 
 const SetPlanDatesModal: React.FC = observer(() => {
     const { commitNewPlan, cancelNewPlan } = mealPlanStore;
+    const navigate = useNavigate();
 
     const today = new Date().toISOString().split('T')[0];
     const nextMonth = new Date();
@@ -15,13 +17,14 @@ const SetPlanDatesModal: React.FC = observer(() => {
     const [endDate, setEndDate] = useState(nextMonthStr);
     const [error, setError] = useState('');
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (new Date(endDate) <= new Date(startDate)) {
             setError(t('dateValidationError'));
             return;
         }
         setError('');
-        commitNewPlan(startDate, endDate);
+        await commitNewPlan(startDate, endDate);
+        navigate('/list');
     };
     
     const commonInputProps = {

@@ -115,6 +115,11 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                                                 isEditable={isMasterPlanView}
                                                 showCheckbox={false}
                                             />
+                                            {meal.procedure && (
+                                                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{meal.procedure}</p>
+                                                </div>
+                                            )}
                                             {mealPlanStore.onlineMode && mealPlanStore.showMacros && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={mealIndex} isMasterPlanView={isMasterPlanView} />}
                                         </div>
                                     );

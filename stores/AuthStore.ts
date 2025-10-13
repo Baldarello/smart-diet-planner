@@ -9,9 +9,10 @@ export class AuthStore {
     userProfile: UserProfile | null = null;
     accessToken: string | null = null;
     status: 'INITIAL' | 'LOGGED_IN' | 'LOGGED_OUT' | 'ERROR' = 'INITIAL';
+    loginRedirectAction: (() => Promise<void>) | null = null;
 
     constructor() {
-        makeAutoObservable(this);
+        makeAutoObservable(this, {}, { autoBind: true });
     }
 
     init = async () => {
@@ -64,6 +65,14 @@ export class AuthStore {
 
         localStorage.removeItem(ACCESS_TOKEN_KEY);
         localStorage.removeItem(USER_PROFILE_KEY);
+    }
+
+    setLoginRedirectAction = (action: () => Promise<void>) => {
+        this.loginRedirectAction = action;
+    }
+    
+    clearLoginRedirectAction = () => {
+        this.loginRedirectAction = null;
     }
 }
 

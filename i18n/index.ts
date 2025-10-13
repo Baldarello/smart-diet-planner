@@ -21,7 +21,7 @@ const translations = {
     tabCalendar: "Calendario",
     tabSettings: "Impostazioni",
     welcomeTitle: "Inizia un Nuovo Piano Dietetico",
-    welcomeSubtitle: "Carica un file PDF o JSON del tuo piano per iniziare.",
+    welcomeSubtitle: "Importa il file JSON del tuo piano per iniziare.",
     uploadPdfTitle: "Carica il tuo Piano",
     viewArchived: "Vedi Piani Archiviati",
     uploadNew: "Carica un Nuovo Piano Dietetico",
@@ -29,7 +29,6 @@ const translations = {
     errorAndUpload: "Per favore, prova a caricare un nuovo file",
     onlineModeTitle: "Modalità Online: Analisi AI e nutrizione attive.",
     offlineModeTitle: "Modalità Offline: Quota API superata. Funzionalità di base attive.",
-    createManually: "Crea Manualmente",
     cancelAndReturn: "Annulla e torna al piano",
     restoreFromArchiveTitle: "Oppure, ripristina un piano archiviato",
     planManagement: "Gestione Piano",
@@ -63,6 +62,19 @@ const translations = {
     pushNotificationsDenied: "Bloccate",
     pushNotificationsUnsupported: "Non supportate",
     pushNotificationsError: "Errore",
+    adminLoginTitle: "Accesso Admin",
+    usernameLabel: "Nome Utente",
+    passwordLabel: "Password",
+    loginButton: "Accedi",
+    invalidCredentialsError: "Credenziali non valide. Per favore, riprova.",
+    nutritionistPortalTitle: "Portale Nutrizionista",
+    logoutButton: "Esci",
+    notFoundTitle: "404 - Pagina Non Trovata",
+    notFoundMessage: "La pagina che stai cercando non esiste o non hai il permesso di accedervi.",
+    createPlanTab: "Crea Piano",
+    manageIngredientsTab: "Gestisci Ingredienti",
+    addNewIngredientPlaceholder: "Nome del nuovo ingrediente...",
+    add: "Aggiungi",
 
 
     // SetPlanDatesModal.tsx
@@ -76,38 +88,35 @@ const translations = {
     // ManualPlanEntryForm.tsx
     manualEntryTitle: "Crea il Tuo Piano Dietetico",
     mealTitleLabel: "Nome del piatto (opzionale)",
+    procedureLabel: "Procedimento (opzionale)",
+    procedurePlaceholder: "Descrivi qui i passaggi per la preparazione...",
     ingredientsLabel: "Ingredienti",
     addIngredient: "Aggiungi Ingrediente",
     removeIngredient: "Rimuovi Ingrediente",
     savePlan: "Genera Piano",
     cancel: "Annulla",
     planEmptyError: "Il piano inviato è vuoto. Per favore, aggiungi almeno un ingrediente.",
-    ingredientPlaceholder: "Es. 60g di riso venere",
+    planNameLabel: "Nome del Piano",
+    planNamePlaceholder: "Es. Dieta Ipo-calorica Settimana 1",
+    sharePlan: "Condividi",
+    sharing: "Condivisione",
     
     // FileUpload.tsx
     clickToUpload: "Clicca per caricare",
     dragAndDrop: "o trascina e rilascia",
-    pdfOrJsonFile: "File PDF o JSON del tuo piano dietetico",
-
-    // Fix: Add missing translation keys for JsonImportButton.tsx
+    
     // JsonImportButton.tsx
     clickToImport: "Clicca per importare",
-    jsonFile: "File JSON",
+    jsonFile: "File JSON del tuo piano dietetico",
 
     // Loader.tsx
     loadingPlanTitle: "Caricamento del piano...",
     loadingPlanMessage: "Un momento, stiamo recuperando i tuoi dati.",
+    importingPlanTitle: "Importazione del piano condiviso...",
+    importingPlanMessage: "Attendere prego, stiamo caricando il piano dal link.",
     syncingTitle: "Sincronizzazione con Google Drive...",
     syncingMessage: "Attendi mentre sincronizziamo i tuoi dati.",
-    readingPdfTitle: "Lettura del PDF in corso...",
-    structuringPlanTitle: "Strutturazione del Piano...",
-    analyzingNutritionTitle: "Analisi Nutrizionale...",
-    generatingListTitle: "Creazione Lista Spesa...",
     progressComplete: "% Completo",
-    readingMessages: [ "Scansionando le pagine...", "Estraendo il testo...", "Riconoscendo la struttura...", ],
-    structuringPlanMessages: [ "Organizzando i pasti della tua settimana...", "Identificando gli ingredienti...", "Assegnando gli orari dei pasti...", "Costruendo il piano giornaliero...", ],
-    analyzingNutritionMessages: [ "Stimando i valori nutrizionali...", "Calcolando le calorie per ogni pasto...", "Analizzando i macronutrienti...", "Questo richiederà un momento...", ],
-    generatingListMessages: [ "Aggregando gli ingredienti...", "Calcolando le quantità totali...", "Categorizzando gli articoli...", "Quasi pronto...", ],
 
     // ErrorMessage.tsx
     errorOccurred: "Si è verificato un errore",
@@ -139,18 +148,16 @@ const translations = {
     shoppingListEmptyTitle: "Tutto Pronto!",
     shoppingListEmptyMessage: "La tua lista della spesa è vuota. Sei pronto per iniziare la settimana!",
     shoppingListEmptyButton: "Vai al Piano di Oggi",
-    shoppingListStaleTitle: "Modifiche Rilevate!",
-    shoppingListStaleMessage: "Il tuo piano alimentare è cambiato. La lista e la dispensa potrebbero non essere accurate.",
     recalculateList: "Ricalcola Lista",
-    recalculating: "Ricalcolando...",
+    recalculating: "Ricalcolando",
     addItem: "Aggiungi Voce",
     addCategory: "Aggiungi Categoria",
     newCategoryPrompt: "Nome nuova categoria",
     save: "Salva",
     deleteItemTitle: "Elimina Voce",
     editItemTitle: "Modifica Voce",
-    quantityPlaceholder: "Quantità",
-    quantityValuePlaceholder: "Valore",
+    ingredientPlaceholder: "Nome Ingrediente (es. Pollo)",
+    quantityPlaceholder: "Quantità (es. 100)",
     quantityUnitLabel: "Unità",
     selectAll: "Seleziona Tutto",
     shoppingListSetupTitle: "Prepara il tuo piano!",
@@ -163,6 +170,11 @@ const translations = {
     reorderCategoryDown: "Sposta Giù",
     listShareTitle: "Lista della Spesa per {planName}",
 
+    // ShareLinkModal.tsx
+    shareLinkTitle: "Piano Condiviso",
+    shareLinkInstruction: "Copia e invia questo link al tuo cliente. Aprendolo, potrà importare il piano direttamente nell'app.",
+    copyLink: "Copia",
+    linkCopied: "Copiato!",
 
     // PantryView.tsx
     pantryTitle: "La Mia Dispensa",
@@ -374,7 +386,7 @@ const translations = {
     tabCalendar: "Calendar",
     tabSettings: "Settings",
     welcomeTitle: "Start a New Diet Plan",
-    welcomeSubtitle: "Upload a PDF or JSON file of your plan to get started.",
+    welcomeSubtitle: "Import the JSON file of your plan to get started.",
     uploadPdfTitle: "Upload Your Plan",
     viewArchived: "View Archived Plans",
     uploadNew: "Upload a New Diet Plan",
@@ -382,7 +394,6 @@ const translations = {
     errorAndUpload: "Please try uploading a new file",
     onlineModeTitle: "Online Mode: AI analysis and nutrition are active.",
     offlineModeTitle: "Offline Mode: API quota exceeded. Basic functionality is active.",
-    createManually: "Create Manually",
     cancelAndReturn: "Cancel and return to plan",
     restoreFromArchiveTitle: "Or, restore an archived plan",
     planManagement: "Plan Management",
@@ -416,6 +427,19 @@ const translations = {
     pushNotificationsDenied: "Denied",
     pushNotificationsUnsupported: "Unsupported",
     pushNotificationsError: "Error",
+    adminLoginTitle: "Admin Access",
+    usernameLabel: "Username",
+    passwordLabel: "Password",
+    loginButton: "Login",
+    invalidCredentialsError: "Invalid credentials. Please try again.",
+    nutritionistPortalTitle: "Nutritionist Portal",
+    logoutButton: "Logout",
+    notFoundTitle: "404 - Not Found",
+    notFoundMessage: "The page you are looking for does not exist or you do not have permission to access it.",
+    createPlanTab: "Create Plan",
+    manageIngredientsTab: "Manage Ingredients",
+    addNewIngredientPlaceholder: "New ingredient name...",
+    add: "Add",
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Set Plan Duration",
@@ -428,37 +452,35 @@ const translations = {
     // ManualPlanEntryForm.tsx
     manualEntryTitle: "Create Your Diet Plan",
     mealTitleLabel: "Dish name (optional)",
+    procedureLabel: "Procedure (optional)",
+    procedurePlaceholder: "Describe the preparation steps here...",
     ingredientsLabel: "Ingredients",
     addIngredient: "Add Ingredient",
     removeIngredient: "Remove Ingredient",
     savePlan: "Generate Plan",
     cancel: "Cancel",
     planEmptyError: "The submitted plan is empty. Please add at least one ingredient.",
-    ingredientPlaceholder: "e.g. 60g of brown rice",
+    planNameLabel: "Plan Name",
+    planNamePlaceholder: "e.g. Low-Calorie Diet Week 1",
+    sharePlan: "Share",
+    sharing: "Sharing",
     
     // FileUpload.tsx
     clickToUpload: "Click to upload",
     dragAndDrop: "or drag and drop",
-    pdfOrJsonFile: "PDF or JSON file of your diet plan",
     
     // JsonImportButton.tsx
     clickToImport: "Click to import",
-    jsonFile: "JSON file",
+    jsonFile: "JSON file of your diet plan",
 
     // Loader.tsx
     loadingPlanTitle: "Loading your plan...",
     loadingPlanMessage: "Just a moment while we retrieve your data.",
+    importingPlanTitle: "Importing shared plan...",
+    importingPlanMessage: "Please wait, we are loading the plan from the link.",
     syncingTitle: "Syncing with Google Drive...",
     syncingMessage: "Please wait while we sync your data.",
-    readingPdfTitle: "Reading your PDF...",
-    structuringPlanTitle: "Structuring Your Plan...",
-    analyzingNutritionTitle: "Analyzing Nutrition...",
-    generatingListTitle: "Creating Shopping List...",
     progressComplete: "% Complete",
-    readingMessages: [ "Scanning pages...", "Extracting text...", "Recognizing structure...", ],
-    structuringPlanMessages: [ "Organizing your week's meals...", "Identifying ingredients...", "Assigning meal times...", "Building the daily schedule...", ],
-    analyzingNutritionMessages: [ "Estimating nutritional values...", "Calculating calories per meal...", "Analyzing macronutrients...", "This will take a moment...", ],
-    generatingListMessages: [ "Aggregating ingredients...", "Calculating total quantities...", "Categorizing items...", "Almost ready...", ],
 
     // ErrorMessage.tsx
     errorOccurred: "An error occurred",
@@ -490,18 +512,16 @@ const translations = {
     shoppingListEmptyTitle: "All Set!",
     shoppingListEmptyMessage: "Your shopping list is clear. You're ready to start your week!",
     shoppingListEmptyButton: "Go to Today's Plan",
-    shoppingListStaleTitle: "Changes Detected!",
-    shoppingListStaleMessage: "Your meal plan has changed. The shopping list and pantry might be inaccurate.",
     recalculateList: "Recalculate List",
-    recalculating: "Recalculating...",
+    recalculating: "Recalculating",
     addItem: "Add Item",
     addCategory: "Add Category",
     newCategoryPrompt: "New category name",
     save: "Save",
     deleteItemTitle: "Delete Item",
     editItemTitle: "Edit Item",
-    quantityPlaceholder: "Quantity",
-    quantityValuePlaceholder: "Value",
+    ingredientPlaceholder: "Ingredient Name (e.g. Chicken)",
+    quantityPlaceholder: "Quantity (e.g. 100)",
     quantityUnitLabel: "Unit",
     selectAll: "Select All",
     shoppingListSetupTitle: "Get your plan ready!",
@@ -513,6 +533,12 @@ const translations = {
     reorderCategoryUp: "Move Up",
     reorderCategoryDown: "Move Down",
     listShareTitle: "Shopping List for {planName}",
+    
+    // ShareLinkModal.tsx
+    shareLinkTitle: "Plan Shared",
+    shareLinkInstruction: "Copy and send this link to your client. Opening it will import the plan directly into their app.",
+    copyLink: "Copy",
+    linkCopied: "Copied!",
 
     // PantryView.tsx
     pantryTitle: "My Pantry",
@@ -733,5 +759,6 @@ export function t(key: keyof typeof translations['it'], options?: Record<string,
 
 export function t_dynamic(key: 'readingMessages' | 'structuringPlanMessages' | 'analyzingNutritionMessages' | 'generatingListMessages'): string[] {
     const locale = i18nLocaleGetter();
+    // @ts-ignore
     return translations[locale][key] || translations['en'][key] || [];
 }

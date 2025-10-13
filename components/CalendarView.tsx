@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
+import { useNavigate } from 'react-router-dom';
 import { mealPlanStore } from '../stores/MealPlanStore';
 
 const getMonthDetails = (year: number, month: number) => {
@@ -11,7 +12,8 @@ const getMonthDetails = (year: number, month: number) => {
 };
 
 const CalendarView: React.FC = observer(() => {
-    const { currentDate, setCurrentDate, setActiveTab, startDate, endDate, progressHistory, locale } = mealPlanStore;
+    const { currentDate, setCurrentDate, startDate, endDate, progressHistory, locale } = mealPlanStore;
+    const navigate = useNavigate();
     const [viewDate, setViewDate] = useState(new Date(currentDate));
 
     const loggedDays = useMemo(() => {
@@ -40,7 +42,7 @@ const CalendarView: React.FC = observer(() => {
     const handleDayClick = (dateStr: string, isDisabled: boolean) => {
         if (isDisabled) return;
         setCurrentDate(dateStr);
-        setActiveTab('daily');
+        navigate('/daily');
     };
     
     const today = new Date();

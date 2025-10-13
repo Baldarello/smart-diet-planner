@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
+import { useNavigate } from 'react-router-dom';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import MealItemChecklist from './MealItemChecklist';
 import { t } from '../i18n';
@@ -11,7 +12,6 @@ import NutritionInfoDisplay from './NutritionInfoDisplay';
 import { Meal } from '../types';
 import MealModificationControl from './MealModificationControl';
 import Snackbar from './Snackbar';
-import ActualNutrition from './ActualNutrition';
 import StepTracker from './StepTracker';
 import BodyMetricsTracker from './BodyMetricsTracker';
 import SkeletonLoader from './SkeletonLoader';
@@ -20,11 +20,11 @@ import MealActionsPopup from './MealActionsPopup';
 import ConfirmationModal from './ConfirmationModal';
 
 const DailyPlanView: React.FC = observer(() => {
-    const { dailyPlan, toggleMealDone, dailyNutritionSummary, onlineMode, currentDate, setCurrentDate, startDate, endDate, toggleAllItemsInMeal, undoCheatMeal, setActiveTab } = mealPlanStore;
+    const { dailyPlan, toggleMealDone, dailyNutritionSummary, currentDate, setCurrentDate, startDate, endDate, toggleAllItemsInMeal, undoCheatMeal } = mealPlanStore;
+    const navigate = useNavigate();
     const [cheatingMealIndex, setCheatingMealIndex] = useState<number | null>(null);
     const [actionsMenuMealIndex, setActionsMenuMealIndex] = useState<number | null>(null);
     const [resettingMeal, setResettingMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
-    const [recalculatingMeal, setRecalculatingMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
     const [activeMobileTab, setActiveMobileTab] = useState<'meals' | 'trackers'>('meals');
 
 
@@ -156,9 +156,17 @@ const DailyPlanView: React.FC = observer(() => {
                             </div>
                         )}
 
-                        {!meal.cheat && <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} isEditable={true} showCheckbox={true} />}
-                        {onlineMode && mealPlanStore.showMacros && !meal.cheat && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} onRecalcClick={() => setRecalculatingMeal({ dayIndex, mealIndex: meal.originalIndex })} />}
-                        {onlineMode && mealPlanStore.showMacros && !meal.cheat && <ActualNutrition dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
+                        {!meal.cheat && (
+                             <>
+                                {meal.procedure && (
+                                    <div className="mt-3 p-3 bg-slate-100 dark:bg-gray-700 rounded-lg border dark:border-gray-600">
+                                        <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{meal.procedure}</p>
+                                    </div>
+                                )}
+                                <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} isEditable={true} showCheckbox={true} />
+                            </>
+                        )}
+                        {mealPlanStore.showMacros && !meal.cheat && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
                     </div>
                 );
             })}
@@ -178,7 +186,7 @@ const DailyPlanView: React.FC = observer(() => {
             <div className="flex justify-between items-center border-b dark:border-gray-700 pb-4 mb-4">
                 <button onClick={() => changeDate(-1)} disabled={isFirstDay} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">&lt;</button>
                 <button 
-                    onClick={() => setActiveTab('calendar')}
+                    onClick={() => navigate('/calendar')}
                     className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     title={t('tabCalendar')}
                 >
@@ -221,7 +229,7 @@ const DailyPlanView: React.FC = observer(() => {
 
             {/* Desktop View */}
             <div className="hidden sm:block">
-                {onlineMode && mealPlanStore.showMacros && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
+                {mealPlanStore.showMacros && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
                 {TrackersContent}
                 {MealsContent}
             </div>
@@ -230,7 +238,7 @@ const DailyPlanView: React.FC = observer(() => {
             <div className="sm:hidden">
                 {activeMobileTab === 'meals' && (
                     <>
-                        {onlineMode && mealPlanStore.showMacros && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
+                        {mealPlanStore.showMacros && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
                         {MealsContent}
                     </>
                 )}
@@ -251,16 +259,6 @@ const DailyPlanView: React.FC = observer(() => {
                     title={t('resetMealModalTitle')}
                 >
                     <p>{t('resetMealModalContent')}</p>
-                </ConfirmationModal>
-            )}
-            {recalculatingMeal && (
-                <ConfirmationModal
-                    isOpen={!!recalculatingMeal}
-                    onClose={() => setRecalculatingMeal(null)}
-                    onConfirm={() => mealPlanStore.recalculateMealNutrition(recalculatingMeal.dayIndex, recalculatingMeal.mealIndex)}
-                    title={t('recalcModalTitle')}
-                >
-                    <p>{t('recalcModalContent')}</p>
                 </ConfirmationModal>
             )}
         </div>
