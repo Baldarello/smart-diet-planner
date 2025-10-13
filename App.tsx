@@ -328,12 +328,16 @@ const MainAppLayout: React.FC = observer(() => {
                     </div>
                 </div>
                 
-                <div className="px-4 pb-4 mt-auto">
-                     <Link to="/admin" onClick={() => setIsDrawerOpen(false)} className="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                        <AdminIcon />
-                        <span>{t('adminLoginTitle')}</span>
-                    </Link>
-                </div>
+                {/*{process.env.BUILD_TYPE === 'web' && (*/}
+                     {(
+                    <div className="px-4 pb-4 mt-auto">
+                        <Link to="/admin" onClick={() => setIsDrawerOpen(false)} className="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                            <AdminIcon />
+                            <span>{t('adminLoginTitle')}</span>
+                        </Link>
+                    </div>
+                )}
+
 
                 {renderExitSimulationButton()}
             </div>
