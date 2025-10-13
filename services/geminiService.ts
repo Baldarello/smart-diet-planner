@@ -53,6 +53,7 @@ const mealSchema = {
   properties: {
     name: { type: Type.STRING, description: "Il nome del pasto (COLAZIONE, SPUNTINO, PRANZO, MERENDA, CENA)." },
     title: { type: Type.STRING, description: "Il titolo o nome specifico del piatto, se presente (es. 'Riso venere con ceci, carote e fagiolini')." },
+    procedure: { type: Type.STRING, description: "La ricetta o il procedimento facoltativo per preparare il piatto. Conserva questo campo se fornito nell'input." },
     time: { type: Type.STRING, description: "Un orario suggerito per il pasto in formato HH:MM (es. '08:00', '13:00'). Scegli un orario logico in base al nome del pasto." },
     items: {
       type: Type.ARRAY,
@@ -157,8 +158,9 @@ Sei un assistente nutrizionale esperto. Ti viene fornito un oggetto JSON che rap
 I TUOI COMPITI SONO:
 1.  **ANALISI COMPLETA DEL PIANO**: Analizza l'intero piano. Per ogni ingrediente:
     *   Assicurati che \`ingredientName\` sia il nome pulito e base dell'ingrediente. Lo stesso ingrediente deve avere lo stesso \`ingredientName\` ovunque.
-2.  **ORARI E NUTRIZIONE**: Per OGNI pasto:
+2.  **ORARI, PROCEDIMENTO E NUTRIZIONE**: Per OGNI pasto:
     *   Assegna un orario logico in \`time\` (formato HH:MM).
+    *   Se è fornito un campo \`procedure\`, conservalo nel risultato.
     *   Fornisci una stima nutrizionale (carbs, protein, fat, calories) nel campo \`nutrition\`.
 3.  **LISTA DELLA SPESA**: Basandoti sul piano aggiornato, genera una lista della spesa aggregata e categorizzata.
     *   Il campo "item" nella lista deve corrispondere esattamente all'"ingredientName" del piano.

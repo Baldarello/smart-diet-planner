@@ -84,6 +84,8 @@ const translations = {
     // ManualPlanEntryForm.tsx
     manualEntryTitle: "Crea il Tuo Piano Dietetico",
     mealTitleLabel: "Nome del piatto (opzionale)",
+    procedureLabel: "Procedimento (opzionale)",
+    procedurePlaceholder: "Descrivi qui i passaggi per la preparazione...",
     ingredientsLabel: "Ingredienti",
     addIngredient: "Aggiungi Ingrediente",
     removeIngredient: "Rimuovi Ingrediente",
@@ -433,6 +435,8 @@ const translations = {
     // ManualPlanEntryForm.tsx
     manualEntryTitle: "Create Your Diet Plan",
     mealTitleLabel: "Dish name (optional)",
+    procedureLabel: "Procedure (optional)",
+    procedurePlaceholder: "Describe the preparation steps here...",
     ingredientsLabel: "Ingredients",
     addIngredient: "Add Ingredient",
     removeIngredient: "Remove Ingredient",

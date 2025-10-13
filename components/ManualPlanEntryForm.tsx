@@ -14,8 +14,9 @@ interface FormMealItem {
 }
 
 // Define more specific types for the form state to avoid using properties that aren't part of the form
-interface FormMeal extends Omit<Meal, 'items' | 'done' | 'nutrition' | 'actualNutrition' | 'cheat' | 'cheatMealDescription'> {
+interface FormMeal extends Omit<Meal, 'items' | 'done' | 'nutrition' | 'actualNutrition' | 'cheat' | 'cheatMealDescription' | 'procedure'> {
     items: FormMealItem[];
+    procedure: string;
 }
 
 interface FormDayPlan extends Omit<DayPlan, 'meals'> {
@@ -28,6 +29,7 @@ const createInitialPlan = (): FormDayPlan[] =>
         meals: MEAL_KEYWORDS.map(name => ({
             name,
             title: '',
+            procedure: '',
             items: [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }],
             time: MEAL_TIMES[name] || ''
         }))
@@ -47,6 +49,21 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
                     meals: day.meals.map((meal, mIdx) => {
                         if (mIdx !== mealIndex) return meal;
                         return { ...meal, title: value };
+                    })
+                };
+            })
+        );
+    };
+
+    const handleMealProcedureChange = (dayIndex: number, mealIndex: number, value: string) => {
+        setPlanData(currentPlan => 
+            currentPlan.map((day, dIdx) => {
+                if (dIdx !== dayIndex) return day;
+                return {
+                    ...day,
+                    meals: day.meals.map((meal, mIdx) => {
+                        if (mIdx !== mealIndex) return meal;
+                        return { ...meal, procedure: value };
                     })
                 };
             })
@@ -125,11 +142,12 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
                 return {
                     name: meal.name,
                     title: meal.title,
+                    procedure: meal.procedure,
                     time: meal.time,
                     items: newItems,
                     done: false,
                 };
-            }).filter(meal => meal.items.length > 0 || (meal.title && meal.title.trim() !== ''))
+            }).filter(meal => meal.items.length > 0 || (meal.title && meal.title.trim() !== '') || (meal.procedure && meal.procedure.trim() !== ''))
         })).filter(day => day.meals.length > 0);
 
         if (initialWeeklyPlan.length === 0) {
@@ -202,6 +220,12 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
                                         value={meal.title}
                                         onChange={(e) => handleMealTitleChange(dayIndex, mealIndex, e.target.value)}
                                         className="w-full mt-2 p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500"
+                                    />
+                                    <textarea
+                                        placeholder={t('procedurePlaceholder')}
+                                        value={meal.procedure}
+                                        onChange={(e) => handleMealProcedureChange(dayIndex, mealIndex, e.target.value)}
+                                        className="w-full mt-2 p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500 text-sm h-24"
                                     />
                                     <div className="mt-3 space-y-2">
                                         <label className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('ingredientsLabel')}</label>
