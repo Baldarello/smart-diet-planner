@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { DayPlan, Meal, MealItem } from '../types';
 import { t } from '../i18n';
 import { DAY_KEYWORDS, MEAL_KEYWORDS, MEAL_TIMES } from '../services/offlineParser';
@@ -40,6 +40,13 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
     const [planName, setPlanName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
+    // Autocomplete state
+    const [ingredientDatabase, setIngredientDatabase] = useState<string[]>([]);
+    const [activeAutocomplete, setActiveAutocomplete] = useState<{ dayIndex: number; mealIndex: number; itemIndex: number } | null>(null);
+    const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+    const autocompleteRef = useRef<HTMLDivElement>(null);
+
+
     const handleMealTitleChange = (dayIndex: number, mealIndex: number, value: string) => {
         setPlanData(currentPlan => 
             currentPlan.map((day, dIdx) => {
@@ -70,6 +77,17 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
         );
     };
 
+    const updateSuggestions = (inputValue: string) => {
+        if (inputValue.length >= 3) {
+            const suggestions = ingredientDatabase.filter(s =>
+                s.toLowerCase().includes(inputValue.toLowerCase())
+            );
+            setFilteredSuggestions(suggestions);
+        } else {
+            setFilteredSuggestions([]);
+        }
+    };
+    
     const handleItemChange = (dayIndex: number, mealIndex: number, itemIndex: number, field: keyof FormMealItem, value: string) => {
         setPlanData(currentPlan =>
             currentPlan.map((day, dIdx) => {
@@ -89,6 +107,38 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
                 };
             })
         );
+        
+        if (field === 'ingredientName') {
+            setActiveAutocomplete({ dayIndex, mealIndex, itemIndex });
+            updateSuggestions(value);
+        }
+    };
+    
+    const handleIngredientFocus = (dayIndex: number, mealIndex: number, itemIndex: number, value: string) => {
+        setActiveAutocomplete({ dayIndex, mealIndex, itemIndex });
+        updateSuggestions(value);
+    };
+    
+    const handleIngredientBlur = (ingredientName: string) => {
+        setTimeout(() => {
+            if (autocompleteRef.current && !autocompleteRef.current.contains(document.activeElement)) {
+                setActiveAutocomplete(null);
+            }
+        }, 150);
+
+        const trimmedName = ingredientName.trim();
+        if (trimmedName && !ingredientDatabase.includes(trimmedName)) {
+            setIngredientDatabase(prev => [...prev, trimmedName].sort());
+        }
+    };
+
+    const handleSuggestionClick = (dayIndex: number, mealIndex: number, itemIndex: number, suggestion: string) => {
+        handleItemChange(dayIndex, mealIndex, itemIndex, 'ingredientName', suggestion);
+        setActiveAutocomplete(null);
+        const trimmedName = suggestion.trim();
+        if (trimmedName && !ingredientDatabase.includes(trimmedName)) {
+            setIngredientDatabase(prev => [...prev, trimmedName].sort());
+        }
     };
     
     const handleAddItem = (dayIndex: number, mealIndex: number) => {
@@ -231,13 +281,38 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
                                         <label className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('ingredientsLabel')}</label>
                                         {meal.items.map((item, itemIndex) => (
                                             <div key={itemIndex} className="grid grid-cols-1 sm:grid-cols-[1fr,auto,auto,auto] items-center gap-2">
-                                                <input
-                                                    type="text"
-                                                    placeholder={t('ingredientPlaceholder')}
-                                                    value={item.ingredientName}
-                                                    onChange={e => handleItemChange(dayIndex, mealIndex, itemIndex, 'ingredientName', e.target.value)}
-                                                    className="p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500"
-                                                />
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        placeholder={t('ingredientPlaceholder')}
+                                                        value={item.ingredientName}
+                                                        onChange={e => handleItemChange(dayIndex, mealIndex, itemIndex, 'ingredientName', e.target.value)}
+                                                        onFocus={e => handleIngredientFocus(dayIndex, mealIndex, itemIndex, e.target.value)}
+                                                        onBlur={() => handleIngredientBlur(item.ingredientName)}
+                                                        className="w-full p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500"
+                                                        autoComplete="off"
+                                                    />
+                                                    {activeAutocomplete?.dayIndex === dayIndex &&
+                                                     activeAutocomplete?.mealIndex === mealIndex &&
+                                                     activeAutocomplete?.itemIndex === itemIndex &&
+                                                     filteredSuggestions.length > 0 && (
+                                                        <div 
+                                                            ref={autocompleteRef}
+                                                            className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto"
+                                                        >
+                                                            {filteredSuggestions.map((suggestion, sIndex) => (
+                                                                <button
+                                                                    key={sIndex}
+                                                                    type="button"
+                                                                    onMouseDown={() => handleSuggestionClick(dayIndex, mealIndex, itemIndex, suggestion)}
+                                                                    className="w-full text-left px-3 py-2 hover:bg-violet-100 dark:hover:bg-gray-700"
+                                                                >
+                                                                    {suggestion}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 <input
                                                     type="text"
                                                     inputMode="decimal"
