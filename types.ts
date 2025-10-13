@@ -1,3 +1,5 @@
+
+
 // Fix: Add NutritionInfo interface
 export interface NutritionInfo {
   carbs: number;
@@ -145,4 +147,5 @@ export interface SyncedData {
 export interface Ingredient {
   id?: number;
   name: string;
+  category?: string;
 }

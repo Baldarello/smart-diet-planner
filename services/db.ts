@@ -17,16 +17,26 @@ export interface AppState {
 export class MySubClassedDexie extends Dexie {
   appState!: Table<AppState, string>;
   progressHistory!: Table<ProgressRecord, string>; // Primary key is the 'date' string
-  dailyLogs!: Table<DailyLog, string>; // Primary key is date string 'YYYY-MM-DD'
+  dailyLogs!: Table<DailyLog, string>; // To store daily instances of the meal plan
   ingredients!: Table<Ingredient, number>;
 
   constructor() {
     super('dietPlanDatabase', { addons: [observable] });
-    (this as any).version(4).stores({
+    // Fix: Cast 'this' to Dexie to resolve type error where 'version' is not found.
+    (this as Dexie).version(4).stores({
       appState: 'key',
-      progressHistory: 'date', // Primary key is 'date'
-      dailyLogs: 'date', // To store daily instances of the meal plan
-      ingredients: '++id, &name' // Primary key auto-incrementing, name is unique
+      progressHistory: 'date',
+      dailyLogs: 'date',
+      ingredients: '++id, &name'
+    });
+    // Fix: Cast 'this' to Dexie to resolve type error where 'version' is not found.
+    (this as Dexie).version(5).stores({
+      ingredients: '++id, &name, category'
+    }).upgrade(tx => {
+      // This upgrade function is empty because Dexie will automatically
+      // add the new `category` index to the existing `ingredients` table.
+      // No data migration is needed for existing ingredients.
+      return tx.table('ingredients').count(); // Perform a simple operation to satisfy upgrade tx
     });
   }
 }

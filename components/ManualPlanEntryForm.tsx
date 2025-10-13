@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { observer } from 'mobx-react-lite';
-import { DayPlan, Meal, MealItem } from '../types';
+import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem } from '../types';
 import { t } from '../i18n';
 import { DAY_KEYWORDS, MEAL_KEYWORDS, MEAL_TIMES } from '../services/offlineParser';
-import { getPlanDetailsAndShoppingList } from '../services/geminiService';
+import { getCategoriesForIngredients } from '../services/geminiService';
 import { uploadAndShareFile } from '../services/driveService';
 import { handleSignIn } from '../services/authService';
 import { authStore } from '../stores/AuthStore';
@@ -86,9 +86,11 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = observer(({ onCa
 
     const updateSuggestions = (inputValue: string) => {
         if (inputValue.length >= 3) {
-            const suggestions = ingredientStore.ingredients.filter(s =>
-                s.toLowerCase().includes(inputValue.toLowerCase())
-            );
+            const suggestions = ingredientStore.ingredients
+                .map(i => i.name)
+                .filter(s =>
+                    s.toLowerCase().includes(inputValue.toLowerCase())
+                );
             setFilteredSuggestions(suggestions);
         } else {
             setFilteredSuggestions([]);
@@ -182,60 +184,102 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = observer(({ onCa
         );
     };
 
-    const generatePlanData = () => {
-        const initialWeeklyPlan: DayPlan[] = planData.map(day => ({
+    const generateAndProcessPlan = async () => {
+        // 1. Build a preliminary plan and aggregate ingredients for the shopping list
+        const aggregatedIngredients = new Map<string, { totalValue: number; unit: string }>();
+        const weeklyPlan: DayPlan[] = planData.map(day => ({
             day: day.day,
             meals: day.meals.map(meal => {
                 const newItems: MealItem[] = meal.items
                     .filter(item => item.ingredientName.trim() !== '')
-                    .map(item => ({
-                        ingredientName: item.ingredientName.trim(),
-                        fullDescription: `${item.quantityValue.trim() || ''}${item.quantityUnit.trim()} ${item.ingredientName.trim()}`.trim(),
-                        used: false,
-                    }));
-                
+                    .map(item => {
+                        const name = item.ingredientName.trim();
+                        const value = parseFloat(item.quantityValue) || 0;
+                        const unit = item.quantityUnit.trim();
+
+                        const existing = aggregatedIngredients.get(name);
+                        if (existing && existing.unit === unit) {
+                            existing.totalValue += value;
+                        } else if (!existing) {
+                            aggregatedIngredients.set(name, { totalValue: value, unit });
+                        }
+                        return {
+                            ingredientName: name,
+                            fullDescription: `${item.quantityValue.trim() || ''}${unit} ${name}`.trim(),
+                            used: false,
+                        };
+                    });
                 return {
-                    name: meal.name,
-                    title: meal.title,
-                    procedure: meal.procedure,
-                    time: meal.time,
-                    items: newItems,
-                    done: false,
+                    name: meal.name, title: meal.title, procedure: meal.procedure,
+                    time: meal.time, items: newItems, done: false,
                 };
-            }).filter(meal => meal.items.length > 0 || (meal.title && meal.title.trim() !== '') || (meal.procedure && meal.procedure.trim() !== ''))
+            }).filter(meal => meal.items.length > 0 || !!meal.title || !!meal.procedure)
         })).filter(day => day.meals.length > 0);
 
-        if (initialWeeklyPlan.length === 0) {
+        if (weeklyPlan.length === 0) {
             alert(t('planEmptyError'));
             return null;
         }
-        return initialWeeklyPlan;
-    }
+
+        // 2. Check local cache for categories
+        const uniqueNames = Array.from(aggregatedIngredients.keys());
+        const uncachedNames: string[] = [];
+        const categoryMap = new Map<string, string>();
+        uniqueNames.forEach(name => {
+            const cachedCategory = ingredientStore.getCategoryForIngredient(name);
+            if (cachedCategory) {
+                categoryMap.set(name, cachedCategory);
+            } else {
+                uncachedNames.push(name);
+            }
+        });
+
+        // 3. Call API for uncached ingredients
+        if (uncachedNames.length > 0) {
+            try {
+                const newCategories = await getCategoriesForIngredients(uncachedNames);
+                // 4. Update local DB cache and map
+                await ingredientStore.setCategories(newCategories);
+                for (const name in newCategories) {
+                    categoryMap.set(name, newCategories[name]);
+                }
+            } catch (e) {
+                console.error("Failed to fetch categories, will proceed without them for some items.", e);
+            }
+        }
+        
+        // 5. Build final shopping list
+        const shoppingListByCategory: Record<string, ShoppingListItem[]> = {};
+        aggregatedIngredients.forEach(({ totalValue, unit }, name) => {
+            const category = categoryMap.get(name) || t('uncategorized');
+            if (!shoppingListByCategory[category]) {
+                shoppingListByCategory[category] = [];
+            }
+            shoppingListByCategory[category].push({ item: name, quantityValue: totalValue || null, quantityUnit: unit });
+        });
+        const shoppingList: ShoppingListCategory[] = Object.entries(shoppingListByCategory)
+            .map(([category, items]) => ({ category, items }))
+            .sort((a, b) => a.category.localeCompare(b.category));
+        
+        return {
+            planName: planName.trim() || 'Nuovo Piano Dietetico',
+            weeklyPlan, shoppingList,
+        };
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const initialWeeklyPlan = generatePlanData();
-        if (!initialWeeklyPlan) return;
-
         setIsLoading(true);
         try {
-            const enrichedData = await getPlanDetailsAndShoppingList(initialWeeklyPlan);
-            if (!enrichedData) {
-                throw new Error("Failed to get enriched data from AI service.");
-            }
+            const finalData = await generateAndProcessPlan();
+            if (!finalData) return;
 
-            const dataToExport = {
-                planName: planName.trim() || 'Nuovo Piano Dietetico',
-                weeklyPlan: enrichedData.weeklyPlan,
-                shoppingList: enrichedData.shoppingList,
-            };
-
-            const jsonString = JSON.stringify(dataToExport, null, 2);
+            const jsonString = JSON.stringify(finalData, null, 2);
             const blob = new Blob([jsonString], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            const safePlanName = dataToExport.planName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const safePlanName = finalData.planName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
             a.download = `diet-plan-${safePlanName}-${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
             a.click();
@@ -244,16 +288,13 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = observer(({ onCa
 
         } catch (error) {
             console.error("Error during plan generation:", error);
-            alert("An error occurred while generating the plan with AI. Please check the console and try again.");
+            alert("An error occurred while generating the plan. Please check the console and try again.");
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleShare = async () => {
-        const initialWeeklyPlan = generatePlanData();
-        if (!initialWeeklyPlan) return;
-
         const shareAction = async () => {
             if (!authStore.accessToken) {
                 alert("Login session is not valid. Please log in again.");
@@ -261,16 +302,10 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = observer(({ onCa
             }
             setIsSharing(true);
             try {
-                const enrichedData = await getPlanDetailsAndShoppingList(initialWeeklyPlan);
-                if (!enrichedData) throw new Error("Failed to get enriched data from AI service.");
-                
-                const dataToShare = {
-                    planName: planName.trim() || 'Nuovo Piano Dietetico',
-                    weeklyPlan: enrichedData.weeklyPlan,
-                    shoppingList: enrichedData.shoppingList,
-                };
+                const finalData = await generateAndProcessPlan();
+                if (!finalData) return;
 
-                const fileId = await uploadAndShareFile(dataToShare, dataToShare.planName, authStore.accessToken);
+                const fileId = await uploadAndShareFile(finalData, finalData.planName, authStore.accessToken);
                 if (!fileId) throw new Error("Failed to get shareable file ID from Google Drive.");
 
                 const url = `${window.location.origin}${window.location.pathname}#/?plan_id=${fileId}`;

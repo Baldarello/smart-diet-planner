@@ -1,4 +1,4 @@
-const vapidPublicKey = process.env.VITE_VAPID_PUBLIC_KEY;
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
 
 function urlBase64ToUint8Array(base64String: string) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);

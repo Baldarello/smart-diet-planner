@@ -3,7 +3,7 @@ import { db } from '../services/db';
 import { Ingredient } from '../types';
 
 class IngredientStore {
-    ingredients: string[] = [];
+    ingredients: Ingredient[] = [];
     status: 'loading' | 'ready' | 'error' = 'loading';
 
     constructor() {
@@ -15,7 +15,7 @@ class IngredientStore {
         try {
             const ingredientsFromDb = await db.ingredients.orderBy('name').toArray();
             runInAction(() => {
-                this.ingredients = ingredientsFromDb.map(i => i.name);
+                this.ingredients = ingredientsFromDb;
                 this.status = 'ready';
             });
         } catch (e) {
@@ -26,23 +26,46 @@ class IngredientStore {
         }
     }
 
+    getCategoryForIngredient(name: string): string | undefined {
+        const ingredient = this.ingredients.find(i => i.name.toLowerCase() === name.toLowerCase());
+        return ingredient?.category;
+    }
+
+    async setCategories(categories: Record<string, string>) {
+        try {
+            const updates: Promise<any>[] = [];
+            
+            for (const name in categories) {
+                const category = categories[name];
+                const existing = this.ingredients.find(i => i.name === name);
+                if (existing?.id) {
+                    updates.push(db.ingredients.update(existing.id, { category }));
+                }
+            }
+            await Promise.all(updates);
+            // Reload from DB to ensure local state is the single source of truth
+            await this.loadIngredients();
+
+        } catch (e) {
+            console.error("Failed to set categories in DB", e);
+        }
+    }
+
     async addIngredient(name: string) {
         const trimmedName = name.trim();
         if (!trimmedName) return;
 
         try {
             // '&name' in schema makes it unique, add will fail if it exists.
-            await db.ingredients.add({ name: trimmedName });
-            // Instead of reloading all, just add it to the local state if successful
-             runInAction(() => {
-                if (!this.ingredients.includes(trimmedName)) {
-                    this.ingredients.push(trimmedName);
-                    this.ingredients.sort();
+            const id = await db.ingredients.add({ name: trimmedName });
+            runInAction(() => {
+                if (!this.ingredients.some(i => i.name === trimmedName)) {
+                    this.ingredients.push({ id: id as number, name: trimmedName });
+                    this.ingredients.sort((a,b) => a.name.localeCompare(b.name));
                 }
             });
         } catch (e) {
             // It will fail if the ingredient already exists, which is fine.
-            // We can just ignore the error in that case.
             if (e instanceof Error && e.name === 'ConstraintError') {
                 // Ingredient already exists, which is fine.
             } else {
@@ -70,7 +93,7 @@ class IngredientStore {
         try {
             await db.ingredients.where('name').equals(name).delete();
             runInAction(() => {
-                this.ingredients = this.ingredients.filter(i => i !== name);
+                this.ingredients = this.ingredients.filter(i => i.name !== name);
             });
         } catch (e) {
             console.error("Failed to delete ingredient", e);
