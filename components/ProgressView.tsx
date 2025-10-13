@@ -10,7 +10,7 @@ import { db } from '../services/db';
 type DateRange = 7 | 30 | 90;
 
 const ProgressView: React.FC = observer(() => {
-    const { progressHistory, locale, recalculateAllProgress, recalculatingProgress } = mealPlanStore;
+    const { progressHistory, locale, recalculateAllProgress, recalculatingProgress, showMacros, showCheatMealButton } = mealPlanStore;
     const [dateRange, setDateRange] = useState<DateRange>(30);
     const [cheatMealData, setCheatMealData] = useState<(number | null)[]>([]);
 
@@ -110,7 +110,7 @@ const ProgressView: React.FC = observer(() => {
                             ))}
                         </div>
                     </div>
-                     <button
+                    {/* <button
                         onClick={() => recalculateAllProgress()}
                         disabled={recalculatingProgress}
                         className="flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-violet-600 text-white hover:bg-violet-700 transition-colors disabled:bg-violet-400 disabled:opacity-75 disabled:cursor-wait text-sm font-semibold shadow-md w-full sm:w-auto"
@@ -121,7 +121,7 @@ const ProgressView: React.FC = observer(() => {
                             : <RefreshIcon className="h-5 w-5" />
                         }
                         <span>{recalculatingProgress ? t('recalculatingProgressButtonTextLoading') : t('recalculateProgressButtonText')}</span>
-                    </button>
+                    </button>*/}
                 </div>
             </div>
 
@@ -198,7 +198,7 @@ const ProgressView: React.FC = observer(() => {
                     </div>
                 )}
                 
-                {hasData(chartData.cheatMeals) && (
+                {hasData(chartData.cheatMeals) && showCheatMealButton && (
                      <div>
                         <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('cheatMealChartTitle')}</h3>
                         <ProgressChart
@@ -230,7 +230,7 @@ const ProgressView: React.FC = observer(() => {
                     </div>
                 )}
                 
-                {hasData(chartData.plannedCalories) && (
+                {hasData(chartData.plannedCalories) && showMacros && (
                     <div>
                         <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('calorieIntakeChartTitle')}</h3>
                         <ProgressChart

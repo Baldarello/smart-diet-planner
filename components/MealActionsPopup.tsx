@@ -4,6 +4,7 @@ import { t } from '../i18n';
 import MealTimeEditor from './MealTimeEditor';
 import MealModificationControl from './MealModificationControl';
 import { WarningIcon } from './Icons';
+import { mealPlanStore } from '../stores/MealPlanStore';
 
 interface MealActionsPopupProps {
     dayIndex: number;
@@ -63,7 +64,7 @@ const MealActionsPopup: React.FC<MealActionsPopupProps> = observer(({ dayIndex, 
                         onResetClick={handleResetClick}
                     />
                 )}
-                {onLogCheatMeal && (
+                {onLogCheatMeal && mealPlanStore.showCheatMealButton && (
                     <>
                         <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
                         <button 

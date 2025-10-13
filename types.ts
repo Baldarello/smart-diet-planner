@@ -131,6 +131,8 @@ export interface StoredState {
     endDate: string | null;
     shoppingListManaged?: boolean;
     lastModified?: number;
+    showMacros?: boolean;
+    showCheatMealButton?: boolean;
 }
 
 export interface SyncedData {
