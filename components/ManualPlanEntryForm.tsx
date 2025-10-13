@@ -1,10 +1,16 @@
 import React, { useState, useRef } from 'react';
+import { observer } from 'mobx-react-lite';
 import { DayPlan, Meal, MealItem } from '../types';
 import { t } from '../i18n';
 import { DAY_KEYWORDS, MEAL_KEYWORDS, MEAL_TIMES } from '../services/offlineParser';
 import { getPlanDetailsAndShoppingList } from '../services/geminiService';
-import { PlusCircleIcon, TrashIcon } from './Icons';
+import { uploadAndShareFile } from '../services/driveService';
+import { handleSignIn } from '../services/authService';
+import { authStore } from '../stores/AuthStore';
+import { PlusCircleIcon, TrashIcon, ShareIcon } from './Icons';
 import UnitPicker from './UnitPicker';
+import { ingredientStore } from '../stores/IngredientStore';
+import ShareLinkModal from './ShareLinkModal';
 
 // New interfaces for form state
 interface FormMealItem {
@@ -35,13 +41,14 @@ const createInitialPlan = (): FormDayPlan[] =>
         }))
     }));
 
-const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) => {
+const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = observer(({ onCancel }) => {
     const [planData, setPlanData] = useState<FormDayPlan[]>(createInitialPlan());
     const [planName, setPlanName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isSharing, setIsSharing] = useState(false);
+    const [shareUrl, setShareUrl] = useState<string | null>(null);
 
     // Autocomplete state
-    const [ingredientDatabase, setIngredientDatabase] = useState<string[]>([]);
     const [activeAutocomplete, setActiveAutocomplete] = useState<{ dayIndex: number; mealIndex: number; itemIndex: number } | null>(null);
     const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
     const autocompleteRef = useRef<HTMLDivElement>(null);
@@ -79,7 +86,7 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
 
     const updateSuggestions = (inputValue: string) => {
         if (inputValue.length >= 3) {
-            const suggestions = ingredientDatabase.filter(s =>
+            const suggestions = ingredientStore.ingredients.filter(s =>
                 s.toLowerCase().includes(inputValue.toLowerCase())
             );
             setFilteredSuggestions(suggestions);
@@ -127,8 +134,8 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
         }, 150);
 
         const trimmedName = ingredientName.trim();
-        if (trimmedName && !ingredientDatabase.includes(trimmedName)) {
-            setIngredientDatabase(prev => [...prev, trimmedName].sort());
+        if (trimmedName) {
+            ingredientStore.addIngredient(trimmedName);
         }
     };
 
@@ -136,8 +143,8 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
         handleItemChange(dayIndex, mealIndex, itemIndex, 'ingredientName', suggestion);
         setActiveAutocomplete(null);
         const trimmedName = suggestion.trim();
-        if (trimmedName && !ingredientDatabase.includes(trimmedName)) {
-            setIngredientDatabase(prev => [...prev, trimmedName].sort());
+        if (trimmedName) {
+            ingredientStore.addIngredient(trimmedName);
         }
     };
     
@@ -175,9 +182,7 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
         );
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        
+    const generatePlanData = () => {
         const initialWeeklyPlan: DayPlan[] = planData.map(day => ({
             day: day.day,
             meals: day.meals.map(meal => {
@@ -202,8 +207,15 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
 
         if (initialWeeklyPlan.length === 0) {
             alert(t('planEmptyError'));
-            return;
+            return null;
         }
+        return initialWeeklyPlan;
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const initialWeeklyPlan = generatePlanData();
+        if (!initialWeeklyPlan) return;
 
         setIsLoading(true);
         try {
@@ -238,8 +250,51 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
         }
     };
 
+    const handleShare = async () => {
+        const initialWeeklyPlan = generatePlanData();
+        if (!initialWeeklyPlan) return;
+
+        const shareAction = async () => {
+            if (!authStore.accessToken) {
+                alert("Login session is not valid. Please log in again.");
+                return;
+            }
+            setIsSharing(true);
+            try {
+                const enrichedData = await getPlanDetailsAndShoppingList(initialWeeklyPlan);
+                if (!enrichedData) throw new Error("Failed to get enriched data from AI service.");
+                
+                const dataToShare = {
+                    planName: planName.trim() || 'Nuovo Piano Dietetico',
+                    weeklyPlan: enrichedData.weeklyPlan,
+                    shoppingList: enrichedData.shoppingList,
+                };
+
+                const fileId = await uploadAndShareFile(dataToShare, dataToShare.planName, authStore.accessToken);
+                if (!fileId) throw new Error("Failed to get shareable file ID from Google Drive.");
+
+                const url = `${window.location.origin}${window.location.pathname}#/?plan_id=${fileId}`;
+                setShareUrl(url);
+
+            } catch (error) {
+                console.error("Error during plan sharing:", error);
+                alert(`An error occurred while sharing the plan: ${error instanceof Error ? error.message : String(error)}`);
+            } finally {
+                setIsSharing(false);
+            }
+        };
+
+        if (!authStore.isLoggedIn) {
+            authStore.setLoginRedirectAction(shareAction);
+            handleSignIn();
+        } else {
+            await shareAction();
+        }
+    };
+
     return (
         <div className="max-w-4xl mx-auto">
+            {shareUrl && <ShareLinkModal url={shareUrl} onClose={() => setShareUrl(null)} />}
             <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6 text-center">{t('manualEntryTitle')}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
                  <div className="mb-6 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm">
@@ -348,11 +403,11 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
                         </div>
                     </details>
                 ))}
-                <div className="flex justify-center items-center gap-4 pt-6">
-                    <button type="button" onClick={onCancel} className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold px-8 py-3 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-lg">
+                <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-6">
+                    <button type="button" onClick={onCancel} className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold px-6 py-3 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-lg w-full sm:w-auto">
                         {t('cancel')}
                     </button>
-                    <button type="submit" disabled={isLoading} className="bg-violet-600 text-white font-semibold px-8 py-3 rounded-full hover:bg-violet-700 transition-colors shadow-lg flex items-center justify-center disabled:bg-violet-400 disabled:cursor-not-allowed">
+                    <button type="submit" disabled={isLoading || isSharing} className="bg-violet-600 text-white font-semibold px-6 py-3 rounded-full hover:bg-violet-700 transition-colors shadow-lg flex items-center justify-center disabled:bg-violet-400 disabled:cursor-not-allowed w-full sm:w-auto">
                         {isLoading ? (
                             <>
                                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
@@ -362,10 +417,23 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = ({ onCancel }) =
                             t('savePlan')
                         )}
                     </button>
+                    <button type="button" onClick={handleShare} disabled={isLoading || isSharing} className="bg-green-600 text-white font-semibold px-6 py-3 rounded-full hover:bg-green-700 transition-colors shadow-lg flex items-center justify-center disabled:bg-green-400 disabled:cursor-not-allowed w-full sm:w-auto">
+                        {isSharing ? (
+                            <>
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                                <span>{t('sharing')}...</span>
+                            </>
+                        ) : (
+                            <>
+                                <ShareIcon />
+                                <span className="ml-2">{t('sharePlan')}</span>
+                            </>
+                        )}
+                    </button>
                 </div>
             </form>
         </div>
     );
-};
+});
 
 export default ManualPlanEntryForm;

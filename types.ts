@@ -141,3 +141,8 @@ export interface SyncedData {
   progressHistory: ProgressRecord[];
   dailyLogs: DailyLog[];
 }
+
+export interface Ingredient {
+  id?: number;
+  name: string;
+}

@@ -6,8 +6,16 @@ import { t } from '../i18n';
 const Loader: React.FC = observer(() => {
     const { status } = mealPlanStore;
 
-    const title = status === AppStatus.SYNCING ? t('syncingTitle') : t('loadingPlanTitle');
-    const message = status === AppStatus.SYNCING ? t('syncingMessage') : t('loadingPlanMessage');
+    let title = t('loadingPlanTitle');
+    let message = t('loadingPlanMessage');
+    
+    if (status === AppStatus.SYNCING) {
+        title = t('syncingTitle');
+        message = t('syncingMessage');
+    } else if (status === AppStatus.IMPORTING) {
+        title = t('importingPlanTitle');
+        message = t('importingPlanMessage');
+    }
 
     return (
         <div className="flex flex-col items-center justify-center text-center p-8 max-w-md mx-auto">

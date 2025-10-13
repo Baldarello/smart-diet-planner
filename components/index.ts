@@ -36,6 +36,7 @@ export { default as DashboardView } from './DashboardView';
 export { default as AchievementsModal } from './AchievementsModal';
 export { default as UnitPicker } from './UnitPicker';
 export { default as Switch } from './Switch';
+export { default as ShareLinkModal } from './ShareLinkModal';
 export * from './Icons';
 export { default as AdminLoginPage } from './admin/AdminLoginPage';
 export { default as NutritionistPage } from './admin/NutritionistPage';

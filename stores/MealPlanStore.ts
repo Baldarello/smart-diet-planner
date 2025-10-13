@@ -15,6 +15,7 @@ export enum AppStatus {
   INITIAL,
   HYDRATING,
   LOADING,
+  IMPORTING,
   SYNCING,
   SUCCESS,
   ERROR,
@@ -193,6 +194,17 @@ export class MealPlanStore {
 }
 
   init = async () => {
+    const hash = window.location.hash;
+    const planIdMatch = hash.match(/plan_id=([^&]*)/);
+    const planId = planIdMatch ? planIdMatch[1] : null;
+
+    if (planId) {
+        await this.importPlanFromUrl(planId);
+        // Stop here; the rest of the init logic is not needed for a URL import.
+        // The app will wait for the user to set dates.
+        return; 
+    }
+
     try {
         const [savedState, progressHistory] = await Promise.all([
             db.appState.get('dietPlanData'),
@@ -1350,6 +1362,22 @@ export class MealPlanStore {
 
   get dailyNutritionSummary(): NutritionInfo | null | undefined { return this.getDayNutritionSummary(this.currentDayPlan); }
 
+  processImportedData = (data: ImportedJsonData) => {
+    try {
+        const sanitizedPlan = data.weeklyPlan.map(day => ({ ...day, meals: day.meals.map(meal => ({ ...meal, done: false, cheat: false, cheatMealDescription: undefined, actualNutrition: null, items: meal.items.map(item => ({...item, used: false})) })) }));
+        runInAction(() => {
+            this.planToSet = sanitizedPlan;
+            this.shoppingList = (data.shoppingList || []).map((cat, index) => ({ ...cat, sortOrder: index }));
+            this.pantry = data.pantry || [];
+            this.currentPlanName = data.planName || 'My Diet Plan';
+            this.status = AppStatus.AWAITING_DATES;
+        });
+    } catch (e: any) {
+        console.error("Failed to process imported JSON data", e);
+        runInAction(() => { this.status = AppStatus.ERROR; this.error = `Failed to process JSON data: ${e.message}`; });
+    }
+  }
+
   processJsonFile = (file: File) => {
     runInAction(() => { this.status = AppStatus.LOADING; });
     const reader = new FileReader();
@@ -1357,14 +1385,7 @@ export class MealPlanStore {
         try {
             if (!event.target?.result) throw new Error("File could not be read.");
             const data: ImportedJsonData = JSON.parse(event.target.result as string);
-            const sanitizedPlan = data.weeklyPlan.map(day => ({ ...day, meals: day.meals.map(meal => ({ ...meal, done: false, cheat: false, cheatMealDescription: undefined, actualNutrition: null, items: meal.items.map(item => ({...item, used: false})) })) }));
-            runInAction(() => {
-                this.planToSet = sanitizedPlan;
-                this.shoppingList = (data.shoppingList || []).map((cat, index) => ({ ...cat, sortOrder: index }));
-                this.pantry = data.pantry || [];
-                this.currentPlanName = data.planName || 'My Diet Plan';
-                this.status = AppStatus.AWAITING_DATES;
-            });
+            this.processImportedData(data);
         } catch (e: any) {
             console.error("Failed to parse JSON file", e);
             runInAction(() => { this.status = AppStatus.ERROR; this.error = `Failed to parse JSON file: ${e.message}`; });
@@ -1372,6 +1393,29 @@ export class MealPlanStore {
     };
     reader.onerror = () => { runInAction(() => { this.status = AppStatus.ERROR; this.error = "An error occurred while reading the file."; }); };
     reader.readAsText(file);
+  }
+
+  importPlanFromUrl = async (planId: string) => {
+    runInAction(() => { this.status = AppStatus.IMPORTING; });
+    try {
+        const url = `https://www.googleapis.com/drive/v3/files/${planId}?alt=media&key=${process.env.GOOGLE_API_KEY}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to download plan from Google Drive. Status: ${response.status}`);
+        }
+        const data = await response.json();
+        this.processImportedData(data);
+
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);
+
+    } catch (e: any) {
+        console.error("Failed to import from URL", e);
+        runInAction(() => { 
+            this.status = AppStatus.ERROR; 
+            this.error = `Failed to import shared plan: ${e.message}`; 
+        });
+    }
   }
 
   cancelNewPlan = () => {

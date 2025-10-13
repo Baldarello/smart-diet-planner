@@ -71,6 +71,10 @@ const translations = {
     logoutButton: "Esci",
     notFoundTitle: "404 - Pagina Non Trovata",
     notFoundMessage: "La pagina che stai cercando non esiste o non hai il permesso di accedervi.",
+    createPlanTab: "Crea Piano",
+    manageIngredientsTab: "Gestisci Ingredienti",
+    addNewIngredientPlaceholder: "Nome del nuovo ingrediente...",
+    add: "Aggiungi",
 
 
     // SetPlanDatesModal.tsx
@@ -94,6 +98,8 @@ const translations = {
     planEmptyError: "Il piano inviato è vuoto. Per favore, aggiungi almeno un ingrediente.",
     planNameLabel: "Nome del Piano",
     planNamePlaceholder: "Es. Dieta Ipo-calorica Settimana 1",
+    sharePlan: "Condividi",
+    sharing: "Condivisione",
     
     // FileUpload.tsx
     clickToUpload: "Clicca per caricare",
@@ -106,6 +112,8 @@ const translations = {
     // Loader.tsx
     loadingPlanTitle: "Caricamento del piano...",
     loadingPlanMessage: "Un momento, stiamo recuperando i tuoi dati.",
+    importingPlanTitle: "Importazione del piano condiviso...",
+    importingPlanMessage: "Attendere prego, stiamo caricando il piano dal link.",
     syncingTitle: "Sincronizzazione con Google Drive...",
     syncingMessage: "Attendi mentre sincronizziamo i tuoi dati.",
     progressComplete: "% Completo",
@@ -162,6 +170,11 @@ const translations = {
     reorderCategoryDown: "Sposta Giù",
     listShareTitle: "Lista della Spesa per {planName}",
 
+    // ShareLinkModal.tsx
+    shareLinkTitle: "Piano Condiviso",
+    shareLinkInstruction: "Copia e invia questo link al tuo cliente. Aprendolo, potrà importare il piano direttamente nell'app.",
+    copyLink: "Copia",
+    linkCopied: "Copiato!",
 
     // PantryView.tsx
     pantryTitle: "La Mia Dispensa",
@@ -423,6 +436,10 @@ const translations = {
     logoutButton: "Logout",
     notFoundTitle: "404 - Not Found",
     notFoundMessage: "The page you are looking for does not exist or you do not have permission to access it.",
+    createPlanTab: "Create Plan",
+    manageIngredientsTab: "Manage Ingredients",
+    addNewIngredientPlaceholder: "New ingredient name...",
+    add: "Add",
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Set Plan Duration",
@@ -445,6 +462,8 @@ const translations = {
     planEmptyError: "The submitted plan is empty. Please add at least one ingredient.",
     planNameLabel: "Plan Name",
     planNamePlaceholder: "e.g. Low-Calorie Diet Week 1",
+    sharePlan: "Share",
+    sharing: "Sharing",
     
     // FileUpload.tsx
     clickToUpload: "Click to upload",
@@ -457,6 +476,8 @@ const translations = {
     // Loader.tsx
     loadingPlanTitle: "Loading your plan...",
     loadingPlanMessage: "Just a moment while we retrieve your data.",
+    importingPlanTitle: "Importing shared plan...",
+    importingPlanMessage: "Please wait, we are loading the plan from the link.",
     syncingTitle: "Syncing with Google Drive...",
     syncingMessage: "Please wait while we sync your data.",
     progressComplete: "% Complete",
@@ -512,6 +533,12 @@ const translations = {
     reorderCategoryUp: "Move Up",
     reorderCategoryDown: "Move Down",
     listShareTitle: "Shopping List for {planName}",
+    
+    // ShareLinkModal.tsx
+    shareLinkTitle: "Plan Shared",
+    shareLinkInstruction: "Copy and send this link to your client. Opening it will import the plan directly into their app.",
+    copyLink: "Copy",
+    linkCopied: "Copied!",
 
     // PantryView.tsx
     pantryTitle: "My Pantry",
