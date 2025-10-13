@@ -15,13 +15,14 @@
     "dexie-observable": "^4.0.1-beta.13",
     "mobx": "^6.13.7",
     "mobx-react-lite": "^4.1.0",
-    "pdfjs-dist": "3.11.174",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^6.25.1"
   },
   "devDependencies": {
     "@types/google.accounts": "^0.0.14",
     "@types/node": "^22.14.0",
+    "@types/react-router-dom": "^5.3.3",
     "@vitejs/plugin-react": "^5.0.2",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"

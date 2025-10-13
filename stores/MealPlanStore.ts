@@ -3,8 +3,9 @@ import { makeAutoObservable, runInAction, toJS } from 'mobx';
 import Dexie from 'dexie';
 // Fix: Import the 'StoredState' type to resolve 'Cannot find name' errors.
 import { MealPlanData, DayPlan, ShoppingListCategory, ArchivedPlan, PantryItem, ShoppingListItem, Theme, Locale, Meal, NutritionInfo, HydrationSnackbarInfo, BodyMetrics, ProgressRecord, DailyLog, StoredState, MealItem } from '../types';
-import { parsePdfText, generateShoppingList as generateShoppingListOffline, extractIngredientInfo, singularize, categorizeIngredient } from '../services/offlineParser';
-import { parseMealStructure, getNutritionForMeal, getPlanDetailsAndShoppingList, isQuotaError } from '../services/geminiService';
+import { extractIngredientInfo, singularize, categorizeIngredient } from '../services/offlineParser';
+// Fix: Add getPlanDetailsAndShoppingList to import to use it for nutrition recalculation.
+import { isQuotaError, getPlanDetailsAndShoppingList } from '../services/geminiService';
 import { parseQuantity, formatQuantity } from '../utils/quantityParser';
 import { db } from '../services/db';
 import { calculateCaloriesBurned } from '../utils/calories';
@@ -67,7 +68,7 @@ const MOCK_MEAL_PLAN_DATA = {
     ]
 };
 
-export type NavigableTab = 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' | 'settings' | 'dashboard';
+export type NavigableTab = 'plan' | 'list' | 'daily' | 'archive' | 'pantry' | 'progress' | 'calendar' | 'settings' | 'dashboard' | 'upload';
 
 export class MealPlanStore {
   status: AppStatus = AppStatus.HYDRATING;
@@ -78,11 +79,9 @@ export class MealPlanStore {
   pantry: PantryItem[] = [];
   archivedPlans: ArchivedPlan[] = [];
   activeTab: NavigableTab = 'dashboard';
-  pdfParseProgress = 0;
   currentPlanName = 'My Diet Plan';
   theme: Theme = 'light';
   locale: Locale = 'it';
-  hasUnsavedChanges = false;
   currentPlanId: string | null = null;
 
   // Plan dates and daily log
@@ -96,10 +95,6 @@ export class MealPlanStore {
   // Day-specific progress tracking
   currentDayProgress: ProgressRecord | null = null;
   
-  onlineMode = true;
-  recalculating = false;
-  recalculatingMeal: { dayIndex: number; mealIndex: number } | null = null;
-  recalculatingActualMeal: { dayIndex: number; mealIndex: number } | null = null;
   recalculatingProgress = false;
   showMacros = false;
   showCheatMealButton = false;
@@ -115,14 +110,87 @@ export class MealPlanStore {
   sentNotifications = new Map<string, boolean>();
   lastActiveDate: string = getTodayDateString();
   lastModified: number = 0;
-  navigationHistory: NavigableTab[] = [];
+  // Fix: Add missing properties `onlineMode` and `recalculatingActualMeal` to fix compilation errors in components.
+  onlineMode = true;
+  recalculatingActualMeal: { mealIndex: number } | null = null;
 
 
   constructor() {
     makeAutoObservable(this, {}, { autoBind: true });
     this.init();
-    this.loadSessionState();
   }
+
+  // Fix: Add missing method `recalculateActualMealNutrition` to fix compilation errors in components.
+  recalculateActualMealNutrition = async (mealIndex: number) => {
+    if (!this.currentDayPlan || !this.onlineMode) return;
+
+    const plan = toJS(this.currentDayPlan);
+    const meal = plan.meals[mealIndex];
+    if (!meal) return;
+
+    const usedItems = meal.items.filter(item => item.used);
+    
+    if (usedItems.length === 0 || usedItems.length === meal.items.length) {
+        runInAction(() => {
+            if (this.currentDayPlan) {
+                const mealToUpdate = this.currentDayPlan.meals[mealIndex];
+                if (mealToUpdate) {
+                    if (usedItems.length === 0) {
+                         mealToUpdate.actualNutrition = { calories: 0, carbs: 0, fat: 0, protein: 0 };
+                    } else { // All items used
+                        mealToUpdate.actualNutrition = meal.nutrition ?? null;
+                    }
+                }
+            }
+        });
+        return;
+    }
+
+    runInAction(() => {
+        this.recalculatingActualMeal = { mealIndex };
+    });
+
+    const mealToRecalculate: Meal = {
+        name: meal.name,
+        title: meal.title,
+        time: meal.time,
+        items: usedItems.map(i => ({ ingredientName: i.ingredientName, fullDescription: i.fullDescription, used: false })),
+        done: false,
+    };
+
+    const dummyPlan: DayPlan[] = [{
+        day: this.currentDayPlan.day,
+        meals: [mealToRecalculate]
+    }];
+
+    try {
+        const result = await getPlanDetailsAndShoppingList(dummyPlan);
+        
+        if (result && result.weeklyPlan[0]?.meals[0]?.nutrition) {
+            const actualNutrition = result.weeklyPlan[0].meals[0].nutrition;
+            runInAction(() => {
+                if (this.currentDayPlan) {
+                    const mealToUpdate = this.currentDayPlan.meals[mealIndex];
+                    if (mealToUpdate) {
+                        mealToUpdate.actualNutrition = actualNutrition;
+                    }
+                    db.dailyLogs.put(toJS(this.currentDayPlan));
+                }
+            });
+        } else {
+            throw new Error("AI service did not return nutrition data for partial meal.");
+        }
+    } catch (error) {
+        console.error("Failed to recalculate actual meal nutrition", error);
+        if (isQuotaError(error)) {
+            runInAction(() => { this.onlineMode = false; });
+        }
+    } finally {
+        runInAction(() => {
+            this.recalculatingActualMeal = null;
+        });
+    }
+}
 
   init = async () => {
     try {
@@ -176,7 +244,6 @@ export class MealPlanStore {
                 this.currentPlanName = data.currentPlanName || 'My Diet Plan';
                 this.theme = data.theme || 'light';
                 this.locale = data.locale || 'it';
-                this.hasUnsavedChanges = data.hasUnsavedChanges || false;
                 this.hydrationGoalLiters = data.hydrationGoalLiters || 3;
                 this.lastActiveDate = data.lastActiveDate || getTodayDateString();
                 this.currentPlanId = data.currentPlanId || null;
@@ -202,11 +269,6 @@ export class MealPlanStore {
 
                 if (this.masterMealPlan.length > 0 && this.currentPlanId) {
                     this.status = AppStatus.SUCCESS;
-                    if (!this.shoppingListManaged) {
-                        this.activeTab = 'list';
-                    } else {
-                        this.activeTab = 'dashboard';
-                    }
                     this.loadPlanForDate(this.currentDate);
                 } else {
                     this.status = AppStatus.INITIAL;
@@ -299,7 +361,7 @@ export class MealPlanStore {
         this.currentPlanId = 'simulated_plan_123';
         this.shoppingListManaged = true;
         this.status = AppStatus.SUCCESS;
-        this.activeTab = 'dashboard';
+        // Navigation is handled by components now
     });
     
     // Generate and inject 90 days of rich progress history
@@ -491,26 +553,6 @@ export class MealPlanStore {
         console.log("Mock data injected and saved to DB.");
     } catch (error) {
         console.error("Failed to inject mock data into the database:", error);
-    }
-  }
-
-  loadSessionState = () => {
-    try {
-        const onlineMode = sessionStorage.getItem('onlineMode');
-        if (onlineMode !== null) {
-            this.onlineMode = JSON.parse(onlineMode);
-        }
-    } catch (e) {
-        console.error("Could not load session state", e);
-        this.onlineMode = true;
-    }
-  }
-
-  saveSessionState = () => {
-    try {
-        sessionStorage.setItem('onlineMode', JSON.stringify(this.onlineMode));
-    } catch (e) {
-        console.error("Could not save session state", e);
     }
   }
 
@@ -813,21 +855,10 @@ export class MealPlanStore {
 
   setActiveTab = (tab: NavigableTab) => {
     if (tab !== this.activeTab) {
-      this.navigationHistory.push(this.activeTab);
-      if (this.navigationHistory.length > 10) {
-        this.navigationHistory.shift();
-      }
       this.activeTab = tab;
     }
   }
 
-  goBack = () => {
-    const previousTab = this.navigationHistory.pop();
-    if (previousTab) {
-      this.activeTab = previousTab;
-    }
-  }
-  
   setCurrentPlanName = (name: string) => { this.currentPlanName = name; this.saveToDB(); }
   updateArchivedPlanName = (planId: string, newName: string) => {
     const planIndex = this.archivedPlans.findIndex(p => p.id === planId);
@@ -843,84 +874,9 @@ export class MealPlanStore {
           item.fullDescription = newDescription;
           const { ingredientName } = extractIngredientInfo(newDescription);
           item.ingredientName = ingredientName;
-          if (this.onlineMode) this.hasUnsavedChanges = true;
           this.saveToDB();
       }
   }
-
-  recalculateShoppingList = async () => {
-    if (!this.hasUnsavedChanges || !this.onlineMode) return;
-    runInAction(() => { this.recalculating = true; });
-    try {
-        const result = await getPlanDetailsAndShoppingList(this.masterMealPlan);
-        if (!result) throw new Error("Failed to get updated plan and list from Gemini.");
-
-        runInAction(() => {
-            this.masterMealPlan = result.weeklyPlan.map((day: DayPlan) => ({ ...day, meals: day.meals.map((meal: Meal) => ({ ...meal, done: false, items: meal.items.map(item => ({ ...item, used: false })) })) }));
-            this.shoppingList = result.shoppingList.map((cat, index) => ({ ...cat, sortOrder: index }));
-            this.pantry = [];
-        });
-
-    } catch (error: any) {
-        if (isQuotaError(error)) {
-            console.warn("Gemini quota exceeded during recalculation. Switching to offline mode.");
-            runInAction(() => { this.onlineMode = false; });
-            this.saveSessionState();
-        } else {
-             console.error("Failed to recalculate shopping list:", error);
-            runInAction(() => { this.error = error.message; });
-        }
-    } finally {
-        runInAction(() => { this.hasUnsavedChanges = false; this.recalculating = false; });
-        this.saveToDB();
-    }
-  }
-
-  recalculateMealNutrition = async (dayIndex: number, mealIndex: number) => {
-    if (!this.onlineMode) return;
-    const meal = this.masterMealPlan[dayIndex]?.meals[mealIndex];
-    if (!meal) return;
-    runInAction(() => { this.recalculatingMeal = { dayIndex, mealIndex }; });
-    try {
-        const newNutrition = await getNutritionForMeal(meal);
-        runInAction(() => {
-            if (this.masterMealPlan[dayIndex]?.meals[mealIndex]) {
-                this.masterMealPlan[dayIndex].meals[mealIndex].nutrition = newNutrition;
-            }
-        });
-    } catch (error) {
-        console.error(`Failed to recalculate nutrition for meal: ${meal.name}`, error);
-        if (isQuotaError(error)) { runInAction(() => { this.onlineMode = false }); this.saveSessionState(); }
-    } finally {
-        runInAction(() => { this.recalculatingMeal = null; });
-        this.saveToDB();
-    }
-  }
-
-    recalculateActualMealNutrition = async () => {
-        if (!this.onlineMode || !this.currentDayPlan) return;
-        const meal = this.currentDayPlan.meals.find(m => m.done && m.items.some(i => i.used) && m.items.some(i => !i.used));
-        if (!meal) return;
-        const mealIndex = this.currentDayPlan.meals.indexOf(meal);
-        const consumedItems = meal.items.filter(item => item.used);
-        if (consumedItems.length === 0 || consumedItems.length === meal.items.length) return;
-        runInAction(() => { this.recalculatingActualMeal = { dayIndex: -1, mealIndex: mealIndex }; });
-        try {
-            const mealWithConsumedItemsOnly = { ...meal, items: consumedItems };
-            const newNutrition = await getNutritionForMeal(mealWithConsumedItemsOnly);
-            runInAction(() => {
-                if (this.currentDayPlan?.meals[mealIndex]) {
-                    this.currentDayPlan.meals[mealIndex].actualNutrition = newNutrition;
-                    db.dailyLogs.put(toJS(this.currentDayPlan));
-                }
-            });
-        } catch (error) {
-            console.error(`Failed to recalculate actual nutrition for meal: ${meal.name}`, error);
-            if (isQuotaError(error)) { runInAction(() => { this.onlineMode = false }); this.saveSessionState(); }
-        } finally {
-            runInAction(() => { this.recalculatingActualMeal = null; });
-        }
-    }
 
     resetMealToPreset = (dayIndex: number, mealIndex: number) => {
         if (this.presetMealPlan[dayIndex]?.meals[mealIndex] && this.masterMealPlan[dayIndex]?.meals[mealIndex]) {
@@ -951,7 +907,7 @@ export class MealPlanStore {
   saveToDB = async () => {
     try {
       this.lastModified = Date.now();
-      const dataToSave: Omit<StoredState, 'waterIntakeMl' | 'stepsTaken'> = {
+      const dataToSave: Omit<StoredState, 'waterIntakeMl' | 'stepsTaken' | 'hasUnsavedChanges'> = {
         masterMealPlan: toJS(this.masterMealPlan),
         presetMealPlan: toJS(this.presetMealPlan),
         shoppingList: toJS(this.shoppingList),
@@ -960,7 +916,6 @@ export class MealPlanStore {
         currentPlanName: this.currentPlanName,
         theme: this.theme,
         locale: this.locale,
-        hasUnsavedChanges: this.hasUnsavedChanges,
         hydrationGoalLiters: this.hydrationGoalLiters,
         lastActiveDate: this.lastActiveDate,
         currentPlanId: this.currentPlanId,
@@ -989,9 +944,7 @@ export class MealPlanStore {
         this.pantry = [];
         this.status = AppStatus.INITIAL;
         this.activeTab = 'dashboard';
-        this.pdfParseProgress = 0;
         this.currentPlanName = 'My Diet Plan';
-        this.hasUnsavedChanges = false;
         this.sentNotifications.clear();
         this.currentPlanId = null;
         this.startDate = null;
@@ -1012,9 +965,7 @@ export class MealPlanStore {
         this.pantry = [];
         this.status = AppStatus.INITIAL;
         this.activeTab = 'dashboard';
-        this.pdfParseProgress = 0;
         this.currentPlanName = 'My Diet Plan';
-        this.hasUnsavedChanges = false;
         this.sentNotifications.clear();
         this.currentPlanId = null;
         this.startDate = null;
@@ -1382,7 +1333,7 @@ export class MealPlanStore {
   get dailyPlan(): DailyLog | null { return this.currentDayPlan; }
 
   getDayNutritionSummary(dayPlan: DayPlan | null): NutritionInfo | null {
-    if (!this.onlineMode || !dayPlan) return null;
+    if (!dayPlan) return null;
     const summary: NutritionInfo = { carbs: 0, protein: 0, fat: 0, calories: 0 };
     let hasData = false;
     dayPlan.meals.forEach(meal => {
@@ -1399,40 +1350,8 @@ export class MealPlanStore {
 
   get dailyNutritionSummary(): NutritionInfo | null | undefined { return this.getDayNutritionSummary(this.currentDayPlan); }
 
-  private _enrichPlanDataInBackground = async (plan: DayPlan[]) => {
-    if (!this.onlineMode) return;
-    try {
-        const result = await getPlanDetailsAndShoppingList(plan);
-        if (result) {
-            runInAction(() => {
-                this.masterMealPlan = result.weeklyPlan;
-                this.shoppingList = result.shoppingList.map((cat, index) => ({ ...cat, sortOrder: index }));
-                this.saveToDB();
-            });
-        }
-    } catch (error) {
-        if (isQuotaError(error)) {
-            runInAction(() => { this.onlineMode = false });
-            this.saveSessionState();
-        } else {
-             console.error("An error occurred during background data enrichment:", error);
-        }
-    }
-  };
-
-  processManualPlan = (planData: DayPlan[]) => {
-      const cleanedPlan = planData.map(day => ({ ...day, meals: day.meals.map(meal => ({ ...meal, items: meal.items.filter(item => item.fullDescription.trim() !== '') })).filter(meal => meal.items.length > 0 || (meal.title && meal.title.trim() !== '')) })).filter(day => day.meals.length > 0);
-      runInAction(() => {
-        if (cleanedPlan.length === 0 || cleanedPlan.every(d => d.meals.length === 0)) {
-            this.status = AppStatus.ERROR;
-            this.error = "Plan is empty. Please add at least one meal item.";
-            return;
-        }
-        this.planToSet = cleanedPlan;
-        this.status = AppStatus.AWAITING_DATES;
-      });
-  }
   processJsonFile = (file: File) => {
+    runInAction(() => { this.status = AppStatus.LOADING; });
     const reader = new FileReader();
     reader.onload = (event) => {
         try {
@@ -1454,51 +1373,6 @@ export class MealPlanStore {
     reader.onerror = () => { runInAction(() => { this.status = AppStatus.ERROR; this.error = "An error occurred while reading the file."; }); };
     reader.readAsText(file);
   }
-  processPdf = async (file: File) => {
-    runInAction(() => { this.status = AppStatus.LOADING; this.pdfParseProgress = 0; });
-    try {
-        const pdfjs = await import('pdfjs-dist/build/pdf');
-        const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
-        pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-        runInAction(() => { this.pdfParseProgress = 10; });
-        const pageTexts = [];
-        for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            pageTexts.push(textContent.items.map(item => 'str' in item ? item.str : '').join('\n'));
-            runInAction(() => { this.pdfParseProgress = 10 + (i / pdf.numPages) * 20; });
-        }
-        runInAction(() => { this.pdfParseProgress = 31; });
-        if (this.onlineMode) {
-            const fullText = pageTexts.join('\n\n');
-            const mealStructure = await parseMealStructure(fullText);
-            if (!mealStructure) throw new Error("Online parser failed to structure PDF data.");
-            runInAction(() => {
-                this.pdfParseProgress = 80;
-                this.planToSet = mealStructure;
-                this.shoppingList = [];
-                this.status = AppStatus.AWAITING_DATES;
-            });
-        } else {
-            const { weeklyPlan, shoppingList } = parsePdfText(pageTexts);
-            runInAction(() => {
-                this.pdfParseProgress = 80;
-                this.planToSet = weeklyPlan;
-                this.shoppingList = shoppingList.map((cat, index) => ({ ...cat, sortOrder: index }));
-                this.status = AppStatus.AWAITING_DATES;
-            });
-        }
-        runInAction(() => { this.pdfParseProgress = 100; });
-    } catch (error: any) {
-        console.error("Error processing PDF:", error);
-        runInAction(() => {
-            this.status = AppStatus.ERROR;
-            this.error = isQuotaError(error) ? "Gemini API quota exceeded. Try again later." : "Failed to read or parse PDF. It may be corrupted or password-protected.";
-        });
-    }
-  }
 
   cancelNewPlan = () => {
       this.planToSet = null;
@@ -1517,9 +1391,7 @@ export class MealPlanStore {
         this.startDate = startDate;
         this.endDate = endDate;
         this.status = AppStatus.SUCCESS;
-        this.activeTab = 'list';
         this.shoppingListManaged = false;
-        this.hasUnsavedChanges = false;
         this.sentNotifications.clear();
         this.lastActiveDate = getTodayDateString();
         this.pantry = [];
@@ -1531,14 +1403,6 @@ export class MealPlanStore {
     await db.dailyLogs.clear();
     this.saveToDB();
     this.loadPlanForDate(this.currentDate);
-
-    if (this.onlineMode) {
-        this._enrichPlanDataInBackground(this.masterMealPlan);
-    } else {
-        const shoppingList = generateShoppingListOffline(this.masterMealPlan);
-        runInAction(() => { this.shoppingList = shoppingList.map((cat, index) => ({ ...cat, sortOrder: index })); });
-        this.saveToDB();
-    }
   }
 
   async loadPlanForDate(dateStr: string) {
