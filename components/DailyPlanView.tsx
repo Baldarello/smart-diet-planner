@@ -112,7 +112,7 @@ const DailyPlanView: React.FC = observer(() => {
                                 <div className="hidden sm:flex items-center gap-2">
                                     <MealTimeEditor dayIndex={dayIndex} mealIndex={meal.originalIndex} />
                                     <MealModificationControl dayIndex={dayIndex} mealIndex={meal.originalIndex} onResetClick={() => setResettingMeal({ dayIndex, mealIndex: meal.originalIndex })} />
-                                    {!meal.done && !meal.cheat && (
+                                    {mealPlanStore.showCheatMealButton && !meal.done && !meal.cheat && (
                                         <button onClick={() => setCheatingMealIndex(meal.originalIndex)} title={t('logCheatMealTitle')} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={t('logCheatMealTitle')}>
                                             <WarningIcon />
                                         </button>
@@ -157,8 +157,8 @@ const DailyPlanView: React.FC = observer(() => {
                         )}
 
                         {!meal.cheat && <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} isEditable={true} showCheckbox={true} />}
-                        {onlineMode && !meal.cheat && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} onRecalcClick={() => setRecalculatingMeal({ dayIndex, mealIndex: meal.originalIndex })} />}
-                        {onlineMode && !meal.cheat && <ActualNutrition dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
+                        {onlineMode && mealPlanStore.showMacros && !meal.cheat && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} onRecalcClick={() => setRecalculatingMeal({ dayIndex, mealIndex: meal.originalIndex })} />}
+                        {onlineMode && mealPlanStore.showMacros && !meal.cheat && <ActualNutrition dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
                     </div>
                 );
             })}
@@ -221,7 +221,7 @@ const DailyPlanView: React.FC = observer(() => {
 
             {/* Desktop View */}
             <div className="hidden sm:block">
-                {onlineMode && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
+                {onlineMode && mealPlanStore.showMacros && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
                 {TrackersContent}
                 {MealsContent}
             </div>
@@ -230,7 +230,7 @@ const DailyPlanView: React.FC = observer(() => {
             <div className="sm:hidden">
                 {activeMobileTab === 'meals' && (
                     <>
-                        {onlineMode && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
+                        {onlineMode && mealPlanStore.showMacros && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
                         {MealsContent}
                     </>
                 )}

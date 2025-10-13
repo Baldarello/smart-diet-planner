@@ -10,7 +10,7 @@ import { db } from '../services/db';
 type DateRange = 7 | 30 | 90;
 
 const ProgressView: React.FC = observer(() => {
-    const { progressHistory, locale, recalculateAllProgress, recalculatingProgress } = mealPlanStore;
+    const { progressHistory, locale, recalculateAllProgress, recalculatingProgress, showMacros, showCheatMealButton } = mealPlanStore;
     const [dateRange, setDateRange] = useState<DateRange>(30);
     const [cheatMealData, setCheatMealData] = useState<(number | null)[]>([]);
 
@@ -198,7 +198,7 @@ const ProgressView: React.FC = observer(() => {
                     </div>
                 )}
                 
-                {hasData(chartData.cheatMeals) && (
+                {hasData(chartData.cheatMeals) && showCheatMealButton && (
                      <div>
                         <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('cheatMealChartTitle')}</h3>
                         <ProgressChart
@@ -230,7 +230,7 @@ const ProgressView: React.FC = observer(() => {
                     </div>
                 )}
                 
-                {hasData(chartData.plannedCalories) && (
+                {hasData(chartData.plannedCalories) && showMacros && (
                     <div>
                         <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('calorieIntakeChartTitle')}</h3>
                         <ProgressChart

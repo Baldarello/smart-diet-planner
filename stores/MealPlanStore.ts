@@ -101,6 +101,8 @@ export class MealPlanStore {
   recalculatingMeal: { dayIndex: number; mealIndex: number } | null = null;
   recalculatingActualMeal: { dayIndex: number; mealIndex: number } | null = null;
   recalculatingProgress = false;
+  showMacros = false;
+  showCheatMealButton = false;
 
   // Global goals and settings
   hydrationGoalLiters = 3;
@@ -184,6 +186,8 @@ export class MealPlanStore {
                 this.endDate = data.endDate || null;
                 this.shoppingListManaged = data.shoppingListManaged ?? true; // Default to true for existing users
                 this.lastModified = data.lastModified || Date.now();
+                this.showMacros = data.showMacros ?? false;
+                this.showCheatMealButton = data.showCheatMealButton ?? false;
 
                 if (data.sentNotifications) {
                     this.sentNotifications = new Map(data.sentNotifications);
@@ -510,6 +514,14 @@ export class MealPlanStore {
     }
   }
 
+  setShowMacros = (show: boolean) => {
+    this.showMacros = show;
+    this.saveToDB();
+  }
+  setShowCheatMealButton = (show: boolean) => {
+    this.showCheatMealButton = show;
+    this.saveToDB();
+  }
   setTheme = (theme: Theme) => { this.theme = theme; this.saveToDB(); }
   setLocale = (locale: Locale) => { this.locale = locale; this.saveToDB(); }
   
@@ -959,6 +971,8 @@ export class MealPlanStore {
         endDate: this.endDate,
         shoppingListManaged: this.shoppingListManaged,
         lastModified: this.lastModified,
+        showMacros: this.showMacros,
+        showCheatMealButton: this.showCheatMealButton,
       };
       await db.appState.put({ key: 'dietPlanData', value: dataToSave as StoredState });
     } catch (error) {

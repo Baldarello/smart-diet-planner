@@ -73,7 +73,7 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                             {day.day.toLowerCase()}
                         </summary>
                         <div className="px-6 pb-6 pt-0">
-                            {mealPlanStore.onlineMode && <DailyNutritionSummary summary={summary} showTitle={false} className="mb-4" />}
+                            {mealPlanStore.onlineMode && mealPlanStore.showMacros && <DailyNutritionSummary summary={summary} showTitle={false} className="mb-4" />}
 
                             <div className="space-y-4">
                                 {day.meals.map((meal, mealIndex) => {
@@ -115,7 +115,7 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                                                 isEditable={isMasterPlanView}
                                                 showCheckbox={false}
                                             />
-                                            {mealPlanStore.onlineMode && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={mealIndex} isMasterPlanView={isMasterPlanView} />}
+                                            {mealPlanStore.onlineMode && mealPlanStore.showMacros && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={mealIndex} isMasterPlanView={isMasterPlanView} />}
                                         </div>
                                     );
                                 })}
