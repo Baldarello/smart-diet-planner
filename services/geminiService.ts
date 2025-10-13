@@ -1,13 +1,14 @@
 import { GoogleGenAI, Type, HarmCategory, HarmBlockThreshold } from "@google/genai";
-import { MealPlanData, DayPlan, ShoppingListCategory, Meal, NutritionInfo, ShoppingListItem } from '../types';
+// Fix: Import types for the new function
+import { DayPlan, ShoppingListCategory } from "../types";
 
-if (!process.env.GEMINI_API_KEY) {
-  const errorMsg = "FATAL: GEMINI_API_KEY environment variable not set. The application cannot start without it.";
+if (!process.env.API_KEY) {
+  const errorMsg = "FATAL: API_KEY environment variable not set. The application cannot start without it.";
   console.error(errorMsg);
   throw new Error(errorMsg);
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const safetySettings = [
     {
@@ -28,121 +29,6 @@ const safetySettings = [
     },
 ];
 
-const mealItemSchema = {
-  type: Type.OBJECT,
-  properties: {
-    ingredientName: { type: Type.STRING, description: "The clean, base name of the ingredient (e.g., 'Yogurt di soia', 'Riso venere'). This name must be consistent for the same ingredient across the entire plan to allow for correct pantry tracking." },
-    fullDescription: { type: Type.STRING, description: "The complete, original text for the ingredient, including quantity and preparation notes (e.g., '1 vasetto di yogurt di soia bianco (da 125g)', '60g di riso venere')." }
-  },
-  required: ['ingredientName', 'fullDescription']
-};
-
-const nutritionSchema = {
-    type: Type.OBJECT,
-    properties: {
-        carbs: { type: Type.NUMBER, description: "Estimated carbohydrates in grams." },
-        protein: { type: Type.NUMBER, description: "Estimated protein in grams." },
-        fat: { type: Type.NUMBER, description: "Estimated fat in grams." },
-        calories: { type: Type.NUMBER, description: "Estimated total calories (kcal)." }
-    },
-    required: ['carbs', 'protein', 'fat', 'calories']
-};
-
-const mealSchema = {
-  type: Type.OBJECT,
-  properties: {
-    name: { type: Type.STRING, description: "Il nome del pasto (COLAZIONE, SPUNTINO, PRANZO, MERENDA, CENA)." },
-    title: { type: Type.STRING, description: "Il titolo o nome specifico del piatto, se presente (es. 'Riso venere con ceci, carote e fagiolini')." },
-    procedure: { type: Type.STRING, description: "La ricetta o il procedimento facoltativo per preparare il piatto. Conserva questo campo se fornito nell'input." },
-    time: { type: Type.STRING, description: "Un orario suggerito per il pasto in formato HH:MM (es. '08:00', '13:00'). Scegli un orario logico in base al nome del pasto." },
-    items: {
-      type: Type.ARRAY,
-      items: mealItemSchema,
-      description: "L'elenco degli alimenti e ingredienti. Ogni elemento deve essere un oggetto strutturato con 'ingredientName' e 'fullDescription'."
-    }
-  },
-  required: ['name', 'items', 'time']
-};
-
-const mealSchemaWithNutrition = {
-    ...mealSchema,
-    properties: {
-        ...mealSchema.properties,
-        nutrition: {
-            ...nutritionSchema,
-            description: "Stima nutrizionale del pasto (carboidrati, proteine, grassi in grammi e calorie totali in kcal)."
-        }
-    }
-}
-
-const daySchema = {
-  type: Type.OBJECT,
-  properties: {
-    day: { type: Type.STRING, description: "Il nome del giorno della settimana in maiuscolo (LUNEDI, MARTEDI, etc.)." },
-    meals: {
-      type: Type.ARRAY,
-      items: mealSchema,
-      description: "Un elenco di tutti i pasti per quel giorno."
-    }
-  },
-  required: ['day', 'meals']
-};
-
-const daySchemaWithNutrition = {
-    ...daySchema,
-    properties: {
-        ...daySchema.properties,
-        meals: {
-            type: Type.ARRAY,
-            items: mealSchemaWithNutrition,
-            description: "Un elenco di tutti i pasti per quel giorno, completi di dati nutrizionali."
-        }
-    }
-}
-
-const weeklyPlanSchemaWithNutrition = {
-    type: Type.ARRAY,
-    items: daySchemaWithNutrition
-};
-
-
-const shoppingItemSchema = {
-  type: Type.OBJECT,
-  properties: {
-    item: { type: Type.STRING, description: "The name of the ingredient to purchase. It must match the 'ingredientName' used in the weekly plan." },
-    quantityValue: { type: Type.NUMBER, description: "The total aggregated numeric quantity needed for the entire week. For non-numeric quantities (e.g., 'q.b.'), omit this field or use 0." },
-    quantityUnit: { type: Type.STRING, description: "The unit of measurement for the quantity (e.g., 'g', 'cucchiaio', 'pezzo/i'). For non-numeric quantities, this can describe the amount (e.g., 'q.b.')." }
-  },
-  required: ['item', 'quantityUnit']
-};
-
-const shoppingCategorySchema = {
-  type: Type.OBJECT,
-  properties: {
-    category: { type: Type.STRING, description: "Il nome della categoria di cibo (es. 'Frutta', 'Verdura e Ortaggi')." },
-    items: {
-      type: Type.ARRAY,
-      items: shoppingItemSchema,
-      description: "L'elenco degli ingredienti per questa categoria."
-    }
-  },
-  required: ['category', 'items']
-};
-
-const shoppingListSchema = {
-    type: Type.ARRAY,
-    items: shoppingCategorySchema
-};
-
-const planAndListSchema = {
-    type: Type.OBJECT,
-    properties: {
-        weeklyPlan: weeklyPlanSchemaWithNutrition,
-        shoppingList: shoppingListSchema,
-    },
-    required: ['weeklyPlan', 'shoppingList']
-};
-
 export function isQuotaError(error: unknown): boolean {
     if (error instanceof Error) {
         const message = error.message.toLowerCase();
@@ -151,62 +37,134 @@ export function isQuotaError(error: unknown): boolean {
     return false;
 }
 
-export async function getPlanDetailsAndShoppingList(plan: DayPlan[]): Promise<{ weeklyPlan: DayPlan[], shoppingList: ShoppingListCategory[] } | null> {
+export async function getPlanDetailsAndShoppingList(plan: DayPlan[]): Promise<{ weeklyPlan: DayPlan[], shoppingList: ShoppingListCategory[] }> {
     const prompt = `
-Sei un assistente nutrizionale esperto. Ti viene fornito un oggetto JSON che rappresenta un piano alimentare settimanale. Le descrizioni degli ingredienti ('fullDescription') potrebbero essere state modificate.
+    Sei un assistente nutrizionista esperto. Ti viene fornito un piano alimentare settimanale in formato JSON.
+    Il tuo compito è:
+    1. Per ogni pasto, calcola una stima delle informazioni nutrizionali (carboidrati, proteine, grassi, calorie totali).
+    2. Se manca un titolo per un pasto, creane uno breve e descrittivo.
+    3. Se manca una procedura, creane una semplice.
+    4. Genera una lista della spesa consolidata per l'intero piano, raggruppando gli articoli per categoria.
 
-I TUOI COMPITI SONO:
-1.  **ANALISI COMPLETA DEL PIANO**: Analizza l'intero piano. Per ogni ingrediente:
-    *   Assicurati che \`ingredientName\` sia il nome pulito e base dell'ingrediente. Lo stesso ingrediente deve avere lo stesso \`ingredientName\` ovunque.
-2.  **ORARI, PROCEDIMENTO E NUTRIZIONE**: Per OGNI pasto:
-    *   Assegna un orario logico in \`time\` (formato HH:MM).
-    *   Se è fornito un campo \`procedure\`, conservalo nel risultato.
-    *   Fornisci una stima nutrizionale (carbs, protein, fat, calories) nel campo \`nutrition\`.
-3.  **LISTA DELLA SPESA**: Basandoti sul piano aggiornato, genera una lista della spesa aggregata e categorizzata.
-    *   Il campo "item" nella lista deve corrispondere esattamente all'"ingredientName" del piano.
-    *   Per ogni articolo, separa la quantità numerica (\`quantityValue\`) dall'unità di misura (\`quantityUnit\`). Se una quantità non è numerica (es. "q.b."), ometti \`quantityValue\` e usa \`quantityUnit\` per la descrizione.
+    Input:
+    ---
+    ${JSON.stringify(plan, null, 2)}
+    ---
 
-**REGOLE IMPORTANTI:**
-*   Restituisci un singolo oggetto JSON contenente sia il piano settimanale aggiornato (\`weeklyPlan\`) sia la lista della spesa (\`shoppingList\`).
-*   Fornisci l'output **esclusivamente** in formato JSON, seguendo lo schema specificato.
+    Restituisci l'output ESCLUSIVAMENTE in formato JSON con la seguente struttura:
+    {
+      "weeklyPlan": [
+        {
+          "day": "NOME_GIORNO",
+          "meals": [
+            {
+              "name": "NOME_PASTO",
+              "title": "Titolo Piatto",
+              "procedure": "Procedura di preparazione...",
+              "items": [
+                { "ingredientName": "Nome Ingrediente", "fullDescription": "Descrizione completa", "used": false }
+              ],
+              "done": false,
+              "time": "HH:MM",
+              "nutrition": {
+                "carbs": 25,
+                "protein": 15,
+                "fat": 10,
+                "calories": 250
+              }
+            }
+          ]
+        }
+      ],
+      "shoppingList": [
+        {
+          "category": "Nome Categoria",
+          "items": [
+            { "item": "Nome Articolo", "quantityValue": 150, "quantityUnit": "g" }
+          ]
+        }
+      ]
+    }
+    `;
 
-JSON del piano alimentare da elaborare:
----
-${JSON.stringify(plan)}
----
-`;
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: planAndListSchema,
                 temperature: 0.1,
-                // Fix: `safetySettings` must be a property of the `config` object.
                 safetySettings,
             },
         });
+        
         if (!response.text) {
-            throw new Error("Gemini API returned an empty response for plan details and shopping list generation.");
+            throw new Error("Gemini API returned an empty response for plan details generation.");
         }
         const jsonString = response.text.trim();
-        const result = JSON.parse(jsonString) as { weeklyPlan: DayPlan[], shoppingList: ShoppingListCategory[] };
+        return JSON.parse(jsonString) as { weeklyPlan: DayPlan[], shoppingList: ShoppingListCategory[] };
 
-        // Post-process the shopping list to ensure data integrity with the app's types.
-        if (result.shoppingList) {
-            result.shoppingList.forEach(category => {
-                category.items.forEach((item: Partial<ShoppingListItem>) => {
-                    if (item.quantityValue === undefined) {
-                        item.quantityValue = null;
-                    }
-                });
-            });
-        }
-
-        return result as { weeklyPlan: DayPlan[], shoppingList: ShoppingListCategory[] };
     } catch (error) {
-        console.error("Error calling Gemini API for plan details and shopping list:", error);
+        console.error("Error calling Gemini API for plan details:", error);
+        throw error;
+    }
+}
+
+export async function getCategoriesForIngredients(ingredientNames: string[]): Promise<Record<string, string>> {
+    const prompt = `
+Sei un assistente esperto di categorizzazione alimentare. Ti viene fornita una lista di ingredienti.
+Il tuo compito è associare ogni ingrediente alla categoria di spesa più appropriata.
+
+Le categorie disponibili sono:
+- Frutta
+- Verdura e Ortaggi
+- Carboidrati e Cereali
+- Proteine (Carne, Pesce, Legumi)
+- Latticini e Derivati
+- Grassi e Frutta Secca
+- Condimenti e Spezie
+- Bevande
+- Altro
+
+Restituisci l'output ESCLUSIVAMENTE in formato JSON, come un oggetto dove la chiave è il nome dell'ingrediente e il valore è la stringa della categoria.
+
+Esempio di output:
+{
+  "Petto di pollo": "Proteine (Carne, Pesce, Legumi)",
+  "Riso basmati": "Carboidrati e Cereali",
+  "Olio EVO": "Condimenti e Spezie"
+}
+
+Lista di ingredienti da categorizzare:
+---
+${JSON.stringify(ingredientNames)}
+---
+`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {},
+                    additionalProperties: { type: Type.STRING }
+                },
+                temperature: 0.0,
+                safetySettings,
+            },
+        });
+
+        if (!response.text) {
+            throw new Error("Gemini API returned an empty response for category generation.");
+        }
+        const jsonString = response.text.trim();
+        return JSON.parse(jsonString) as Record<string, string>;
+
+    } catch (error) {
+        console.error("Error calling Gemini API for ingredient categories:", error);
         throw error;
     }
 }
