@@ -115,6 +115,9 @@ const translations = {
     planNamePlaceholder: "Es. Dieta Ipo-calorica Settimana 1",
     sharePlan: "Condividi",
     sharing: "Condivisione",
+    markAsCheatMeal: "Pasto Sgarro",
+    markAsRegularMeal: "Pasto Normale",
+    cheatMealDescriptionPlaceholder: "Descrivi lo sgarro (es. Pizza con amici, cena fuori...)",
     
     // FileUpload.tsx
     clickToUpload: "Clicca per caricare",
@@ -494,6 +497,9 @@ const translations = {
     planNamePlaceholder: "e.g. Low-Calorie Diet Week 1",
     sharePlan: "Share",
     sharing: "Sharing",
+    markAsCheatMeal: "Cheat Meal",
+    markAsRegularMeal: "Regular Meal",
+    cheatMealDescriptionPlaceholder: "Describe the cheat meal (e.g., Pizza with friends, dinner out...)",
     
     // FileUpload.tsx
     clickToUpload: "Click to upload",
