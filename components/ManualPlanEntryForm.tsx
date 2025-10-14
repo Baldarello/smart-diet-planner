@@ -70,6 +70,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                         if (sourceMeal) {
                             formMeal.title = sourceMeal.title || '';
                             formMeal.procedure = sourceMeal.procedure || '';
+                            formMeal.time = sourceMeal.time || formMeal.time;
                             const formItems = sourceMeal.items.map(item => {
                                 const parsed = parseQuantity(item.fullDescription);
                                 return {
@@ -102,6 +103,21 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                     meals: day.meals.map((meal, mIdx) => {
                         if (mIdx !== mealIndex) return meal;
                         return { ...meal, title: value };
+                    })
+                };
+            })
+        );
+    };
+    
+    const handleMealTimeChange = (dayIndex: number, mealIndex: number, value: string) => {
+        setPlanData(currentPlan => 
+            currentPlan.map((day, dIdx) => {
+                if (dIdx !== dayIndex) return day;
+                return {
+                    ...day,
+                    meals: day.meals.map((meal, mIdx) => {
+                        if (mIdx !== mealIndex) return meal;
+                        return { ...meal, time: value };
                     })
                 };
             })
@@ -359,7 +375,16 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                         <div className="p-4 pt-2 space-y-4">
                             {day.meals.map((meal, mealIndex) => (
                                 <div key={meal.name} className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg">
-                                    <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200">{meal.name}</h4>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200">{meal.name}</h4>
+                                        <input
+                                            type="time"
+                                            value={meal.time}
+                                            onChange={(e) => handleMealTimeChange(dayIndex, mealIndex, e.target.value)}
+                                            title={t('mealTime')}
+                                            className="p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500 text-sm"
+                                        />
+                                    </div>
                                     <input
                                         type="text"
                                         placeholder={t('mealTitleLabel')}

@@ -88,6 +88,8 @@ const translations = {
     editPlanTitle: "Modifica Piano Dietetico",
     updatePlan: "Aggiorna Piano",
     viewPlanTitle: "Visualizza Piano",
+    hidePassword: "Nascondi password",
+    showPassword: "Mostra password",
 
 
     // SetPlanDatesModal.tsx
@@ -466,6 +468,8 @@ const translations = {
     editPlanTitle: "Edit Diet Plan",
     updatePlan: "Update Plan",
     viewPlanTitle: "View Plan",
+    hidePassword: "Hide password",
+    showPassword: "Show password",
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Set Plan Duration",
