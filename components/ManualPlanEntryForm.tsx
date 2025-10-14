@@ -4,7 +4,7 @@ import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem, Nutrit
 import { t } from '../i18n';
 import { DAY_KEYWORDS, MEAL_KEYWORDS, MEAL_TIMES } from '../services/offlineParser';
 import { getCategoriesForIngredients } from '../services/geminiService';
-import { PlusCircleIcon, TrashIcon } from './Icons';
+import { PlusCircleIcon, TrashIcon, CookieIcon } from './Icons';
 import UnitPicker from './UnitPicker';
 import { ingredientStore } from '../stores/IngredientStore';
 import { nutritionistStore } from '../stores/NutritionistStore';
@@ -21,6 +21,7 @@ interface FormMealItem {
 interface FormMeal extends Omit<Meal, 'items' | 'done' | 'nutrition' | 'actualNutrition' | 'cheat' | 'cheatMealDescription' | 'procedure'> {
     items: FormMealItem[];
     procedure: string;
+    isCheat?: boolean;
 }
 
 interface FormDayPlan extends Omit<DayPlan, 'meals'> {
@@ -35,7 +36,8 @@ const createInitialPlan = (): FormDayPlan[] =>
             title: '',
             procedure: '',
             items: [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }],
-            time: MEAL_TIMES[name] || ''
+            time: MEAL_TIMES[name] || '',
+            isCheat: false,
         }))
     }));
 
@@ -69,18 +71,24 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                         const sourceMeal = sourceDay.meals.find(m => m.name.toUpperCase() === formMeal.name.toUpperCase());
                         if (sourceMeal) {
                             formMeal.title = sourceMeal.title || '';
-                            formMeal.procedure = sourceMeal.procedure || '';
                             formMeal.time = sourceMeal.time || formMeal.time;
-                            const formItems = sourceMeal.items.map(item => {
-                                const parsed = parseQuantity(item.fullDescription);
-                                return {
-                                    ingredientName: item.ingredientName,
-                                    quantityValue: parsed?.value?.toString() ?? '',
-                                    quantityUnit: parsed?.unit ?? 'g',
-                                };
-                            });
-                            // If no items, keep one empty row for the UI
-                            formMeal.items = formItems.length > 0 ? formItems : [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }];
+                            formMeal.isCheat = sourceMeal.cheat || false;
+
+                            if (sourceMeal.cheat) {
+                                formMeal.procedure = sourceMeal.cheatMealDescription || '';
+                                formMeal.items = [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }];
+                            } else {
+                                formMeal.procedure = sourceMeal.procedure || '';
+                                const formItems = sourceMeal.items.map(item => {
+                                    const parsed = parseQuantity(item.fullDescription);
+                                    return {
+                                        ingredientName: item.ingredientName,
+                                        quantityValue: parsed?.value?.toString() ?? '',
+                                        quantityUnit: parsed?.unit ?? 'g',
+                                    };
+                                });
+                                formMeal.items = formItems.length > 0 ? formItems : [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }];
+                            }
                         }
                     });
                 }
@@ -239,12 +247,45 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
         );
     };
 
+    const handleToggleCheatMeal = (dayIndex: number, mealIndex: number) => {
+        setPlanData(currentPlan =>
+            currentPlan.map((day, dIdx) => {
+                if (dIdx !== dayIndex) return day;
+                return {
+                    ...day,
+                    meals: day.meals.map((meal, mIdx) => {
+                        if (mIdx !== mealIndex) return meal;
+                        const isNowCheat = !meal.isCheat;
+                        return {
+                            ...meal,
+                            isCheat: isNowCheat,
+                            procedure: '', // Clear procedure as its meaning changes
+                            items: [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }], // Reset items
+                        };
+                    })
+                };
+            })
+        );
+    };
+
     const generateAndProcessPlan = async () => {
         // 1. Build a preliminary plan and aggregate ingredients for the shopping list
         const aggregatedIngredients = new Map<string, { totalValue: number; unit: string }>();
         const weeklyPlan: DayPlan[] = planData.map(day => ({
             day: day.day,
             meals: day.meals.map(meal => {
+                if (meal.isCheat) {
+                    return {
+                        name: meal.name,
+                        title: meal.title,
+                        time: meal.time,
+                        items: [],
+                        done: false,
+                        cheat: true,
+                        cheatMealDescription: meal.procedure,
+                    };
+                }
+
                 const newItems: MealItem[] = meal.items
                     .filter(item => item.ingredientName.trim() !== '')
                     .map(item => {
@@ -268,7 +309,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                     name: meal.name, title: meal.title, procedure: meal.procedure,
                     time: meal.time, items: newItems, done: false,
                 };
-            }).filter(meal => meal.items.length > 0 || !!meal.title || !!meal.procedure)
+            }).filter(meal => (meal.cheat && meal.cheatMealDescription) || meal.items.length > 0 || !!meal.title || !!meal.procedure)
         })).filter(day => day.meals.length > 0);
 
         if (weeklyPlan.length === 0) {
@@ -377,93 +418,116 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                                 <div key={meal.name} className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg">
                                     <div className="flex justify-between items-center mb-2">
                                         <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200">{meal.name}</h4>
-                                        <input
-                                            type="time"
-                                            value={meal.time}
-                                            onChange={(e) => handleMealTimeChange(dayIndex, mealIndex, e.target.value)}
-                                            title={t('mealTime')}
-                                            className="p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500 text-sm"
+                                        <div className="flex items-center gap-2 sm:gap-4">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleToggleCheatMeal(dayIndex, mealIndex)}
+                                                title={meal.isCheat ? t('markAsRegularMeal') : t('markAsCheatMeal')}
+                                                className="text-sm font-semibold text-orange-500 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 flex items-center gap-1.5 p-1 rounded-md"
+                                            >
+                                                <CookieIcon />
+                                                <span className="hidden sm:inline">{meal.isCheat ? t('markAsRegularMeal') : t('markAsCheatMeal')}</span>
+                                            </button>
+                                            <input
+                                                type="time"
+                                                value={meal.time}
+                                                onChange={(e) => handleMealTimeChange(dayIndex, mealIndex, e.target.value)}
+                                                title={t('mealTime')}
+                                                className="p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500 text-sm"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {meal.isCheat ? (
+                                        <textarea
+                                            placeholder={t('cheatMealDescriptionPlaceholder')}
+                                            value={meal.procedure}
+                                            onChange={(e) => handleMealProcedureChange(dayIndex, mealIndex, e.target.value)}
+                                            className="w-full mt-2 p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500 text-sm h-24"
                                         />
-                                    </div>
-                                    <input
-                                        type="text"
-                                        placeholder={t('mealTitleLabel')}
-                                        value={meal.title}
-                                        onChange={(e) => handleMealTitleChange(dayIndex, mealIndex, e.target.value)}
-                                        className="w-full mt-2 p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500"
-                                    />
-                                    <textarea
-                                        placeholder={t('procedurePlaceholder')}
-                                        value={meal.procedure}
-                                        onChange={(e) => handleMealProcedureChange(dayIndex, mealIndex, e.target.value)}
-                                        className="w-full mt-2 p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500 text-sm h-24"
-                                    />
-                                    <div className="mt-3 space-y-2">
-                                        <label className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('ingredientsLabel')}</label>
-                                        {meal.items.map((item, itemIndex) => (
-                                            <div key={itemIndex} className="grid grid-cols-1 sm:grid-cols-[1fr,auto,auto,auto] items-center gap-2">
-                                                <div className="relative">
-                                                    <input
-                                                        type="text"
-                                                        placeholder={t('ingredientPlaceholder')}
-                                                        value={item.ingredientName}
-                                                        onChange={e => handleItemChange(dayIndex, mealIndex, itemIndex, 'ingredientName', e.target.value)}
-                                                        onFocus={e => handleIngredientFocus(dayIndex, mealIndex, itemIndex, e.target.value)}
-                                                        onBlur={() => handleIngredientBlur(item.ingredientName)}
-                                                        className="w-full p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500"
-                                                        autoComplete="off"
-                                                    />
-                                                    {activeAutocomplete?.dayIndex === dayIndex &&
-                                                     activeAutocomplete?.mealIndex === mealIndex &&
-                                                     activeAutocomplete?.itemIndex === itemIndex &&
-                                                     filteredSuggestions.length > 0 && (
-                                                        <div 
-                                                            ref={autocompleteRef}
-                                                            className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto"
-                                                        >
-                                                            {filteredSuggestions.map((suggestion, sIndex) => (
-                                                                <button
-                                                                    key={sIndex}
-                                                                    type="button"
-                                                                    onMouseDown={() => handleSuggestionClick(dayIndex, mealIndex, itemIndex, suggestion)}
-                                                                    className="w-full text-left px-3 py-2 hover:bg-violet-100 dark:hover:bg-gray-700"
+                                    ) : (
+                                        <>
+                                            <input
+                                                type="text"
+                                                placeholder={t('mealTitleLabel')}
+                                                value={meal.title}
+                                                onChange={(e) => handleMealTitleChange(dayIndex, mealIndex, e.target.value)}
+                                                className="w-full mt-2 p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500"
+                                            />
+                                            <textarea
+                                                placeholder={t('procedurePlaceholder')}
+                                                value={meal.procedure}
+                                                onChange={(e) => handleMealProcedureChange(dayIndex, mealIndex, e.target.value)}
+                                                className="w-full mt-2 p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500 text-sm h-24"
+                                            />
+                                            <div className="mt-3 space-y-2">
+                                                <label className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('ingredientsLabel')}</label>
+                                                {meal.items.map((item, itemIndex) => (
+                                                    <div key={itemIndex} className="grid grid-cols-1 sm:grid-cols-[1fr,auto,auto,auto] items-center gap-2">
+                                                        <div className="relative">
+                                                            <input
+                                                                type="text"
+                                                                placeholder={t('ingredientPlaceholder')}
+                                                                value={item.ingredientName}
+                                                                onChange={e => handleItemChange(dayIndex, mealIndex, itemIndex, 'ingredientName', e.target.value)}
+                                                                onFocus={e => handleIngredientFocus(dayIndex, mealIndex, itemIndex, e.target.value)}
+                                                                onBlur={() => handleIngredientBlur(item.ingredientName)}
+                                                                className="w-full p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500"
+                                                                autoComplete="off"
+                                                            />
+                                                            {activeAutocomplete?.dayIndex === dayIndex &&
+                                                            activeAutocomplete?.mealIndex === mealIndex &&
+                                                            activeAutocomplete?.itemIndex === itemIndex &&
+                                                            filteredSuggestions.length > 0 && (
+                                                                <div 
+                                                                    ref={autocompleteRef}
+                                                                    className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto"
                                                                 >
-                                                                    {suggestion}
-                                                                </button>
-                                                            ))}
+                                                                    {filteredSuggestions.map((suggestion, sIndex) => (
+                                                                        <button
+                                                                            key={sIndex}
+                                                                            type="button"
+                                                                            onMouseDown={() => handleSuggestionClick(dayIndex, mealIndex, itemIndex, suggestion)}
+                                                                            className="w-full text-left px-3 py-2 hover:bg-violet-100 dark:hover:bg-gray-700"
+                                                                        >
+                                                                            {suggestion}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    )}
-                                                </div>
-                                                <input
-                                                    type="text"
-                                                    inputMode="decimal"
-                                                    placeholder={t('quantityPlaceholder')}
-                                                    value={item.quantityValue}
-                                                    onChange={e => handleItemChange(dayIndex, mealIndex, itemIndex, 'quantityValue', e.target.value)}
-                                                    className="w-24 p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500"
-                                                />
-                                                <UnitPicker 
-                                                    value={item.quantityUnit} 
-                                                    onChange={unit => handleItemChange(dayIndex, mealIndex, itemIndex, 'quantityUnit', unit)}
-                                                />
-                                                 <button
+                                                        <input
+                                                            type="text"
+                                                            inputMode="decimal"
+                                                            placeholder={t('quantityPlaceholder')}
+                                                            value={item.quantityValue}
+                                                            onChange={e => handleItemChange(dayIndex, mealIndex, itemIndex, 'quantityValue', e.target.value)}
+                                                            className="w-24 p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500"
+                                                        />
+                                                        <UnitPicker 
+                                                            value={item.quantityUnit} 
+                                                            onChange={unit => handleItemChange(dayIndex, mealIndex, itemIndex, 'quantityUnit', unit)}
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveItem(dayIndex, mealIndex, itemIndex)}
+                                                            title={t('removeIngredient')}
+                                                            className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                                                        >
+                                                            <TrashIcon />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                <button
                                                     type="button"
-                                                    onClick={() => handleRemoveItem(dayIndex, mealIndex, itemIndex)}
-                                                    title={t('removeIngredient')}
-                                                    className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-                                                 >
-                                                    <TrashIcon />
-                                                 </button>
+                                                    onClick={() => handleAddItem(dayIndex, mealIndex)}
+                                                    className="mt-2 flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300"
+                                                >
+                                                    <PlusCircleIcon /> {t('addIngredient')}
+                                                </button>
                                             </div>
-                                        ))}
-                                         <button
-                                            type="button"
-                                            onClick={() => handleAddItem(dayIndex, mealIndex)}
-                                            className="mt-2 flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300"
-                                         >
-                                            <PlusCircleIcon /> {t('addIngredient')}
-                                         </button>
-                                    </div>
+                                        </>
+                                    )}
                                 </div>
                             ))}
                         </div>
