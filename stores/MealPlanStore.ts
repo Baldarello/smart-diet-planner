@@ -1404,7 +1404,7 @@ export class MealPlanStore {
   importPlanFromUrl = async (planId: string) => {
     runInAction(() => { this.status = AppStatus.IMPORTING; });
     try {
-        const url = `https://www.googleapis.com/drive/v3/files/${planId}?alt=media&key=${process.env.GOOGLE_API_KEY}`;
+        const url = `https://drive.google.com/uc?export=download&id=${planId}`;
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`Failed to download plan from Google Drive. Status: ${response.status}`);
