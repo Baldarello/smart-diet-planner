@@ -194,6 +194,12 @@ export class MealPlanStore {
 }
 
   init = async () => {
+    runInAction(() => {
+        if (!process.env.API_KEY) {
+            this.onlineMode = false;
+        }
+    });
+    
     const hash = window.location.hash;
     const planIdMatch = hash.match(/plan_id=([^&]*)/);
     const planId = planIdMatch ? planIdMatch[1] : null;
