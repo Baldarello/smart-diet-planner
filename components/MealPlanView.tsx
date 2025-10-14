@@ -7,7 +7,7 @@ import MealTimeEditor from './MealTimeEditor';
 import NutritionInfoDisplay from './NutritionInfoDisplay';
 import DailyNutritionSummary from './DailyNutritionSummary';
 import MealModificationControl from './MealModificationControl';
-import { MoreVertIcon } from './Icons';
+import { MoreVertIcon, ClockIcon } from './Icons';
 import MealActionsPopup from './MealActionsPopup';
 import ConfirmationModal from './ConfirmationModal';
 import { t } from '../i18n';
@@ -84,8 +84,9 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                                                 <div className="flex-1 min-w-0">
                                                     <h4 className={`font-semibold text-gray-800 dark:text-gray-200`}>{meal.name}</h4>
                                                     {meal.title && <p className={`text-sm font-medium text-violet-600 dark:text-violet-400 truncate`}>{meal.title}</p>}
+                                                     {meal.cheat && <span className="text-xs font-bold uppercase text-orange-500 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50 px-2 py-1 rounded-full mt-1 inline-block">{t('cheatMealBadge')}</span>}
                                                 </div>
-                                                {isMasterPlanView && (
+                                                {isMasterPlanView && !meal.cheat && (
                                                     <div className="flex items-center gap-1 sm:gap-2">
                                                         <div className="hidden sm:flex items-center gap-2">
                                                             <MealTimeEditor dayIndex={dayIndex} mealIndex={mealIndex} />
@@ -106,21 +107,43 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                                                         </div>
                                                     </div>
                                                 )}
+                                                {!isMasterPlanView && meal.time && !meal.cheat && (
+                                                    <div className="flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
+                                                        <ClockIcon />
+                                                        <span>{meal.time}</span>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <MealItemChecklist 
-                                                items={meal.items} 
-                                                dayIndex={dayIndex} 
-                                                mealIndex={mealIndex} 
-                                                mealIsDone={false} 
-                                                isEditable={isMasterPlanView}
-                                                showCheckbox={false}
-                                            />
-                                            {meal.procedure && (
-                                                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
-                                                    <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{meal.procedure}</p>
+                                            
+                                            {meal.cheat && meal.cheatMealDescription ? (
+                                                <div className="mt-2 p-3 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
+                                                    {meal.time && (
+                                                        <div className="flex items-center font-semibold text-sm text-orange-800 dark:text-orange-300 mb-2">
+                                                            <ClockIcon />
+                                                            <span>{meal.time}</span>
+                                                        </div>
+                                                    )}
+                                                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{meal.cheatMealDescription}</p>
                                                 </div>
+                                            ) : (
+                                                <>
+                                                    <MealItemChecklist 
+                                                        items={meal.items} 
+                                                        dayIndex={dayIndex} 
+                                                        mealIndex={mealIndex} 
+                                                        mealIsDone={false} 
+                                                        isEditable={isMasterPlanView}
+                                                        showCheckbox={false}
+                                                    />
+                                                    {meal.procedure && (
+                                                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+                                                            <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{meal.procedure}</p>
+                                                        </div>
+                                                    )}
+                                                </>
                                             )}
-                                            {mealPlanStore.onlineMode && mealPlanStore.showMacros && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={mealIndex} isMasterPlanView={isMasterPlanView} />}
+
+                                            {mealPlanStore.onlineMode && mealPlanStore.showMacros && !meal.cheat && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={mealIndex} isMasterPlanView={isMasterPlanView} />}
                                         </div>
                                     );
                                 })}

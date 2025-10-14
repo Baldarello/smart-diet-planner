@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import MealItemChecklist from './MealItemChecklist';
 import { t } from '../i18n';
-import { CheckCircleIcon, UndoIcon, WarningIcon, MoreVertIcon } from './Icons';
+import { CheckCircleIcon, UndoIcon, WarningIcon, MoreVertIcon, ClockIcon } from './Icons';
 import HydrationTracker from './HydrationTracker';
 import MealTimeEditor from './MealTimeEditor';
 import DailyNutritionSummary from './DailyNutritionSummary';
@@ -111,12 +111,16 @@ const DailyPlanView: React.FC = observer(() => {
                                 {/* Desktop-only actions */}
                                 <div className="hidden sm:flex items-center gap-2">
                                     <MealTimeEditor dayIndex={dayIndex} mealIndex={meal.originalIndex} />
-                                    <MealModificationControl dayIndex={dayIndex} mealIndex={meal.originalIndex} onResetClick={() => setResettingMeal({ dayIndex, mealIndex: meal.originalIndex })} />
-                                    {mealPlanStore.showCheatMealButton && !meal.done && !meal.cheat && (
-                                        <button onClick={() => setCheatingMealIndex(meal.originalIndex)} title={t('logCheatMealTitle')} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={t('logCheatMealTitle')}>
-                                            <WarningIcon />
-                                        </button>
-                                    )}
+                                    {!meal.cheat && 
+                                        <>
+                                            <MealModificationControl dayIndex={dayIndex} mealIndex={meal.originalIndex} onResetClick={() => setResettingMeal({ dayIndex, mealIndex: meal.originalIndex })} />
+                                            {mealPlanStore.showCheatMealButton && !meal.done && (
+                                                <button onClick={() => setCheatingMealIndex(meal.originalIndex)} title={t('logCheatMealTitle')} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={t('logCheatMealTitle')}>
+                                                    <WarningIcon />
+                                                </button>
+                                            )}
+                                        </>
+                                    }
                                 </div>
 
                                 {/* Common done/undo actions */}
@@ -131,7 +135,7 @@ const DailyPlanView: React.FC = observer(() => {
                                 )}
                                 
                                 {/* Mobile-only menu */}
-                                {!meal.done && !meal.cheat && (
+                                {!meal.done && (
                                     <div className="relative sm:hidden">
                                         <button onClick={(e) => { e.stopPropagation(); setActionsMenuMealIndex(meal.originalIndex); }} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
                                             <MoreVertIcon />
@@ -141,8 +145,8 @@ const DailyPlanView: React.FC = observer(() => {
                                                 dayIndex={dayIndex}
                                                 mealIndex={meal.originalIndex}
                                                 onClose={() => setActionsMenuMealIndex(null)}
-                                                onLogCheatMeal={() => setCheatingMealIndex(meal.originalIndex)}
-                                                onResetClick={() => setResettingMeal({ dayIndex, mealIndex: meal.originalIndex })}
+                                                onLogCheatMeal={!meal.cheat ? () => setCheatingMealIndex(meal.originalIndex) : undefined}
+                                                onResetClick={!meal.cheat ? () => setResettingMeal({ dayIndex, mealIndex: meal.originalIndex }) : undefined}
                                             />
                                         )}
                                     </div>
