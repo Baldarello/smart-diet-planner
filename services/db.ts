@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import observable from 'dexie-observable';
-import { StoredState, ProgressRecord, SyncedData, DailyLog, Ingredient } from '../types';
+import { StoredState, ProgressRecord, SyncedData, DailyLog, Ingredient, NutritionistPlan } from '../types';
 import { authStore } from '../stores/AuthStore';
 import { saveStateToDrive } from './driveService';
 
@@ -19,6 +19,7 @@ export class MySubClassedDexie extends Dexie {
   progressHistory!: Table<ProgressRecord, string>; // Primary key is the 'date' string
   dailyLogs!: Table<DailyLog, string>; // To store daily instances of the meal plan
   ingredients!: Table<Ingredient, number>;
+  nutritionistPlans!: Table<NutritionistPlan, number>;
 
   constructor() {
     super('dietPlanDatabase', { addons: [observable] });
@@ -37,6 +38,10 @@ export class MySubClassedDexie extends Dexie {
       // add the new `category` index to the existing `ingredients` table.
       // No data migration is needed for existing ingredients.
       return tx.table('ingredients').count(); // Perform a simple operation to satisfy upgrade tx
+    });
+
+    (this as Dexie).version(6).stores({
+      nutritionistPlans: '++id, name, creationDate'
     });
   }
 }

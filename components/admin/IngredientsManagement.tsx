@@ -64,9 +64,7 @@ const IngredientsManagement: React.FC = observer(() => {
 
             <ul className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
                 {ingredients.map(ingredient => (
-                    // Fix: Use a unique primitive 'ingredient.name' for the key prop instead of the ingredient object.
                     <li key={ingredient.name} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-700/50 rounded-lg group">
-                        {/* Fix: Compare 'editingItem.oldName' with 'ingredient.name' (string vs. string) instead of the ingredient object. */}
                         {editingItem?.oldName === ingredient.name ? (
                             <input
                                 type="text"
@@ -78,11 +76,9 @@ const IngredientsManagement: React.FC = observer(() => {
                                 className="flex-grow p-1 bg-white dark:bg-gray-600 border border-violet-500 rounded-md"
                             />
                         ) : (
-                            // Fix: Render the 'ingredient.name' property, as React cannot render objects directly.
                             <span className="text-gray-800 dark:text-gray-200">{ingredient.name}</span>
                         )}
                         <div className="flex items-center gap-1">
-                             {/* Fix: Compare 'editingItem.oldName' with 'ingredient.name' instead of the ingredient object. */}
                              {editingItem?.oldName === ingredient.name ? (
                                 <>
                                     <button onClick={handleSaveEdit} className="p-1.5 text-green-500 hover:bg-green-100 dark:hover:bg-gray-600 rounded-full" title={t('save')}><CheckIcon /></button>
@@ -90,9 +86,7 @@ const IngredientsManagement: React.FC = observer(() => {
                                 </>
                              ) : (
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {/* Fix: Pass 'ingredient.name' (string) to 'handleStartEdit' instead of the ingredient object. */}
                                     <button onClick={() => handleStartEdit(ingredient.name)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400" title={t('editItemTitle')}><EditIcon /></button>
-                                    {/* Fix: Pass 'ingredient.name' (string) to 'deleteIngredient' instead of the ingredient object. */}
                                     <button onClick={() => deleteIngredient(ingredient.name)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400" title={t('deleteItemTitle')}><TrashIcon /></button>
                                 </div>
                              )}

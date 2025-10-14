@@ -149,3 +149,14 @@ export interface Ingredient {
   name: string;
   category?: string;
 }
+
+export interface NutritionistPlan {
+  id?: number;
+  name: string;
+  creationDate: string; // ISO string
+  planData: {
+    planName: string;
+    weeklyPlan: DayPlan[];
+    shoppingList: ShoppingListCategory[];
+  };
+}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '../../i18n';
+import { ViewIcon, ViewOffIcon } from '../Icons';
 
 interface AdminLoginPageProps {
     onLoginSuccess: () => void;
@@ -9,6 +10,7 @@ interface AdminLoginPageProps {
 const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
@@ -52,17 +54,25 @@ const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess }) => {
                             <label htmlFor="password"className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                 {t('passwordLabel')}
                             </label>
-                            <div className="mt-1">
+                            <div className="mt-1 relative">
                                 <input
                                     id="password"
                                     name="password"
-                                    type="password"
+                                    type={showPassword ? 'text' : 'password'}
                                     autoComplete="current-password"
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm bg-slate-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                    className="appearance-none block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm bg-slate-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                                    aria-label={t(showPassword ? 'hidePassword' : 'showPassword')}
+                                >
+                                    {showPassword ? <ViewOffIcon /> : <ViewIcon />}
+                                </button>
                             </div>
                         </div>
                         

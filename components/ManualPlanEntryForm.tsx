@@ -1,16 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
-import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem } from '../types';
+import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem, NutritionistPlan } from '../types';
 import { t } from '../i18n';
 import { DAY_KEYWORDS, MEAL_KEYWORDS, MEAL_TIMES } from '../services/offlineParser';
 import { getCategoriesForIngredients } from '../services/geminiService';
-import { uploadAndShareFile } from '../services/driveService';
-import { handleSignIn } from '../services/authService';
-import { authStore } from '../stores/AuthStore';
-import { PlusCircleIcon, TrashIcon, ShareIcon } from './Icons';
+import { PlusCircleIcon, TrashIcon } from './Icons';
 import UnitPicker from './UnitPicker';
 import { ingredientStore } from '../stores/IngredientStore';
-import ShareLinkModal from './ShareLinkModal';
+import { nutritionistStore } from '../stores/NutritionistStore';
+import { parseQuantity } from '../utils/quantityParser';
 
 // New interfaces for form state
 interface FormMealItem {
@@ -41,17 +39,59 @@ const createInitialPlan = (): FormDayPlan[] =>
         }))
     }));
 
-const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = observer(({ onCancel }) => {
+interface ManualPlanEntryFormProps {
+    onCancel: () => void;
+    onPlanSaved: () => void;
+    planToEdit?: NutritionistPlan | null;
+}
+
+const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCancel, onPlanSaved, planToEdit }) => {
     const [planData, setPlanData] = useState<FormDayPlan[]>(createInitialPlan());
     const [planName, setPlanName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [isSharing, setIsSharing] = useState(false);
-    const [shareUrl, setShareUrl] = useState<string | null>(null);
 
     // Autocomplete state
     const [activeAutocomplete, setActiveAutocomplete] = useState<{ dayIndex: number; mealIndex: number; itemIndex: number } | null>(null);
     const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
     const autocompleteRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (planToEdit) {
+            setPlanName(planToEdit.name);
+
+            const editedPlanData = createInitialPlan(); // Start with a full empty week
+            const planMap = new Map(planToEdit.planData.weeklyPlan.map(d => [d.day.toUpperCase(), d]));
+
+            editedPlanData.forEach(formDay => {
+                const sourceDay = planMap.get(formDay.day.toUpperCase());
+                if (sourceDay) {
+                    formDay.meals.forEach(formMeal => {
+                        const sourceMeal = sourceDay.meals.find(m => m.name.toUpperCase() === formMeal.name.toUpperCase());
+                        if (sourceMeal) {
+                            formMeal.title = sourceMeal.title || '';
+                            formMeal.procedure = sourceMeal.procedure || '';
+                            formMeal.time = sourceMeal.time || formMeal.time;
+                            const formItems = sourceMeal.items.map(item => {
+                                const parsed = parseQuantity(item.fullDescription);
+                                return {
+                                    ingredientName: item.ingredientName,
+                                    quantityValue: parsed?.value?.toString() ?? '',
+                                    quantityUnit: parsed?.unit ?? 'g',
+                                };
+                            });
+                            // If no items, keep one empty row for the UI
+                            formMeal.items = formItems.length > 0 ? formItems : [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }];
+                        }
+                    });
+                }
+            });
+            setPlanData(editedPlanData);
+        } else {
+            // Reset form for creation
+            setPlanName('');
+            setPlanData(createInitialPlan());
+        }
+    }, [planToEdit]);
 
 
     const handleMealTitleChange = (dayIndex: number, mealIndex: number, value: string) => {
@@ -63,6 +103,21 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = observer(({ onCa
                     meals: day.meals.map((meal, mIdx) => {
                         if (mIdx !== mealIndex) return meal;
                         return { ...meal, title: value };
+                    })
+                };
+            })
+        );
+    };
+    
+    const handleMealTimeChange = (dayIndex: number, mealIndex: number, value: string) => {
+        setPlanData(currentPlan => 
+            currentPlan.map((day, dIdx) => {
+                if (dIdx !== dayIndex) return day;
+                return {
+                    ...day,
+                    meals: day.meals.map((meal, mIdx) => {
+                        if (mIdx !== mealIndex) return meal;
+                        return { ...meal, time: value };
                     })
                 };
             })
@@ -272,65 +327,32 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = observer(({ onCa
         setIsLoading(true);
         try {
             const finalData = await generateAndProcessPlan();
-            if (!finalData) return;
+            if (!finalData) {
+                setIsLoading(false);
+                return;
+            }
 
-            const jsonString = JSON.stringify(finalData, null, 2);
-            const blob = new Blob([jsonString], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            const safePlanName = finalData.planName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            a.download = `diet-plan-${safePlanName}-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            if (planToEdit && planToEdit.id) {
+                await nutritionistStore.updatePlan(planToEdit.id, finalData);
+            } else {
+                await nutritionistStore.addPlan(finalData);
+            }
+
+            onPlanSaved();
 
         } catch (error) {
-            console.error("Error during plan generation:", error);
-            alert("An error occurred while generating the plan. Please check the console and try again.");
+            console.error("Error during plan saving:", error);
+            alert("An error occurred while saving the plan. Please check the console and try again.");
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleShare = async () => {
-        const shareAction = async () => {
-            if (!authStore.accessToken) {
-                alert("Login session is not valid. Please log in again.");
-                return;
-            }
-            setIsSharing(true);
-            try {
-                const finalData = await generateAndProcessPlan();
-                if (!finalData) return;
-
-                const fileId = await uploadAndShareFile(finalData, finalData.planName, authStore.accessToken);
-                if (!fileId) throw new Error("Failed to get shareable file ID from Google Drive.");
-
-                const url = `${window.location.origin}${window.location.pathname}#/?plan_id=${fileId}`;
-                setShareUrl(url);
-
-            } catch (error) {
-                console.error("Error during plan sharing:", error);
-                alert(`An error occurred while sharing the plan: ${error instanceof Error ? error.message : String(error)}`);
-            } finally {
-                setIsSharing(false);
-            }
-        };
-
-        if (!authStore.isLoggedIn) {
-            authStore.setLoginRedirectAction(shareAction);
-            handleSignIn();
-        } else {
-            await shareAction();
-        }
-    };
+    const isEditMode = !!planToEdit;
 
     return (
         <div className="max-w-4xl mx-auto">
-            {shareUrl && <ShareLinkModal url={shareUrl} onClose={() => setShareUrl(null)} />}
-            <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6 text-center">{t('manualEntryTitle')}</h2>
+            <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6 text-center">{t(isEditMode ? 'editPlanTitle' : 'manualEntryTitle')}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
                  <div className="mb-6 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm">
                     <label htmlFor="plan-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('planNameLabel')}</label>
@@ -353,7 +375,16 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = observer(({ onCa
                         <div className="p-4 pt-2 space-y-4">
                             {day.meals.map((meal, mealIndex) => (
                                 <div key={meal.name} className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg">
-                                    <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200">{meal.name}</h4>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200">{meal.name}</h4>
+                                        <input
+                                            type="time"
+                                            value={meal.time}
+                                            onChange={(e) => handleMealTimeChange(dayIndex, mealIndex, e.target.value)}
+                                            title={t('mealTime')}
+                                            className="p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500 text-sm"
+                                        />
+                                    </div>
                                     <input
                                         type="text"
                                         placeholder={t('mealTitleLabel')}
@@ -442,27 +473,14 @@ const ManualPlanEntryForm: React.FC<{ onCancel: () => void }> = observer(({ onCa
                     <button type="button" onClick={onCancel} className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold px-6 py-3 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-lg w-full sm:w-auto">
                         {t('cancel')}
                     </button>
-                    <button type="submit" disabled={isLoading || isSharing} className="bg-violet-600 text-white font-semibold px-6 py-3 rounded-full hover:bg-violet-700 transition-colors shadow-lg flex items-center justify-center disabled:bg-violet-400 disabled:cursor-not-allowed w-full sm:w-auto">
+                    <button type="submit" disabled={isLoading} className="bg-violet-600 text-white font-semibold px-6 py-3 rounded-full hover:bg-violet-700 transition-colors shadow-lg flex items-center justify-center disabled:bg-violet-400 disabled:cursor-not-allowed w-full sm:w-auto">
                         {isLoading ? (
                             <>
                                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
                                 <span>{t('recalculating')}...</span>
                             </>
                         ) : (
-                            t('savePlan')
-                        )}
-                    </button>
-                    <button type="button" onClick={handleShare} disabled={isLoading || isSharing} className="bg-green-600 text-white font-semibold px-6 py-3 rounded-full hover:bg-green-700 transition-colors shadow-lg flex items-center justify-center disabled:bg-green-400 disabled:cursor-not-allowed w-full sm:w-auto">
-                        {isSharing ? (
-                            <>
-                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                                <span>{t('sharing')}...</span>
-                            </>
-                        ) : (
-                            <>
-                                <ShareIcon />
-                                <span className="ml-2">{t('sharePlan')}</span>
-                            </>
+                            t(isEditMode ? 'updatePlan' : 'savePlan')
                         )}
                     </button>
                 </div>

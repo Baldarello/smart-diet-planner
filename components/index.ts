@@ -41,4 +41,7 @@ export * from './Icons';
 export { default as AdminLoginPage } from './admin/AdminLoginPage';
 export { default as NutritionistPage } from './admin/NutritionistPage';
 export { default as NotFoundPage } from './admin/NotFoundPage';
+export { default as IngredientsManagement } from './admin/IngredientsManagement';
+export { default as PlanLibraryPage } from './admin/PlanLibraryPage';
+export { default as ViewPlanModal } from './admin/ViewPlanModal';
 export { default as FileUploadScreen } from './FileUploadScreen';
