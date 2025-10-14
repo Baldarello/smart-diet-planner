@@ -2,13 +2,13 @@ import { GoogleGenAI, Type, HarmCategory, HarmBlockThreshold } from "@google/gen
 // Fix: Import types for the new function
 import { DayPlan, ShoppingListCategory } from "../types";
 
-if (!process.env.API_KEY) {
-  const errorMsg = "FATAL: API_KEY environment variable not set. The application cannot start without it.";
-  console.error(errorMsg);
-  throw new Error(errorMsg);
-}
+let ai: GoogleGenAI | null = null;
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+if (process.env.API_KEY) {
+  ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+} else {
+  console.warn("API_KEY environment variable not set. AI features will be disabled.");
+}
 
 const safetySettings = [
     {
@@ -38,6 +38,10 @@ export function isQuotaError(error: unknown): boolean {
 }
 
 export async function getPlanDetailsAndShoppingList(plan: DayPlan[]): Promise<{ weeklyPlan: DayPlan[], shoppingList: ShoppingListCategory[] }> {
+    if (!ai) {
+        throw new Error("AI features are disabled due to missing API key.");
+    }
+
     const prompt = `
     Sei un assistente nutrizionista esperto. Ti viene fornito un piano alimentare settimanale in formato JSON.
     Il tuo compito è:
@@ -111,6 +115,10 @@ export async function getPlanDetailsAndShoppingList(plan: DayPlan[]): Promise<{ 
 }
 
 export async function getCategoriesForIngredients(ingredientNames: string[]): Promise<Record<string, string>> {
+    if (!ai) {
+        throw new Error("AI features are disabled due to missing API key.");
+    }
+
     const prompt = `
 Sei un assistente esperto di categorizzazione alimentare. Ti viene fornita una lista di ingredienti.
 Il tuo compito è associare ogni ingrediente alla categoria di spesa più appropriata.
