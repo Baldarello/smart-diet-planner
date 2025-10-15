@@ -223,11 +223,8 @@ export async function uploadAndShareFile(data: object, planName: string, accessT
  * @returns The JSON content of the file.
  */
 export const readSharedFile = async (fileId: string): Promise<any> => {
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) {
-        throw new Error("API Key is not configured for file downloads.");
-    }
-    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
+
+    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
     const response = await fetch(url);
     
     if (!response.ok) {
