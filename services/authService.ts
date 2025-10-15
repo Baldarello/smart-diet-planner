@@ -1,7 +1,7 @@
 import { authStore } from '../stores/AuthStore';
 import { UserProfile, SyncedData, DailyLog } from '../types';
 import { runInAction } from 'mobx';
-import { loadStateFromDrive, saveStateToDrive } from './driveService';
+import { findLatestBackupFile, readBackupFile, writeBackupFile } from './driveService';
 import { db } from './db';
 // Fix: Import Dexie to use as a type for casting, resolving type inference issues.
 import Dexie from 'dexie';
@@ -46,7 +46,12 @@ async function syncWithDriveOnLogin(accessToken: string) {
 
     runInAction(() => mealPlanStore.status = AppStatus.SYNCING);
     try {
-        const remoteData = await loadStateFromDrive(accessToken);
+        const latestBackupFile = await findLatestBackupFile(accessToken);
+        let remoteData: SyncedData | null = null;
+        if (latestBackupFile) {
+            remoteData = await readBackupFile(accessToken, latestBackupFile.id);
+        }
+        
         const localData = await db.appState.get('dietPlanData');
 
         const remoteTimestamp = remoteData?.appState?.lastModified || 0;
@@ -81,7 +86,7 @@ async function syncWithDriveOnLogin(accessToken: string) {
             const progressHistory = await db.progressHistory.toArray();
             const dailyLogs = await db.dailyLogs.toArray();
             const dataToSave: SyncedData = { appState: localData.value, progressHistory, dailyLogs };
-            await saveStateToDrive(dataToSave, accessToken);
+            await writeBackupFile(dataToSave, accessToken);
             console.log("Local data uploaded to Google Drive.");
         } else {
             console.log("Local and remote data are in sync. No action needed.");

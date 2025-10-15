@@ -2,7 +2,7 @@ import Dexie, { type Table } from 'dexie';
 import observable from 'dexie-observable';
 import { StoredState, ProgressRecord, SyncedData, DailyLog, Ingredient, NutritionistPlan } from '../types';
 import { authStore } from '../stores/AuthStore';
-import { saveStateToDrive } from './driveService';
+import { writeBackupFile } from './driveService';
 
 // Define the structure of the object we are storing.
 // This is based on MealPlanStore.saveToDB
@@ -84,7 +84,7 @@ async function handleDatabaseChangeForSync(changes: DexieObservableChange[]) {
 
                 if (appState && authStore.accessToken) {
                     const dataToSave: SyncedData = { appState: appState.value, progressHistory, dailyLogs };
-                    await saveStateToDrive(dataToSave, authStore.accessToken);
+                    await writeBackupFile(dataToSave, authStore.accessToken);
                     console.log('Successfully synced state to Google Drive.');
                 }
             } catch (error) {
