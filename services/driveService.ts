@@ -168,7 +168,7 @@ export async function uploadAndShareFile(data: object, planName: string, accessT
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     form.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
 
-    const uploadResponse = await fetch(`${DRIVE_UPLOAD_URL}?uploadType=multipart&fields=id`, {
+    const uploadResponse = await fetch(`${DRIVE_UPLOAD_URL}?uploadType=multipart&fields=id&supportsAllDrives=true`, {
         method: 'POST',
         headers: createHeaders(accessToken),
         body: form
@@ -214,7 +214,7 @@ export async function uploadAndShareFile(data: object, planName: string, accessT
         throw new Error('Failed to set public permissions for the file.');
     }
     
-    return fileId;
+    return `https://drive.google.com/uc?export=download&id=${fileId}`;
 }
 
 /**
@@ -222,22 +222,48 @@ export async function uploadAndShareFile(data: object, planName: string, accessT
  * @param fileId The ID of the public file.
  * @returns The JSON content of the file.
  */
-export const readSharedFile = async (fileId: string): Promise<any> => {
+export const readSharedFile = async (fileId: string,): Promise<any> => {
 
-    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-    const response = await fetch(url);
+    return await parseDataFromLink(fileId)
     
-    if (!response.ok) {
-        let errorMessage = `Failed to download plan from Google Drive. Status: ${response.status}`;
-        try {
-            const errorBody = await response.json();
-            if (errorBody.error?.message) {
-                errorMessage = errorBody.error.message;
-            }
-        } catch (jsonError) {
-            // Ignore if response is not JSON
+
+};
+
+export const parseDataFromLink = async (link: string) => {
+    try {
+        const url = new URL(link);
+        // Extract the Google Drive URL from the 'importFromUrl' parameter, or use the link directly if it's a Drive URL.
+        const dataUrl = url.searchParams.get('plan_id') ||(url.hostname.includes('drive.google.com') ? link : null);
+
+        if (!dataUrl) {
+            console.warn("Link does not contain a valid import URL.");
+            return null;
         }
-        throw new Error(errorMessage);
+
+        console.log("Fetching data from URL:", dataUrl);
+        // Prepend a CORS proxy to the Google Drive URL to bypass browser restrictions.
+        // The previous proxy (cors.eu.org) was being blocked by Google Drive, resulting in a 403 error.
+        // This new proxy is an alternative to bypass CORS issues. The target URL must be encoded.
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(dataUrl)}`;
+        console.log("Fetching data from URL:", proxyUrl);
+        const response = await fetch(proxyUrl);
+        if (!response.ok) {
+            // Provide a more specific error if the proxy itself fails
+            if (response.status === 404 && response.url.includes('corsproxy.io')) {
+                throw new Error(`Failed to fetch from proxy. The original URL might be invalid or unreachable.`);
+            }
+            throw new Error(`Failed to fetch library from URL. Status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        // Basic validation to ensure the fetched data has the correct structure.
+        if (data ) {
+            return data ;
+        }
+        console.warn("Fetched data has invalid format.", data);
+        return null;
+    } catch (error) {
+        console.error("Failed to parse share link:", error);
+        return null;
     }
-    return response.json();
 };

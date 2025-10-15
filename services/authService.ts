@@ -161,6 +161,7 @@ export const initGoogleAuth = () => {
 export const handleSignIn = () => {
     if (!tokenClient) {
         console.error("Google Auth not initialized.");
+        initGoogleAuth()
         return;
     }
     // Prompt the user to select an account and grant access
