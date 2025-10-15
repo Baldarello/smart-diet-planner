@@ -46,10 +46,11 @@ const PlanLibraryPage: React.FC<PlanLibraryPageProps> = observer(({ onEdit, onVi
             setSharingPlan(plan);
             try {
                 const fileId = await uploadAndShareFile(plan.planData, plan.name, authStore.accessToken);
-                const baseUrl = `${window.location.origin}${window.location.pathname}`;
-                const url = `${baseUrl}#/?plan_id=${encodeURIComponent(fileId)}`;
+                
+                const shareableUrl = new URL(window.location.origin);
+                shareableUrl.searchParams.set('plan_id', fileId!);
 
-                setShareUrl(url);
+                setShareUrl(shareableUrl.href);
             } catch (error) {
                 console.error("Error during plan sharing:", error);
                 alert(`An error occurred while sharing the plan: ${error instanceof Error ? error.message : String(error)}`);
