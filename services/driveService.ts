@@ -216,3 +216,31 @@ export async function uploadAndShareFile(data: object, planName: string, accessT
     
     return fileId;
 }
+
+/**
+ * Reads the content of a publicly shared file from Google Drive using an API key.
+ * @param fileId The ID of the public file.
+ * @returns The JSON content of the file.
+ */
+export const readSharedFile = async (fileId: string): Promise<any> => {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+        throw new Error("API Key is not configured for file downloads.");
+    }
+    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+        let errorMessage = `Failed to download plan from Google Drive. Status: ${response.status}`;
+        try {
+            const errorBody = await response.json();
+            if (errorBody.error?.message) {
+                errorMessage = errorBody.error.message;
+            }
+        } catch (jsonError) {
+            // Ignore if response is not JSON
+        }
+        throw new Error(errorMessage);
+    }
+    return response.json();
+};
