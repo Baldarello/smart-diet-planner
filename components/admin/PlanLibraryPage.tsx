@@ -46,7 +46,6 @@ const PlanLibraryPage: React.FC<PlanLibraryPageProps> = observer(({ onEdit, onVi
             setSharingPlan(plan);
             try {
                 const fileId = await uploadAndShareFile(plan.planData, plan.name, authStore.accessToken);
-                if (!fileId) throw new Error("Failed to get shareable file ID from Google Drive.");
                 const baseUrl = `${window.location.origin}${window.location.pathname}`;
                 const url = `${baseUrl}#/?plan_id=${encodeURIComponent(fileId)}`;
 

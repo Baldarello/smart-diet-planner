@@ -233,18 +233,19 @@ export const parseDataFromLink = async (link: string) => {
     try {
         const url = new URL(link);
         // Extract the Google Drive URL from the 'importFromUrl' parameter, or use the link directly if it's a Drive URL.
-        const dataUrl = (url.hostname.includes('drive.google.com') ? link : null);
+        const dataUrl = url.searchParams.get('plan_id') ||(url.hostname.includes('drive.google.com') ? link : null);
 
         if (!dataUrl) {
             console.warn("Link does not contain a valid import URL.");
             return null;
         }
 
+        console.log("Fetching data from URL:", dataUrl);
         // Prepend a CORS proxy to the Google Drive URL to bypass browser restrictions.
         // The previous proxy (cors.eu.org) was being blocked by Google Drive, resulting in a 403 error.
         // This new proxy is an alternative to bypass CORS issues. The target URL must be encoded.
         const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(dataUrl)}`;
-
+        console.log("Fetching data from URL:", proxyUrl);
         const response = await fetch(proxyUrl);
         if (!response.ok) {
             // Provide a more specific error if the proxy itself fails

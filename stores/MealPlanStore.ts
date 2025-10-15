@@ -1646,6 +1646,7 @@ export class MealPlanStore {
         });
         try {
             const data = await readSharedFile(planId);
+            console.log("Imported data", data);
             this.processImportedData(data);
 
             // Clean URL
