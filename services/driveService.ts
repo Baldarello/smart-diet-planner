@@ -222,10 +222,11 @@ export async function uploadAndShareFile(data: object, planName: string, accessT
  * @param fileId The ID of the public file.
  * @returns The JSON content of the file.
  */
-export const readSharedFile = async (fileId: string): Promise<any> => {
+export const readSharedFile = async (fileId: string,accessToken: string,): Promise<any> => {
 
-    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-    const response = await fetch(url);
+    const response = await fetch(`${DRIVE_API_URL}/${fileId}?alt=media`, {
+        headers: createHeaders(accessToken),
+    })
     
     if (!response.ok) {
         let errorMessage = `Failed to download plan from Google Drive. Status: ${response.status}`;

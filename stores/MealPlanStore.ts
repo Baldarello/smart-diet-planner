@@ -1405,7 +1405,7 @@ export class MealPlanStore {
   importPlanFromUrl = async (planId: string) => {
     runInAction(() => { this.status = AppStatus.IMPORTING; });
     try {
-        const data = await readSharedFile(planId);
+        const data = await readSharedFile(planId,authStore.accessToken);
         this.processImportedData(data);
 
         // Clean URL
