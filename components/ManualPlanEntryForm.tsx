@@ -68,7 +68,8 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                 const sourceDay = planMap.get(formDay.day.toUpperCase());
                 if (sourceDay) {
                     formDay.meals.forEach(formMeal => {
-                        const sourceMeal = sourceDay.meals.find(m => m.name.toUpperCase() === formMeal.name.toUpperCase());
+                        // Fix: Explicitly type `m` as `Meal` to resolve a type inference issue where it was being treated as `unknown`.
+                        const sourceMeal = sourceDay.meals.find((m: Meal) => m.name.toUpperCase() === formMeal.name.toUpperCase());
                         if (sourceMeal) {
                             formMeal.title = sourceMeal.title || '';
                             formMeal.time = sourceMeal.time || formMeal.time;
