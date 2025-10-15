@@ -39,7 +39,6 @@ const MainAppContent: React.FC = observer(() => {
 
     if (store.status === AppStatus.HYDRATING || store.status === AppStatus.SYNCING) return <Loader />;
     if (store.status === AppStatus.LOADING) return <Loader />;
-    if (store.status === AppStatus.AWAITING_DATES) return <SetPlanDatesModal />;
     if (store.status === AppStatus.ERROR) {
         return ( <div className="text-center"><ErrorMessage message={store.error!} /><div className="mt-8"><button onClick={() => store.navigateTo('upload')} className="text-2xl font-bold dark:text-gray-200 text-gray-800 mb-4 hover:underline">{t('errorAndUpload')}</button><FileUploadScreen /></div></div> );
     }
@@ -364,6 +363,7 @@ const MainAppLayout: React.FC = observer(() => {
 
     return (
         <div className="min-h-screen">
+            {store.status === AppStatus.AWAITING_DATES && <SetPlanDatesModal />}
             {showLoginSuggestion && <LoginSuggestionModal onClose={handleCloseLoginSuggestion} />}
             <Drawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)}>
                 {renderDrawerContent()}
