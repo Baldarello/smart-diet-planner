@@ -27,6 +27,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env: # Or as an environment variable
+      API_KEY: ${{ secrets.API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
       GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}

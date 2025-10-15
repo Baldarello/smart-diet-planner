@@ -223,12 +223,8 @@ export async function uploadAndShareFile(data: object, planName: string, accessT
  * @returns The JSON content of the file.
  */
 export const readSharedFile = async (fileId: string): Promise<any> => {
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) {
-        throw new Error("API Key is not configured for file downloads.");
-    }
-    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
-    const response = await fetch(url);
+    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+    const response = await parseDataFromLink(url);
     
     if (!response.ok) {
         let errorMessage = `Failed to download plan from Google Drive. Status: ${response.status}`;
@@ -243,4 +239,42 @@ export const readSharedFile = async (fileId: string): Promise<any> => {
         throw new Error(errorMessage);
     }
     return response.json();
+};
+
+export const parseDataFromLink = async (link: string) => {
+    try {
+        const url = new URL(link);
+        // Extract the Google Drive URL from the 'importFromUrl' parameter, or use the link directly if it's a Drive URL.
+        const dataUrl = url.searchParams.get('importFromUrl') || (url.hostname.includes('drive.google.com') ? link : null);
+
+        if (!dataUrl) {
+            console.warn("Link does not contain a valid import URL.");
+            return null;
+        }
+
+        // Prepend a CORS proxy to the Google Drive URL to bypass browser restrictions.
+        // The previous proxy (cors.eu.org) was being blocked by Google Drive, resulting in a 403 error.
+        // This new proxy is an alternative to bypass CORS issues. The target URL must be encoded.
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(dataUrl)}`;
+
+        const response = await fetch(proxyUrl);
+        if (!response.ok) {
+            // Provide a more specific error if the proxy itself fails
+            if (response.status === 404 && response.url.includes('corsproxy.io')) {
+                throw new Error(`Failed to fetch from proxy. The original URL might be invalid or unreachable.`);
+            }
+            throw new Error(`Failed to fetch library from URL. Status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        // Basic validation to ensure the fetched data has the correct structure.
+        if (data ) {
+            return data;
+        }
+        console.warn("Fetched data has invalid format.", data);
+        return null;
+    } catch (error) {
+        console.error("Failed to parse share link:", error);
+        return null;
+    }
 };
