@@ -224,21 +224,8 @@ export async function uploadAndShareFile(data: object, planName: string, accessT
  */
 export const readSharedFile = async (fileId: string): Promise<any> => {
     const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-    const response = await parseDataFromLink(url);
-    
-    if (!response.ok) {
-        let errorMessage = `Failed to download plan from Google Drive. Status: ${response.status}`;
-        try {
-            const errorBody = await response.json();
-            if (errorBody.error?.message) {
-                errorMessage = errorBody.error.message;
-            }
-        } catch (jsonError) {
-            // Ignore if response is not JSON
-        }
-        throw new Error(errorMessage);
-    }
-    return response.json();
+    return await parseDataFromLink(url);
+
 };
 
 export const parseDataFromLink = async (link: string) => {
