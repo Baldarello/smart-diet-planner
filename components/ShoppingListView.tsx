@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
-import { useNavigate } from 'react-router-dom';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { ShoppingListItem, ShoppingListCategory } from '../types';
 import { PantryIcon, EditIcon, TrashIcon, CheckIcon, CloseIcon, PlusCircleIcon, TodayIcon, ShareIcon, ArrowUpIcon, ArrowDownIcon } from './Icons';
@@ -10,7 +9,6 @@ import { formatQuantity } from '../utils/quantityParser';
 
 const ShoppingListView: React.FC = observer(() => {
     const store = mealPlanStore;
-    const navigate = useNavigate();
     const { shoppingList, shoppingListManaged } = store;
     
     const [checkedItems, setCheckedItems] = useState<Map<string, { item: ShoppingListItem, category: string }>>(new Map());
@@ -218,7 +216,7 @@ const ShoppingListView: React.FC = observer(() => {
                     <div className="w-16 h-16 bg-green-100 dark:bg-green-900/40 rounded-full mx-auto flex items-center justify-center mb-4"><CheckIcon /></div>
                     <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">{t('shoppingListEmptyTitle')}</h3>
                     <p className="text-gray-500 dark:text-gray-400 mt-2 mb-6">{t('shoppingListEmptyMessage')}</p>
-                    <button onClick={() => navigate('/daily')} className="bg-violet-600 text-white font-semibold px-6 py-3 rounded-full hover:bg-violet-700 transition-colors shadow-md flex items-center mx-auto">
+                    <button onClick={() => store.navigateTo('daily')} className="bg-violet-600 text-white font-semibold px-6 py-3 rounded-full hover:bg-violet-700 transition-colors shadow-md flex items-center mx-auto">
                         <TodayIcon /><span className="ml-2">{t('shoppingListEmptyButton')}</span>
                     </button>
                 </div>

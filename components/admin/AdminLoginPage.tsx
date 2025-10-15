@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { t } from '../../i18n';
 import { ViewIcon, ViewOffIcon } from '../Icons';
 
@@ -12,14 +11,12 @@ const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess }) => {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
-    const navigate = useNavigate();
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
         if (username === 'admin' && password === 'password') {
             setError('');
             onLoginSuccess();
-            navigate('/nutritionist');
         } else {
             setError(t('invalidCredentialsError'));
         }

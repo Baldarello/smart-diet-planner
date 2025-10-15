@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import ManualPlanEntryForm from '../ManualPlanEntryForm';
 import IngredientsManagement from './IngredientsManagement';
 import PlanLibraryPage from './PlanLibraryPage';
@@ -15,7 +14,6 @@ interface NutritionistPageProps {
 type NutritionistTab = 'plan' | 'ingredients' | 'library';
 
 const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
-    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<NutritionistTab>('plan');
     const [planToEdit, setPlanToEdit] = useState<NutritionistPlan | null>(null);
     const [viewingPlan, setViewingPlan] = useState<NutritionistPlan | null>(null);
@@ -33,7 +31,6 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
 
     const handleLogout = () => {
         onLogout();
-        navigate('/admin');
     };
     
     const handleEditPlan = (plan: NutritionistPlan) => {
