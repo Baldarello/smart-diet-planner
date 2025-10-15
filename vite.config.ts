@@ -16,7 +16,6 @@ export default defineConfig(({ mode }) => {
             'process.env.API_KEY': JSON.stringify(env.API_KEY || env.VITE_API_KEY),
             // Check for VITE_ prefix for robustness on other keys
             'process.env.GOOGLE_CLIENT_ID': JSON.stringify(env.GOOGLE_CLIENT_ID || env.VITE_GOOGLE_CLIENT_ID),
-            'process.env.GOOGLE_API_KEY': JSON.stringify(env.GOOGLE_API_KEY || env.VITE_GOOGLE_API_KEY),
             'process.env.VAPID_PUBLIC_KEY': JSON.stringify(env.VAPID_PUBLIC_KEY || env.VITE_VAPID_PUBLIC_KEY),
             'process.env.BUILD_TYPE': JSON.stringify(env.BUILD_TYPE || 'web'),
         }
