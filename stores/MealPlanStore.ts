@@ -10,6 +10,7 @@ import { parseQuantity, formatQuantity } from '../utils/quantityParser';
 import { db } from '../services/db';
 import { calculateCaloriesBurned } from '../utils/calories';
 import { authStore } from './AuthStore';
+import { readSharedFile } from '../services/driveService';
 
 export enum AppStatus {
   INITIAL,
@@ -1404,25 +1405,7 @@ export class MealPlanStore {
   importPlanFromUrl = async (planId: string) => {
     runInAction(() => { this.status = AppStatus.IMPORTING; });
     try {
-        const apiKey = process.env.API_KEY;
-        if (!apiKey) {
-            throw new Error("API Key is not configured for file downloads.");
-        }
-        const url = `https://www.googleapis.com/drive/v3/files/${planId}?alt=media&key=${apiKey}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-            let errorMessage = `Failed to download plan from Google Drive. Status: ${response.status}`;
-            try {
-                const errorBody = await response.json();
-                if (errorBody.error?.message) {
-                    errorMessage = errorBody.error.message;
-                }
-            } catch (jsonError) {
-                // Ignore if response is not JSON, use default error message
-            }
-            throw new Error(errorMessage);
-        }
-        const data = await response.json();
+        const data = await readSharedFile(planId);
         this.processImportedData(data);
 
         // Clean URL
