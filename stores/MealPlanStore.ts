@@ -1404,9 +1404,9 @@ export class MealPlanStore {
   importPlanFromUrl = async (planId: string) => {
     runInAction(() => { this.status = AppStatus.IMPORTING; });
     try {
-        const apiKey = process.env.GOOGLE_API_KEY || process.env.API_KEY; // Fallback to Gemini key
+        const apiKey = process.env.API_KEY;
         if (!apiKey) {
-            throw new Error("Google API Key is not configured for file downloads.");
+            throw new Error("API Key is not configured for file downloads.");
         }
         const url = `https://www.googleapis.com/drive/v3/files/${planId}?alt=media&key=${apiKey}`;
         const response = await fetch(url);
