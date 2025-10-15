@@ -222,7 +222,7 @@ export async function uploadAndShareFile(data: object, planName: string, accessT
  * @param fileId The ID of the public file.
  * @returns The JSON content of the file.
  */
-export const readSharedFile = async (fileId: string,accessToken: string,): Promise<any> => {
+export const readSharedFile = async (fileId: string,): Promise<any> => {
 
     return await parseDataFromLink(fileId)
     
