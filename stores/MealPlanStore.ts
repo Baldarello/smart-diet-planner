@@ -1059,13 +1059,13 @@ export class MealPlanStore {
     navigateTo = (tab: NavigableTab, replace = false) => {
         this.setActiveTab(tab); // Update internal state immediately
         const newUrl = `#/${tab}`;
-        // Prevent pushing history if hash is already correct
-        const currentHash = window.location.hash.substring(1);
-        if (currentHash !== `/${tab}`) {
-             if (replace) {
+        const currentHash = window.location.hash;
+        
+        if (currentHash !== newUrl) {
+            if (replace) {
                 window.history.replaceState({ tab }, '', newUrl);
             } else {
-                window.history.pushState({ tab }, '', newUrl);
+                window.location.hash = newUrl;
             }
         }
     }
