@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
-import { useNavigate } from 'react-router-dom';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { authStore } from '../stores/AuthStore';
 import { t } from '../i18n';
@@ -123,18 +122,17 @@ const AlertItem: React.FC<{ item: PantryItem, type: 'expired' | 'expiring' | 'st
 const DashboardView: React.FC = observer(() => {
     const store = mealPlanStore;
     const user = authStore.userProfile;
-    const navigate = useNavigate();
     const [isAchievementsModalOpen, setIsAchievementsModalOpen] = useState(false);
 
     const getTodayDateString = () => new Date().toLocaleDateString('en-CA');
 
     const handleGoToToday = () => {
         store.setCurrentDate(getTodayDateString());
-        navigate('/daily');
+        store.navigateTo('daily');
     };
     
     const handleGoToPantry = () => {
-        navigate('/pantry');
+        store.navigateTo('pantry');
     };
 
     // Upcoming meals
