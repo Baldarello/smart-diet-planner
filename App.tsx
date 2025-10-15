@@ -3,7 +3,6 @@ import { observer } from 'mobx-react-lite';
 import { mealPlanStore, AppStatus, NavigableTab } from './stores/MealPlanStore';
 import { authStore } from './stores/AuthStore';
 import { t, setI18nLocaleGetter } from './i18n';
-import { Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 
 import Loader from './components/Loader';
 import ErrorMessage from './components/ErrorMessage';
@@ -31,50 +30,51 @@ import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon,
 
 const MainAppContent: React.FC = observer(() => {
     const store = mealPlanStore;
-    const navigate = useNavigate();
 
     useEffect(() => {
         if (store.status === AppStatus.SUCCESS && store.currentPlanId && !store.shoppingListManaged) {
-            navigate('/list', { replace: true });
+            store.navigateTo('list', true);
         }
-    }, [store.status, store.currentPlanId, store.shoppingListManaged, navigate]);
+    }, [store.status, store.currentPlanId, store.shoppingListManaged, store]);
 
     if (store.status === AppStatus.HYDRATING || store.status === AppStatus.SYNCING) return <Loader />;
     if (store.status === AppStatus.LOADING) return <Loader />;
     if (store.status === AppStatus.AWAITING_DATES) return <SetPlanDatesModal />;
     if (store.status === AppStatus.ERROR) {
-        return ( <div className="text-center"><ErrorMessage message={store.error!} /><div className="mt-8"><Link to="/upload" className="text-2xl font-bold dark:text-gray-200 text-gray-800 mb-4 hover:underline">{t('errorAndUpload')}</Link><FileUploadScreen /></div></div> );
+        return ( <div className="text-center"><ErrorMessage message={store.error!} /><div className="mt-8"><button onClick={() => store.navigateTo('upload')} className="text-2xl font-bold dark:text-gray-200 text-gray-800 mb-4 hover:underline">{t('errorAndUpload')}</button><FileUploadScreen /></div></div> );
     }
 
     const hasActivePlan = store.status === AppStatus.SUCCESS && store.currentPlanId;
 
-    if (!hasActivePlan) {
-        return (
-            <Routes>
-                <Route path="/settings" element={<SettingsView />} />
-                <Route path="/archive" element={<ArchiveView />} />
-                <Route path="*" element={<FileUploadScreen />} />
-            </Routes>
-        );
-    }
+    const renderActiveTab = () => {
+        if (!hasActivePlan) {
+            switch (store.activeTab) {
+                case 'settings': return <SettingsView />;
+                case 'archive': return <ArchiveView />;
+                case 'upload': return <FileUploadScreen />;
+                default: return <FileUploadScreen />;
+            }
+        }
+
+        switch (store.activeTab) {
+            case 'dashboard': return <DashboardView />;
+            case 'daily': return <DailyPlanView />;
+            case 'calendar': return <CalendarView />;
+            case 'plan': return <MealPlanView plan={store.masterMealPlan} isMasterPlanView={true} />;
+            case 'list': return <ShoppingListView />;
+            case 'pantry': return <PantryView />;
+            case 'progress': return <ProgressView />;
+            case 'archive': return <ArchiveView />;
+            case 'settings': return <SettingsView />;
+            case 'upload': return <FileUploadScreen />;
+            default: return <DashboardView />;
+        }
+    };
     
     return (
         <>
-            <ActivePlanNameEditor />
-            <Routes>
-                <Route path="/dashboard" element={<DashboardView />} />
-                <Route path="/daily" element={<DailyPlanView />} />
-                <Route path="/calendar" element={<CalendarView />} />
-                <Route path="/plan" element={<MealPlanView plan={store.masterMealPlan} isMasterPlanView={true} />} />
-                <Route path="/list" element={<ShoppingListView />} />
-                <Route path="/pantry" element={<PantryView />} />
-                <Route path="/progress" element={<ProgressView />} />
-                <Route path="/archive" element={<ArchiveView />} />
-                <Route path="/settings" element={<SettingsView />} />
-                <Route path="/upload" element={<FileUploadScreen />} />
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
+            {hasActivePlan && store.activeTab !== 'upload' && <ActivePlanNameEditor />}
+            {renderActiveTab()}
         </>
     );
 });
@@ -87,17 +87,25 @@ const MainAppLayout: React.FC = observer(() => {
     const [installPrompt, setInstallPrompt] = useState<any>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [showLoginSuggestion, setShowLoginSuggestion] = useState(false);
-
-    const location = useLocation();
-    const navigate = useNavigate();
     
-    const currentPath = location.pathname.substring(1).split('/')[0] || 'dashboard';
-
     useEffect(() => {
-        store.setActiveTab(currentPath as NavigableTab);
-    }, [currentPath, store]);
+        const handlePopState = (event: PopStateEvent) => {
+            const tab = event.state?.tab || window.location.hash.replace('#/', '').split('/')[0] || 'dashboard';
+            store.setActiveTab(tab as NavigableTab);
+        };
+    
+        window.addEventListener('popstate', handlePopState);
+        
+        const initialTab = window.location.hash.replace('#/', '').split('/')[0] || 'dashboard';
+        store.setActiveTab(initialTab as NavigableTab);
+        window.history.replaceState({ tab: initialTab }, '', window.location.href);
+    
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, [store]);
 
-    const handleBack = () => navigate(-1);
+    const handleBack = () => window.history.back();
 
     useEffect(() => {
         authStore.init();
@@ -239,18 +247,23 @@ const MainAppLayout: React.FC = observer(() => {
             { id: 'settings', icon: <SettingsIcon />, label: t('tabSettings') },
         ];
 
+        const handleNavigate = (tab: NavigableTab) => {
+            store.navigateTo(tab);
+            setIsDrawerOpen(false);
+        };
+
         const renderTab = (tab: { id: string, icon: React.ReactNode, label: string, disabled?: boolean }) => (
-             <Link
+            <button
                 key={tab.id}
-                to={`/${tab.id}`}
-                onClick={() => !tab.disabled && setIsDrawerOpen(false)}
+                onClick={() => !tab.disabled && handleNavigate(tab.id as NavigableTab)}
+                disabled={tab.disabled}
                 className={`flex items-center w-full text-left px-4 py-3 rounded-lg transition-colors ${store.activeTab === tab.id ? 'bg-violet-100 dark:bg-gray-700 text-violet-700 dark:text-violet-300 font-semibold' : 'bg-transparent text-gray-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700/50'} ${tab.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 title={tab.disabled ? t('shoppingListSetupMessage') : ''}
                 aria-disabled={tab.disabled}
             >
                 {tab.icon}
                 <span className="ml-3">{tab.label}</span>
-            </Link>
+            </button>
         );
         
         const renderSimulateButton = () => {
@@ -317,9 +330,9 @@ const MainAppLayout: React.FC = observer(() => {
                 <div className="py-6 flex-grow">
                     <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('planManagement')}</h3>
                     <div className="flex flex-col space-y-1">
-                        <Link to="/upload" onClick={() => setIsDrawerOpen(false)} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
+                        <button onClick={() => handleNavigate('upload')} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
                             <ChangeDietIcon /> <span className="ml-3">{t('changeDiet')}</span>
-                        </Link>
+                        </button>
                         {store.status === AppStatus.SUCCESS && store.currentPlanId && (
                             <button onClick={handleExport} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
                                 <ExportIcon /> <span className="ml-3">{t('exportPlan')}</span>
@@ -331,10 +344,10 @@ const MainAppLayout: React.FC = observer(() => {
                 {/*{process.env.BUILD_TYPE === 'web' && (*/}
                      {(
                     <div className="px-4 pb-4 mt-auto">
-                        <Link to="/admin" onClick={() => setIsDrawerOpen(false)} className="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                        <a href="#/admin" onClick={() => setIsDrawerOpen(false)} className="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
                             <AdminIcon />
                             <span>{t('adminLoginTitle')}</span>
-                        </Link>
+                        </a>
                     </div>
                 )}
 
@@ -344,7 +357,7 @@ const MainAppLayout: React.FC = observer(() => {
         );
     }
 
-    const showBackButton = currentPath === 'upload' && store.currentPlanId;
+    const showBackButton = store.activeTab === 'upload' && !!store.currentPlanId;
 
     return (
         <div className="min-h-screen">
@@ -368,7 +381,7 @@ const MainAppLayout: React.FC = observer(() => {
                         </div>
                         
                         <div className="text-center">
-                            <Link to="/dashboard" className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600">{t('mainTitle')}</Link>
+                            <button onClick={() => store.navigateTo('dashboard')} className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600">{t('mainTitle')}</button>
                             <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">{t('mainSubtitle')}</p>
                         </div>
 
@@ -385,7 +398,7 @@ const MainAppLayout: React.FC = observer(() => {
                 </div>
             </header>
             <main className="pt-8 p-4 sm:p-6 lg:p-8">
-                <div key={location.pathname} className="animate-slide-in-up">
+                <div key={store.activeTab} className="animate-slide-in-up">
                     <MainAppContent />
                 </div>
             </main>
@@ -411,25 +424,40 @@ const App: React.FC = observer(() => {
     const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(
         () => sessionStorage.getItem('isAdminAuthenticated') === 'true'
     );
+    const [currentPath, setCurrentPath] = useState(window.location.hash.replace('#/', '').split('/')[0] || 'dashboard');
+
+    useEffect(() => {
+        const handleHashChange = () => {
+            const newPath = window.location.hash.replace('#/', '').split('/')[0] || 'dashboard';
+            setCurrentPath(newPath);
+        };
+        window.addEventListener('hashchange', handleHashChange);
+        handleHashChange(); // Initial check
+        return () => window.removeEventListener('hashchange', handleHashChange);
+    }, []);
 
     const handleAdminLogin = () => {
         sessionStorage.setItem('isAdminAuthenticated', 'true');
         setIsAdminAuthenticated(true);
+        window.location.hash = '/nutritionist';
     };
 
     const handleAdminLogout = () => {
         sessionStorage.removeItem('isAdminAuthenticated');
         setIsAdminAuthenticated(false);
+        window.location.hash = '/admin';
     };
 
-    return (
-        <Routes>
-            <Route path="/admin" element={<AdminLoginPage onLoginSuccess={handleAdminLogin} />} />
-            <Route path="/nutritionist" element={isAdminAuthenticated ? <NutritionistPage onLogout={handleAdminLogout} /> : <NotFoundPage />} />
-            <Route path="/404" element={<NotFoundPage />} />
-            <Route path="/*" element={<MainAppLayout />} />
-        </Routes>
-    );
+    switch (currentPath) {
+        case 'admin':
+            return <AdminLoginPage onLoginSuccess={handleAdminLogin} />;
+        case 'nutritionist':
+            return isAdminAuthenticated ? <NutritionistPage onLogout={handleAdminLogout} /> : <NotFoundPage />;
+        case '404':
+            return <NotFoundPage />;
+        default:
+            return <MainAppLayout />;
+    }
 });
 
 export default App;

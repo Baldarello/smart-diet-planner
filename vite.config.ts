@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
     // and likely resulted in environment variables not being loaded, causing a startup crash.
     const env = loadEnv(mode, process.cwd(), '');
     return {
-        base: '/',
+        base: './',
         plugins: [react()],
         define: {
             'process.env.APP_VERSION': JSON.stringify(process.env.npm_package_version),

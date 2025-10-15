@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
-import { useNavigate } from 'react-router-dom';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import MealItemChecklist from './MealItemChecklist';
 import { t } from '../i18n';
@@ -21,7 +20,6 @@ import ConfirmationModal from './ConfirmationModal';
 
 const DailyPlanView: React.FC = observer(() => {
     const { dailyPlan, toggleMealDone, dailyNutritionSummary, currentDate, setCurrentDate, startDate, endDate, toggleAllItemsInMeal, undoCheatMeal } = mealPlanStore;
-    const navigate = useNavigate();
     const [cheatingMealIndex, setCheatingMealIndex] = useState<number | null>(null);
     const [actionsMenuMealIndex, setActionsMenuMealIndex] = useState<number | null>(null);
     const [resettingMeal, setResettingMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
@@ -190,7 +188,7 @@ const DailyPlanView: React.FC = observer(() => {
             <div className="flex justify-between items-center border-b dark:border-gray-700 pb-4 mb-4">
                 <button onClick={() => changeDate(-1)} disabled={isFirstDay} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">&lt;</button>
                 <button 
-                    onClick={() => navigate('/calendar')}
+                    onClick={() => mealPlanStore.navigateTo('calendar')}
                     className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     title={t('tabCalendar')}
                 >
