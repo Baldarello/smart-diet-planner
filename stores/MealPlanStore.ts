@@ -1404,10 +1404,23 @@ export class MealPlanStore {
   importPlanFromUrl = async (planId: string) => {
     runInAction(() => { this.status = AppStatus.IMPORTING; });
     try {
-        const url = `https://drive.google.com/uc?export=download&id=${planId}`;
+        const apiKey = process.env.GOOGLE_API_KEY || process.env.API_KEY; // Fallback to Gemini key
+        if (!apiKey) {
+            throw new Error("Google API Key is not configured for file downloads.");
+        }
+        const url = `https://www.googleapis.com/drive/v3/files/${planId}?alt=media&key=${apiKey}`;
         const response = await fetch(url);
         if (!response.ok) {
-            throw new Error(`Failed to download plan from Google Drive. Status: ${response.status}`);
+            let errorMessage = `Failed to download plan from Google Drive. Status: ${response.status}`;
+            try {
+                const errorBody = await response.json();
+                if (errorBody.error?.message) {
+                    errorMessage = errorBody.error.message;
+                }
+            } catch (jsonError) {
+                // Ignore if response is not JSON, use default error message
+            }
+            throw new Error(errorMessage);
         }
         const data = await response.json();
         this.processImportedData(data);
