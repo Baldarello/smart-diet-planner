@@ -1650,7 +1650,7 @@ export class MealPlanStore {
             this.processImportedData(data);
 
             // Clean URL
-            window.history.replaceState({}, document.title, window.location.pathname);
+            window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);
 
         } catch (e: any) {
             console.error("Failed to import from URL", e);
