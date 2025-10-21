@@ -136,9 +136,15 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                                                         showCheckbox={false}
                                                     />
                                                     {meal.procedure && (
-                                                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
-                                                            <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{meal.procedure}</p>
-                                                        </div>
+                                                        <details className="mt-3 group">
+                                                            <summary className="cursor-pointer list-none flex items-center text-sm font-semibold text-violet-600 dark:text-violet-400">
+                                                                <span className="transform transition-transform duration-200 group-open:rotate-90 mr-2 text-violet-400 dark:text-violet-500">&#9656;</span>
+                                                                {t('procedureLabel')}
+                                                            </summary>
+                                                            <div className="mt-2 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+                                                                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{meal.procedure}</p>
+                                                            </div>
+                                                        </details>
                                                     )}
                                                 </>
                                             )}

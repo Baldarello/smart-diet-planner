@@ -259,7 +259,6 @@ export class MealPlanStore {
 
     constructor() {
         makeAutoObservable(this, {}, {autoBind: true});
-        this.init();
     }
 
     // Fix: Add missing method `recalculateActualMealNutrition` to fix compilation errors in components.
@@ -1605,10 +1604,8 @@ export class MealPlanStore {
                 meals: day.meals.map(meal => ({
                     ...meal,
                     done: false,
-                    cheat: false,
-                    cheatMealDescription: undefined,
                     actualNutrition: null,
-                    items: meal.items.map(item => ({...item, used: false}))
+                    items: (meal.items || []).map(item => ({...item, used: false}))
                 }))
             }));
             runInAction(() => {
