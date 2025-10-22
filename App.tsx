@@ -3,6 +3,7 @@ import { observer } from 'mobx-react-lite';
 import { mealPlanStore, AppStatus, NavigableTab } from './stores/MealPlanStore';
 import { authStore } from './stores/AuthStore';
 import { t, setI18nLocaleGetter } from './i18n';
+import { syncWithDrive } from './services/syncService';
 
 import Loader from './components/Loader';
 import ErrorMessage from './components/ErrorMessage';
@@ -30,12 +31,6 @@ import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon,
 
 const MainAppContent: React.FC = observer(() => {
     const store = mealPlanStore;
-
-    useEffect(() => {
-        if (store.status === AppStatus.SUCCESS && store.currentPlanId && !store.shoppingListManaged) {
-            store.navigateTo('list', true);
-        }
-    }, [store.status, store.currentPlanId, store.shoppingListManaged, store]);
 
     if (store.status === AppStatus.HYDRATING || store.status === AppStatus.SYNCING) return <Loader />;
     if (store.status === AppStatus.LOADING) return <Loader />;
@@ -107,7 +102,17 @@ const MainAppLayout: React.FC = observer(() => {
     const handleBack = () => window.history.back();
 
     useEffect(() => {
-        authStore.init();
+        const initializeApp = async () => {
+            const restoredToken = await authStore.init();
+            if (restoredToken) {
+                // This will sync and then call mealPlanStore.init() inside its finally block
+                await syncWithDrive(restoredToken);
+            } else {
+                // No session, just init the meal plan store with local data (or none)
+                await mealPlanStore.init();
+            }
+        };
+        initializeApp();
     }, []);
 
     useEffect(() => {
@@ -232,13 +237,13 @@ const MainAppLayout: React.FC = observer(() => {
     const renderDrawerContent = () => {
         const isPlanLocked = !store.shoppingListManaged && !!store.currentPlanId;
         const planSpecificTabs = [
-            { id: 'dashboard', icon: <DashboardIcon />, label: t('tabDashboard'), disabled: isPlanLocked },
-            { id: 'daily', icon: <TodayIcon />, label: t('tabDaily'), disabled: isPlanLocked },
-            { id: 'calendar', icon: <CalendarIcon />, label: t('tabCalendar'), disabled: isPlanLocked },
+            { id: 'dashboard', icon: <DashboardIcon />, label: t('tabDashboard') },
+            { id: 'daily', icon: <TodayIcon />, label: t('tabDaily') },
+            { id: 'calendar', icon: <CalendarIcon />, label: t('tabCalendar') },
             { id: 'plan', icon: <EditIcon />, label: t('tabWeekly') },
             { id: 'list', icon: <ListIcon />, label: t('tabShopping') },
             { id: 'pantry', icon: <PantryIcon />, label: t('tabPantry') },
-            { id: 'progress', icon: <ProgressIcon />, label: t('tabProgress'), disabled: isPlanLocked },
+            { id: 'progress', icon: <ProgressIcon />, label: t('tabProgress') },
         ];
         
         const generalTabs = [

@@ -15,7 +15,7 @@ export class AuthStore {
         makeAutoObservable(this, {}, { autoBind: true });
     }
 
-    init = async () => {
+    init = async (): Promise<string | null> => {
         try {
             const token = localStorage.getItem(ACCESS_TOKEN_KEY);
             const profileStr = localStorage.getItem(USER_PROFILE_KEY);
@@ -34,16 +34,19 @@ export class AuthStore {
                         this.isLoggedIn = true;
                         this.status = 'LOGGED_IN';
                     });
+                    return token;
                 } else {
                     // Token is invalid/expired
                     throw new Error("Token validation failed.");
                 }
             } else {
                  this.setLoggedOut();
+                 return null;
             }
         } catch (error) {
             console.warn("Could not restore session:", error);
             this.setLoggedOut(); // This also cleans up invalid data from localStorage
+            return null;
         }
     }
 

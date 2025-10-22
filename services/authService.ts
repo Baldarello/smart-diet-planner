@@ -1,10 +1,6 @@
 import { authStore } from '../stores/AuthStore';
-import { UserProfile, SyncedData, DailyLog } from '../types';
-import { runInAction } from 'mobx';
-import { findLatestBackupFile, readBackupFile, writeBackupFile } from './driveService';
-import { db } from './db';
-// Fix: Import Dexie to use as a type for casting, resolving type inference issues.
-import Dexie from 'dexie';
+import { UserProfile } from '../types';
+import { syncWithDrive } from './syncService';
 
 // Define google types globally as they come from a script tag
 declare global {
@@ -38,66 +34,6 @@ const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
 
 let tokenClient: google.accounts.oauth2.TokenClient | null = null;
-
-async function syncWithDriveOnLogin(accessToken: string) {
-    // Fix: Use dynamic import to break a circular dependency cycle with MealPlanStore.
-    // This was causing a fatal module initialization error.
-    const { mealPlanStore, AppStatus } = await import('../stores/MealPlanStore');
-
-    runInAction(() => mealPlanStore.status = AppStatus.SYNCING);
-    try {
-        const latestBackupFile = await findLatestBackupFile(accessToken);
-        let remoteData: SyncedData | null = null;
-        if (latestBackupFile) {
-            remoteData = await readBackupFile(accessToken, latestBackupFile.id);
-        }
-        
-        const localData = await db.appState.get('dietPlanData');
-
-        const remoteTimestamp = remoteData?.appState?.lastModified || 0;
-        const localTimestamp = localData?.value?.lastModified || 0;
-        
-        console.log(`Sync check: Remote timestamp=${remoteTimestamp}, Local timestamp=${localTimestamp}`);
-
-        if (remoteData && (!localData || remoteTimestamp > localTimestamp)) {
-            // Remote is newer or local doesn't exist. Overwrite local.
-            console.log("Remote data is newer or local data is missing. Overwriting local database.");
-            // Fix: Cast `db` to the base `Dexie` type to resolve type inference issues where
-            // the `transaction` method was not being found on the subclassed `MySubClassedDexie`.
-            // The previous varargs overload attempt was also failing. Using the array-of-tables
-            // overload with the cast provides a robust fix.
-            await (db as Dexie).transaction('rw', [db.appState, db.progressHistory, db.dailyLogs], async () => {
-                await db.appState.clear();
-                await db.progressHistory.clear();
-                await db.dailyLogs.clear();
-
-                await db.appState.put({ key: 'dietPlanData', value: remoteData.appState });
-                if (remoteData.progressHistory?.length) {
-                    await db.progressHistory.bulkPut(remoteData.progressHistory);
-                }
-                 if (remoteData.dailyLogs?.length) {
-                    await db.dailyLogs.bulkPut(remoteData.dailyLogs);
-                }
-            });
-            console.log("Local database overwritten successfully.");
-        } else if (localData && (!remoteData || localTimestamp > remoteTimestamp)) {
-            // Local is newer or remote doesn't exist. Overwrite remote.
-            console.log("Local data is newer or remote data is missing. Uploading to Google Drive.");
-            const progressHistory = await db.progressHistory.toArray();
-            const dailyLogs = await db.dailyLogs.toArray();
-            const dataToSave: SyncedData = { appState: localData.value, progressHistory, dailyLogs };
-            await writeBackupFile(dataToSave, accessToken);
-            console.log("Local data uploaded to Google Drive.");
-        } else {
-            console.log("Local and remote data are in sync. No action needed.");
-        }
-    } catch (error) {
-        console.error("Error during Google Drive sync:", error);
-        // Let the store init with whatever is local
-    } finally {
-        await mealPlanStore.init();
-    }
-}
 
 export const initGoogleAuth = () => {
     if (typeof google === 'undefined' || !CLIENT_ID) {
@@ -136,7 +72,7 @@ export const initGoogleAuth = () => {
                             await authStore.loginRedirectAction();
                             authStore.clearLoginRedirectAction();
                         } else {
-                            await syncWithDriveOnLogin(accessToken);
+                            await syncWithDrive(accessToken);
                         }
 
                     } catch (error) {

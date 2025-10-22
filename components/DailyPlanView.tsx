@@ -161,9 +161,15 @@ const DailyPlanView: React.FC = observer(() => {
                         {!meal.cheat && (
                              <>
                                 {meal.procedure && (
-                                    <div className="mt-3 p-3 bg-slate-100 dark:bg-gray-700 rounded-lg border dark:border-gray-600">
-                                        <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{meal.procedure}</p>
-                                    </div>
+                                    <details className="mt-3 group">
+                                        <summary className="cursor-pointer list-none flex items-center text-sm font-semibold text-violet-600 dark:text-violet-400">
+                                            <span className="transform transition-transform duration-200 group-open:rotate-90 mr-2 text-violet-400 dark:text-violet-500">&#9656;</span>
+                                            {t('procedureLabel')}
+                                        </summary>
+                                        <div className="mt-2 p-3 bg-slate-100 dark:bg-gray-700/50 rounded-lg border dark:border-gray-600">
+                                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{meal.procedure}</p>
+                                        </div>
+                                    </details>
                                 )}
                                 <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} isEditable={true} showCheckbox={true} />
                             </>

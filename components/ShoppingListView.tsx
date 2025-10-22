@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { ShoppingListItem, ShoppingListCategory } from '../types';
@@ -19,6 +19,23 @@ const ShoppingListView: React.FC = observer(() => {
     const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
     const [isShoppingMode, setIsShoppingMode] = useState(false);
     const [showCopiedMessage, setShowCopiedMessage] = useState(false);
+
+    const allItems = useMemo(() => shoppingList.flatMap(cat => cat.items.map(item => ({ item, category: cat.category }))), [shoppingList]);
+    const allItemsCount = allItems.length;
+    const isAllChecked = allItemsCount > 0 && checkedItems.size === allItemsCount;
+    const isIndeterminate = !isAllChecked && checkedItems.size > 0;
+
+    const handleSelectAll = () => {
+        const newCheckedItems = new Map<string, { item: ShoppingListItem, category: string }>();
+        if (!isAllChecked) {
+            allItems.forEach(({ item, category }) => {
+                const key = `${category}-${item.item}`;
+                newCheckedItems.set(key, { item, category });
+            });
+        }
+        setCheckedItems(newCheckedItems);
+    };
+
 
     const handleCheck = (item: ShoppingListItem, category: string) => {
         const key = `${category}-${item.item}`;
@@ -196,7 +213,22 @@ const ShoppingListView: React.FC = observer(() => {
                 </div>
             )}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b dark:border-gray-700 pb-4 mb-6 gap-4">
-                <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{t('shoppingListTitle')}</h2>
+                <div className="flex items-center gap-4">
+                    <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{t('shoppingListTitle')}</h2>
+                    {shoppingList.length > 0 && !isShoppingMode && (
+                        <div className="flex items-center pt-2">
+                            <input
+                                type="checkbox"
+                                id="select-all-items"
+                                className="h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500 cursor-pointer bg-transparent dark:bg-gray-600"
+                                checked={isAllChecked}
+                                ref={el => { if (el) el.indeterminate = isIndeterminate; }}
+                                onChange={handleSelectAll}
+                            />
+                            <label htmlFor="select-all-items" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">{t('selectAll')}</label>
+                        </div>
+                    )}
+                </div>
                 <div className="flex items-center gap-2 self-end sm:self-center">
                     {showCopiedMessage && <span className="text-sm text-green-600 dark:text-green-400 animate-pulse">{t('listCopied')}</span>}
                     <button onClick={handleShare} title={t('shareList')} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-gray-700"><ShareIcon /></button>
