@@ -218,52 +218,44 @@ export async function uploadAndShareFile(data: object, planName: string, accessT
 }
 
 /**
- * Reads the content of a publicly shared file from Google Drive using an API key.
- * @param fileId The ID of the public file.
+ * Reads the content of a publicly shared file from a Google Drive URL.
+ * @param driveUrl The direct URL to the Google Drive file content.
  * @returns The JSON content of the file.
  */
-export const readSharedFile = async (fileId: string,): Promise<any> => {
+export const readSharedFile = async (driveUrl: string): Promise<any> => {
+    if (!driveUrl || !driveUrl.includes('drive.google.com')) {
+        console.error("Invalid Google Drive URL provided for sharing:", driveUrl);
+        throw new Error("Invalid shared plan URL provided.");
+    }
 
-    return await parseDataFromLink(fileId)
-    
-
-};
-
-export const parseDataFromLink = async (link: string) => {
     try {
-        const url = new URL(link);
-        // Extract the Google Drive URL from the 'importFromUrl' parameter, or use the link directly if it's a Drive URL.
-        const dataUrl = url.searchParams.get('plan_id') ||(url.hostname.includes('drive.google.com') ? link : null);
-
-        if (!dataUrl) {
-            console.warn("Link does not contain a valid import URL.");
-            return null;
-        }
-
-        console.log("Fetching data from URL:", dataUrl);
         // Prepend a CORS proxy to the Google Drive URL to bypass browser restrictions.
-        // The previous proxy (cors.eu.org) was being blocked by Google Drive, resulting in a 403 error.
-        // This new proxy is an alternative to bypass CORS issues. The target URL must be encoded.
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(dataUrl)}`;
-        console.log("Fetching data from URL:", proxyUrl);
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(driveUrl)}`;
+        console.log("Fetching shared plan from URL:", proxyUrl);
+        
         const response = await fetch(proxyUrl);
         if (!response.ok) {
-            // Provide a more specific error if the proxy itself fails
             if (response.status === 404 && response.url.includes('corsproxy.io')) {
                 throw new Error(`Failed to fetch from proxy. The original URL might be invalid or unreachable.`);
             }
-            throw new Error(`Failed to fetch library from URL. Status: ${response.status}`);
+            throw new Error(`Failed to fetch shared plan. Status: ${response.status}`);
         }
+        
         const data = await response.json();
-
+        
         // Basic validation to ensure the fetched data has the correct structure.
-        if (data ) {
-            return data ;
+        if (data && data.weeklyPlan && data.shoppingList) {
+            return data;
+        } else {
+            console.warn("Fetched data has invalid format.", data);
+            throw new Error("Shared plan has an invalid format.");
         }
-        console.warn("Fetched data has invalid format.", data);
-        return null;
     } catch (error) {
-        console.error("Failed to parse share link:", error);
-        return null;
+        console.error("Failed to read or parse shared file:", error);
+        // Re-throw the original error if it's already an Error instance, otherwise wrap it.
+        if (error instanceof Error) {
+            throw error;
+        }
+        throw new Error(String(error));
     }
 };

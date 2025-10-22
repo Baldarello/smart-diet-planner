@@ -46,12 +46,20 @@ export async function syncWithDrive(accessToken: string) {
             });
             console.log("Local database overwritten successfully.");
         } else if (localData && (!remoteData || localTimestamp > remoteTimestamp)) {
-            console.log("Local data is newer or remote data is missing. Uploading to Google Drive.");
+            // This condition covers two cases:
+            // 1. No remote backup exists, so we do an initial upload. (User's request)
+            // 2. Local data is newer than the remote backup.
+            if (!remoteData) {
+                console.log("Local data found but no remote backup exists. Creating initial backup on Google Drive.");
+            } else {
+                console.log("Local data is newer than remote backup. Uploading changes to Google Drive.");
+            }
+            
             const progressHistory = await db.progressHistory.toArray();
             const dailyLogs = await db.dailyLogs.toArray();
             const dataToSave: SyncedData = { appState: localData.value, progressHistory, dailyLogs };
             await writeBackupFile(dataToSave, accessToken);
-            console.log("Local data uploaded to Google Drive.");
+            console.log("Local data successfully uploaded to Google Drive.");
         } else {
             console.log("Local and remote data are in sync. No action needed.");
         }

@@ -346,8 +346,15 @@ export class MealPlanStore {
             }
         });
 
-        const params = new URLSearchParams(window.location.search);
-        const planIdFromUrl = params.get('plan_id');
+        // Handle shared plan URLs, where the plan_id is in the hash
+        const hash = window.location.hash;
+        const hashQueryPart = hash.split('?')[1];
+        let planIdFromUrl: string | null = null;
+        if (hashQueryPart) {
+            const params = new URLSearchParams(hashQueryPart);
+            planIdFromUrl = params.get('plan_id');
+        }
+
         if (planIdFromUrl) {
             await this.importPlanFromUrl(planIdFromUrl);
             // Stop here; the rest of the init logic is not needed for a URL import.
