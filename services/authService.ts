@@ -96,12 +96,18 @@ export const initGoogleAuth = () => {
 
 export const handleSignIn = () => {
     if (!tokenClient) {
-        console.error("Google Auth not initialized.");
-        initGoogleAuth()
-        return;
+        console.warn("Google Auth not initialized. Attempting to initialize for sign-in.");
+        initGoogleAuth();
     }
-    // Prompt the user to select an account and grant access
-    tokenClient.requestAccessToken();
+    
+    // now tokenClient might be set if GSI script was loaded.
+    if (tokenClient) {
+        tokenClient.requestAccessToken();
+    } else {
+        // This might happen if GSI script is not loaded yet.
+        // The user might need to click again.
+        console.error("Failed to initialize Google Auth. The Google Identity Services script may not be loaded yet. Please wait a moment and try again.");
+    }
 };
 
 export const handleSignOut = () => {

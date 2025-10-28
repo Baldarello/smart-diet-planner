@@ -43,6 +43,10 @@ export class MySubClassedDexie extends Dexie {
     (this as Dexie).version(6).stores({
       nutritionistPlans: '++id, name, creationDate'
     });
+
+    (this as Dexie).version(7).stores({
+      ingredients: '++id, &name, category, calories'
+    });
   }
 }
 

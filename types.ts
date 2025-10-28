@@ -148,6 +148,10 @@ export interface Ingredient {
   id?: number;
   name: string;
   category?: string;
+  calories?: number; // per 100g
+  carbs?: number;    // per 100g
+  protein?: number; // per 100g
+  fat?: number;     // per 100g
 }
 
 export interface NutritionistPlan {
