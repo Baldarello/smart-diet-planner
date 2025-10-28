@@ -27,11 +27,26 @@ const SortableHeader: React.FC<{
 }> = ({ label, sortKey, sortConfig, requestSort, className = '' }) => {
     const isSorted = sortConfig?.key === sortKey;
     const sortIcon = isSorted ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : '';
+    
+    const parts = label.match(/(.*)\s(\(.*\))/);
+    const mainLabel = parts ? parts[1] : label;
+    const subLabel = parts ? parts[2] : null;
+
+    let alignmentClass = 'items-start';
+    if (className.includes('text-right')) {
+        alignmentClass = 'items-end';
+    } else if (className.includes('text-center')) {
+        alignmentClass = 'items-center';
+    }
+
     return (
         <th scope="col" className={`px-6 py-3 ${className}`}>
-            <button onClick={() => requestSort(sortKey)} className="flex items-center gap-1 uppercase">
-                {label}
-                <span className="text-xs">{sortIcon}</span>
+            <button onClick={() => requestSort(sortKey)} className={`flex flex-col w-full ${alignmentClass}`}>
+                <div className="flex items-center gap-1 uppercase">
+                    {mainLabel}
+                    <span className="text-xs">{sortIcon}</span>
+                </div>
+                {subLabel && <span className="font-normal normal-case">{subLabel}</span>}
             </button>
         </th>
     );
@@ -309,10 +324,10 @@ const IngredientsManagement: React.FC = observer(() => {
 
             <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <form onSubmit={handleAddItem} className="flex gap-2">
-                    <input type="text" value={newItem} onChange={(e) => setNewItem(e.target.value)} placeholder={t('addNewIngredientPlaceholder')} className="flex-grow p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-violet-500 focus:border-violet-500" />
+                    <input type="text" value={newItem} onChange={(e) => setNewItem(e.target.value)} placeholder={t('addNewIngredientPlaceholder')} className="flex-grow px-3 py-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-violet-500 focus:border-violet-500" />
                     <button type="submit" className="bg-violet-600 text-white font-semibold px-4 py-2 rounded-md hover:bg-violet-700 transition-colors flex items-center gap-2"><PlusCircleIcon /> {t('add')}</button>
                 </form>
-                <input type="text" value={filter} onChange={e => setFilter(e.target.value)} placeholder={t('searchIngredientsPlaceholder')} className="p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-violet-500 focus:border-violet-500" />
+                <input type="text" value={filter} onChange={e => setFilter(e.target.value)} placeholder={t('searchIngredientsPlaceholder')} className="px-3 py-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-violet-500 focus:border-violet-500" />
             </div>
 
             {ingredients.length > 0 ? (
