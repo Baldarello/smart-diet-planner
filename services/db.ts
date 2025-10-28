@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import observable from 'dexie-observable';
-import { StoredState, ProgressRecord, SyncedData, DailyLog, Ingredient, NutritionistPlan } from '../types';
+import { StoredState, ProgressRecord, SyncedData, DailyLog, Ingredient, NutritionistPlan, Recipe } from '../types';
 import { authStore } from '../stores/AuthStore';
 import { writeBackupFile } from './driveService';
 
@@ -20,6 +20,7 @@ export class MySubClassedDexie extends Dexie {
   dailyLogs!: Table<DailyLog, string>; // To store daily instances of the meal plan
   ingredients!: Table<Ingredient, number>;
   nutritionistPlans!: Table<NutritionistPlan, number>;
+  recipes!: Table<Recipe, number>;
 
   constructor() {
     super('dietPlanDatabase', { addons: [observable] });
@@ -46,6 +47,10 @@ export class MySubClassedDexie extends Dexie {
 
     (this as Dexie).version(7).stores({
       ingredients: '++id, &name, category, calories'
+    });
+
+    (this as Dexie).version(8).stores({
+      recipes: '++id, &name'
     });
   }
 }

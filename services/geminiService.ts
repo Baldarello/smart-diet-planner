@@ -127,7 +127,10 @@ Le categorie disponibili sono:
 - Frutta
 - Verdura e Ortaggi
 - Carboidrati e Cereali
-- Proteine (Carne, Pesce, Legumi)
+- Carne
+- Pesce
+- Legumi
+- Uova
 - Latticini e Derivati
 - Grassi e Frutta Secca
 - Condimenti e Spezie
@@ -138,7 +141,10 @@ Restituisci l'output ESCLUSIVAMENTE in formato JSON, come un array di oggetti, d
 
 Esempio di output:
 [
-  { "ingredientName": "Petto di pollo", "category": "Proteine (Carne, Pesce, Legumi)" },
+  { "ingredientName": "Petto di pollo", "category": "Carne" },
+  { "ingredientName": "Salmone", "category": "Pesce" },
+  { "ingredientName": "Uova", "category": "Uova" },
+  { "ingredientName": "Lenticchie", "category": "Legumi" },
   { "ingredientName": "Riso basmati", "category": "Carboidrati e Cereali" }
 ]
 
@@ -280,7 +286,10 @@ Le categorie disponibili sono:
 - Frutta
 - Verdura e Ortaggi
 - Carboidrati e Cereali
-- Proteine (Carne, Pesce, Legumi)
+- Carne
+- Pesce
+- Legumi
+- Uova
 - Latticini e Derivati
 - Grassi e Frutta Secca
 - Condimenti e Spezie
@@ -291,7 +300,7 @@ Restituisci l'output ESCLUSIVAMENTE in formato JSON, come un array di oggetti, d
 
 Esempio di output:
 [
-  { "name": "Petto di pollo", "category": "Proteine (Carne, Pesce, Legumi)" },
+  { "name": "Petto di pollo", "category": "Carne" },
   { "name": "Riso Arborio", "category": "Carboidrati e Cereali" },
   { "name": "Olio extra vergine d'oliva", "category": "Grassi e Frutta Secca" }
 ]

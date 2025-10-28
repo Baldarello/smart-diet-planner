@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
-import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem, NutritionistPlan } from '../types';
+import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem, NutritionistPlan, NutritionInfo } from '../types';
 import { t } from '../i18n';
 import { DAY_KEYWORDS, MEAL_KEYWORDS, MEAL_TIMES } from '../services/offlineParser';
 import { getCategoriesForIngredients } from '../services/geminiService';
@@ -9,6 +9,8 @@ import UnitPicker from './UnitPicker';
 import { ingredientStore } from '../stores/IngredientStore';
 import { nutritionistStore } from '../stores/NutritionistStore';
 import { parseQuantity } from '../utils/quantityParser';
+import { recipeStore } from '../stores/RecipeStore';
+import LiveNutritionSummary from './admin/LiveNutritionSummary';
 
 // New interfaces for form state
 interface FormMealItem {
@@ -47,10 +49,76 @@ interface ManualPlanEntryFormProps {
     planToEdit?: NutritionistPlan | null;
 }
 
+function useDebounce(value: any, delay: number) {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [JSON.stringify(value), delay]); // Stringify to compare deep value
+    return debouncedValue;
+}
+
+const MealNutritionSummaryDisplay: React.FC<{ summary: NutritionInfo }> = ({ summary }) => {
+    if (summary.calories === 0) return null;
+    return (
+        <div className="grid grid-cols-4 gap-1 text-xs text-center mt-3 p-2 bg-slate-200 dark:bg-gray-600 rounded-md">
+            <div>
+                <div className="text-gray-500 dark:text-gray-400 font-medium">{t('nutritionCalories')}</div>
+                <div className="font-bold text-sm text-red-600 dark:text-red-400">{Math.round(summary.calories)}</div>
+            </div>
+            <div>
+                <div className="text-gray-500 dark:text-gray-400 font-medium">{t('nutritionCarbs')}</div>
+                <div className="font-bold text-sm text-orange-600 dark:text-orange-400">{Math.round(summary.carbs)}g</div>
+            </div>
+            <div>
+                <div className="text-gray-500 dark:text-gray-400 font-medium">{t('nutritionProtein')}</div>
+                <div className="font-bold text-sm text-sky-600 dark:text-sky-400">{Math.round(summary.protein)}g</div>
+            </div>
+            <div>
+                <div className="text-gray-500 dark:text-gray-400 font-medium">{t('nutritionFat')}</div>
+                <div className="font-bold text-sm text-amber-600 dark:text-amber-400">{Math.round(summary.fat)}g</div>
+            </div>
+        </div>
+    );
+};
+
+const DayNutritionSummaryDisplay: React.FC<{ summary: NutritionInfo | undefined }> = ({ summary }) => {
+    if (!summary || summary.calories === 0) return null;
+    return (
+        <div className="bg-slate-100 dark:bg-gray-700/50 p-3 rounded-lg my-4">
+            <div className="grid grid-cols-4 gap-1 text-sm text-center">
+                <div>
+                    <div className="text-gray-500 dark:text-gray-400 font-medium">{t('nutritionCalories')}</div>
+                    <div className="font-bold text-base text-red-600 dark:text-red-400">{Math.round(summary.calories)}</div>
+                </div>
+                <div>
+                    <div className="text-gray-500 dark:text-gray-400 font-medium">{t('nutritionCarbs')}</div>
+                    <div className="font-bold text-base text-orange-600 dark:text-orange-400">{Math.round(summary.carbs)}g</div>
+                </div>
+                 <div>
+                    <div className="text-gray-500 dark:text-gray-400 font-medium">{t('nutritionProtein')}</div>
+                    <div className="font-bold text-base text-sky-600 dark:text-sky-400">{Math.round(summary.protein)}g</div>
+                </div>
+                 <div>
+                    <div className="text-gray-500 dark:text-gray-400 font-medium">{t('nutritionFat')}</div>
+                    <div className="font-bold text-base text-amber-600 dark:text-amber-400">{Math.round(summary.fat)}g</div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCancel, onPlanSaved, planToEdit }) => {
     const [planData, setPlanData] = useState<FormDayPlan[]>(createInitialPlan());
     const [planName, setPlanName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [dailySummaries, setDailySummaries] = useState<NutritionInfo[]>([]);
+    const debouncedPlanData = useDebounce(planData, 500);
 
     // Autocomplete state
     const [activeAutocomplete, setActiveAutocomplete] = useState<{ dayIndex: number; mealIndex: number; itemIndex: number } | null>(null);
@@ -101,6 +169,35 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
             setPlanData(createInitialPlan());
         }
     }, [planToEdit]);
+
+    useEffect(() => {
+        const calculateSummaries = () => {
+            const ingredientMap = new Map(ingredientStore.ingredients.map(i => [i.name.toLowerCase(), i]));
+            const newSummaries = debouncedPlanData.map(day => {
+                const daySummary: NutritionInfo = { calories: 0, carbs: 0, protein: 0, fat: 0 };
+                day.meals.forEach(meal => {
+                    if (meal.isCheat) return;
+                    meal.items.forEach(item => {
+                        const ingredient = ingredientMap.get(item.ingredientName.toLowerCase().trim());
+                        const quantity = parseFloat(item.quantityValue);
+                        if (ingredient && ingredient.calories !== undefined && !isNaN(quantity) && quantity > 0) {
+                            const factor = quantity / 100; // Nutrition is per 100g
+                            daySummary.calories += (ingredient.calories || 0) * factor;
+                            daySummary.carbs += (ingredient.carbs || 0) * factor;
+                            daySummary.protein += (ingredient.protein || 0) * factor;
+                            daySummary.fat += (ingredient.fat || 0) * factor;
+                        }
+                    });
+                });
+                return daySummary;
+            });
+            setDailySummaries(newSummaries);
+        };
+
+        if (ingredientStore.status === 'ready') {
+            calculateSummaries();
+        }
+    }, [debouncedPlanData, ingredientStore.status, ingredientStore.ingredients]);
 
 
     const handleMealTitleChange = (dayIndex: number, mealIndex: number, value: string) => {
@@ -269,6 +366,39 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
         );
     };
 
+    const handleRecipeSelect = (dayIndex: number, mealIndex: number, recipeIdStr: string) => {
+        if (!recipeIdStr) return;
+        const recipeId = parseInt(recipeIdStr, 10);
+    
+        const selectedRecipe = recipeStore.recipes.find(r => r.id === recipeId);
+        if (!selectedRecipe) return;
+    
+        setPlanData(currentPlan =>
+            currentPlan.map((day, dIdx) => {
+                if (dIdx !== dayIndex) return day;
+                return {
+                    ...day,
+                    meals: day.meals.map((meal, mIdx) => {
+                        if (mIdx !== mealIndex) return meal;
+    
+                        const newItems: FormMealItem[] = selectedRecipe.ingredients.map(ing => ({
+                            ingredientName: ing.ingredientName,
+                            quantityValue: ing.quantityValue?.toString() ?? '',
+                            quantityUnit: ing.quantityUnit,
+                        }));
+    
+                        return {
+                            ...meal,
+                            title: selectedRecipe.name,
+                            procedure: selectedRecipe.procedure ?? meal.procedure,
+                            items: newItems.length > 0 ? newItems : [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }],
+                        };
+                    })
+                };
+            })
+        );
+    };
+
     const generateAndProcessPlan = async () => {
         // 1. Build a preliminary plan and aggregate ingredients for the shopping list
         const aggregatedIngredients = new Map<string, { totalValue: number; unit: string }>();
@@ -395,6 +525,9 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
     return (
         <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6 text-center">{t(isEditMode ? 'editPlanTitle' : 'manualEntryTitle')}</h2>
+            
+            <LiveNutritionSummary planData={planData} />
+
             <form onSubmit={handleSubmit} className="space-y-3">
                  <div className="mb-6 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm">
                     <label htmlFor="plan-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('planNameLabel')}</label>
@@ -415,10 +548,57 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                            <span className="capitalize">{day.day.toLowerCase()}</span>
                         </summary>
                         <div className="p-4 pt-2 space-y-4">
-                            {day.meals.map((meal, mealIndex) => (
+                            <DayNutritionSummaryDisplay summary={dailySummaries[dayIndex]} />
+                            {day.meals.map((meal, mealIndex) => {
+                                const mealSummary = (() => {
+                                    const summary: NutritionInfo = { calories: 0, carbs: 0, protein: 0, fat: 0 };
+                                    const ingredientMap = new Map(ingredientStore.ingredients.map(i => [i.name.toLowerCase(), i]));
+                                    
+                                    if (meal.isCheat) return summary;
+
+                                    meal.items.forEach(item => {
+                                        const ingredient = ingredientMap.get(item.ingredientName.toLowerCase().trim());
+                                        const quantity = parseFloat(item.quantityValue);
+                                        if (ingredient && ingredient.calories !== undefined && !isNaN(quantity) && quantity > 0) {
+                                            const factor = quantity / 100; // Nutrition is per 100g
+                                            summary.calories += (ingredient.calories || 0) * factor;
+                                            summary.carbs += (ingredient.carbs || 0) * factor;
+                                            summary.protein += (ingredient.protein || 0) * factor;
+                                            summary.fat += (ingredient.fat || 0) * factor;
+                                        }
+                                    });
+                                    return summary;
+                                })();
+
+                                return (
                                 <div key={meal.name} className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200">{meal.name}</h4>
+                                    <div className="flex justify-between items-center mb-2 flex-wrap gap-y-2">
+                                        <div className="flex items-center gap-x-4 gap-y-2 flex-wrap">
+                                            <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200">{meal.name}</h4>
+                                            
+                                            {!meal.isCheat && recipeStore.recipes.length > 0 && (
+                                                <div className="flex items-center gap-2">
+                                                    <label htmlFor={`recipe-picker-${dayIndex}-${mealIndex}`} className="text-sm font-medium text-gray-600 dark:text-gray-400 hidden sm:inline">{t('recipeColumnHeader')}:</label>
+                                                    <select
+                                                        id={`recipe-picker-${dayIndex}-${mealIndex}`}
+                                                        onChange={(e) => {
+                                                            handleRecipeSelect(dayIndex, mealIndex, e.target.value);
+                                                            e.target.value = ''; // Reset selector to allow re-selection
+                                                        }}
+                                                        className="p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md focus:ring-violet-500 focus:border-violet-500 text-sm"
+                                                        defaultValue=""
+                                                    >
+                                                        <option value="">{t('selectRecipePlaceholder')}</option>
+                                                        {recipeStore.recipes.map(recipe => (
+                                                            <option key={recipe.id} value={recipe.id!}>
+                                                                {recipe.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
+                                        
                                         <div className="flex items-center gap-2 sm:gap-4">
                                             <button
                                                 type="button"
@@ -527,10 +707,12 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                                                     <PlusCircleIcon /> {t('addIngredient')}
                                                 </button>
                                             </div>
+                                            <MealNutritionSummaryDisplay summary={mealSummary} />
                                         </>
                                     )}
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </details>
                 ))}

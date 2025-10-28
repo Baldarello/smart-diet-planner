@@ -1,6 +1,5 @@
 
 
-// Fix: Add NutritionInfo interface
 export interface NutritionInfo {
   carbs: number;
   protein: number;
@@ -163,4 +162,17 @@ export interface NutritionistPlan {
     weeklyPlan: DayPlan[];
     shoppingList: ShoppingListCategory[];
   };
+}
+
+export interface RecipeIngredient {
+  ingredientName: string;
+  quantityValue: number | null;
+  quantityUnit: string;
+}
+
+export interface Recipe {
+  id?: number;
+  name: string;
+  procedure?: string;
+  ingredients: RecipeIngredient[];
 }

@@ -3,6 +3,7 @@ import ManualPlanEntryForm from '../ManualPlanEntryForm';
 import IngredientsManagement from './IngredientsManagement';
 import PlanLibraryPage from './PlanLibraryPage';
 import ViewPlanModal from './ViewPlanModal';
+import RecipesManagement from './RecipesManagement';
 import { t } from '../../i18n';
 import { initGoogleAuth } from '../../services/authService';
 import { NutritionistPlan } from '../../types';
@@ -11,7 +12,7 @@ interface NutritionistPageProps {
     onLogout: () => void;
 }
 
-type NutritionistTab = 'plan' | 'ingredients' | 'library';
+type NutritionistTab = 'plan' | 'ingredients' | 'library' | 'recipes';
 
 const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
     const [activeTab, setActiveTab] = useState<NutritionistTab>('plan');
@@ -75,6 +76,7 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
                         {renderTabButton('plan', t('createPlanTab'))}
                         {renderTabButton('library', t('planLibraryTab'))}
                         {renderTabButton('ingredients', t('manageIngredientsTab'))}
+                        {renderTabButton('recipes', t('manageRecipesTab'))}
                     </div>
                 </nav>
             </header>
@@ -88,6 +90,7 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
                  )}
                  {activeTab === 'library' && <PlanLibraryPage onEdit={handleEditPlan} onView={handleViewPlan} />}
                  {activeTab === 'ingredients' && <IngredientsManagement />}
+                 {activeTab === 'recipes' && <RecipesManagement />}
             </main>
             {viewingPlan && <ViewPlanModal plan={viewingPlan} onClose={() => setViewingPlan(null)} />}
         </div>
