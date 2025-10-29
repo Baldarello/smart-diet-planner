@@ -6,27 +6,31 @@ import ViewPlanModal from './ViewPlanModal';
 import RecipesManagement from './RecipesManagement';
 import { t } from '../../i18n';
 import { initGoogleAuth } from '../../services/authService';
-import { NutritionistPlan } from '../../types';
+import { NutritionistPlan, Patient, AssignedPlan } from '../../types';
+import PatientManagement from './PatientManagement';
+import { patientStore } from '../../stores/PatientStore';
 
 interface NutritionistPageProps {
     onLogout: () => void;
 }
 
-type NutritionistTab = 'plan' | 'ingredients' | 'library' | 'recipes';
+type NutritionistTab = 'plan' | 'patients' | 'library' | 'ingredients' | 'recipes';
 
 const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
     const [activeTab, setActiveTab] = useState<NutritionistTab>('plan');
-    const [planToEdit, setPlanToEdit] = useState<NutritionistPlan | null>(null);
+    const [planToEdit, setPlanToEdit] = useState<NutritionistPlan | AssignedPlan | null>(null);
     const [viewingPlan, setViewingPlan] = useState<NutritionistPlan | null>(null);
+    const [creatingPlanForPatient, setCreatingPlanForPatient] = useState<Patient | null>(null);
 
     useEffect(() => {
         initGoogleAuth();
     }, []);
 
-    // When switching away from the 'plan' tab, clear any plan being edited
+    // When switching away from the 'plan' tab, clear any plan being edited or created for a patient
     useEffect(() => {
         if (activeTab !== 'plan') {
             setPlanToEdit(null);
+            setCreatingPlanForPatient(null);
         }
     }, [activeTab]);
 
@@ -38,19 +42,39 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
         setPlanToEdit(plan);
         setActiveTab('plan');
     };
+    
+    const handleEditAssignedPlan = (assignedPlan: AssignedPlan) => {
+        setPlanToEdit(assignedPlan);
+        setActiveTab('plan');
+    };
 
     const handleViewPlan = (plan: NutritionistPlan) => {
         setViewingPlan(plan);
     };
     
-    const handlePlanSaved = () => {
-        setPlanToEdit(null); // Clear the editing state
-        setActiveTab('library'); // Switch to library to see the result
+    const handlePlanSaved = async (planId?: number) => {
+        if (creatingPlanForPatient && planId) {
+            // This is now handled inside AssignPlanModal, but we keep the tab switch
+        }
+        setCreatingPlanForPatient(null);
+        setPlanToEdit(null);
+        setActiveTab(creatingPlanForPatient ? 'patients' : 'library');
     };
 
-    const handleCancelEdit = () => {
+    const handleCancelCreateOrEdit = () => {
+        const fromPatients = !!creatingPlanForPatient;
         setPlanToEdit(null);
-        setActiveTab('library');
+        setCreatingPlanForPatient(null);
+        if (fromPatients) {
+            setActiveTab('patients');
+        } else {
+            setActiveTab('library');
+        }
+    };
+    
+    const handleCreatePlanForPatient = (patient: Patient) => {
+        setCreatingPlanForPatient(patient);
+        setActiveTab('plan');
     };
 
     const renderTabButton = (tabId: NutritionistTab, label: string) => (
@@ -74,6 +98,7 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
                 <nav className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mb-px">
                     <div className="flex border-b border-gray-200 dark:border-gray-700">
                         {renderTabButton('plan', t('createPlanTab'))}
+                        {renderTabButton('patients', t('managePatientsTab'))}
                         {renderTabButton('library', t('planLibraryTab'))}
                         {renderTabButton('ingredients', t('manageIngredientsTab'))}
                         {renderTabButton('recipes', t('manageRecipesTab'))}
@@ -83,11 +108,13 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
             <main className="py-8 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-gray-900">
                  {activeTab === 'plan' && (
                     <ManualPlanEntryForm
-                        onCancel={handleCancelEdit}
+                        onCancel={handleCancelCreateOrEdit}
                         onPlanSaved={handlePlanSaved}
                         planToEdit={planToEdit}
+                        patientForPlan={creatingPlanForPatient}
                     />
                  )}
+                 {activeTab === 'patients' && <PatientManagement onCreatePlanForPatient={handleCreatePlanForPatient} onEditAssignedPlan={handleEditAssignedPlan} />}
                  {activeTab === 'library' && <PlanLibraryPage onEdit={handleEditPlan} onView={handleViewPlan} />}
                  {activeTab === 'ingredients' && <IngredientsManagement />}
                  {activeTab === 'recipes' && <RecipesManagement />}

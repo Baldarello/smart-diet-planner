@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import observable from 'dexie-observable';
-import { StoredState, ProgressRecord, SyncedData, DailyLog, Ingredient, NutritionistPlan, Recipe } from '../types';
+import { StoredState, ProgressRecord, SyncedData, DailyLog, Ingredient, NutritionistPlan, Recipe, Patient, AssignedPlan } from '../types';
 import { authStore } from '../stores/AuthStore';
 import { writeBackupFile } from './driveService';
 
@@ -21,6 +21,8 @@ export class MySubClassedDexie extends Dexie {
   ingredients!: Table<Ingredient, number>;
   nutritionistPlans!: Table<NutritionistPlan, number>;
   recipes!: Table<Recipe, number>;
+  patients!: Table<Patient, number>;
+  assignedPlans!: Table<AssignedPlan, number>;
 
   constructor() {
     super('dietPlanDatabase', { addons: [observable] });
@@ -51,6 +53,14 @@ export class MySubClassedDexie extends Dexie {
 
     (this as Dexie).version(8).stores({
       recipes: '++id, &name'
+    });
+
+    (this as Dexie).version(9).stores({
+      patients: '++id, lastName, firstName'
+    });
+    
+    (this as Dexie).version(10).stores({
+        assignedPlans: '++id, patientId, startDate, endDate'
     });
   }
 }

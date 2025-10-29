@@ -1,5 +1,7 @@
 
 
+
+
 export interface NutritionInfo {
   carbs: number;
   protein: number;
@@ -153,15 +155,17 @@ export interface Ingredient {
   fat?: number;     // per 100g
 }
 
+export interface PlanCreationData {
+    planName: string;
+    weeklyPlan: DayPlan[];
+    shoppingList: ShoppingListCategory[];
+}
+
 export interface NutritionistPlan {
   id?: number;
   name: string;
   creationDate: string; // ISO string
-  planData: {
-    planName: string;
-    weeklyPlan: DayPlan[];
-    shoppingList: ShoppingListCategory[];
-  };
+  planData: PlanCreationData;
 }
 
 export interface RecipeIngredient {
@@ -175,4 +179,20 @@ export interface Recipe {
   name: string;
   procedure?: string;
   ingredients: RecipeIngredient[];
+}
+
+export interface Patient {
+  id?: number;
+  firstName: string;
+  lastName: string;
+  creationDate: string; // ISO string
+}
+
+export interface AssignedPlan {
+    id?: number;
+    patientId: number;
+    planTemplateId: number;
+    startDate: string; // YYYY-MM-DD
+    endDate: string; // YYYY-MM-DD
+    planData: PlanCreationData;
 }

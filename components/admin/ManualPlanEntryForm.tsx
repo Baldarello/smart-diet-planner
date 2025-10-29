@@ -10,7 +10,7 @@ import { ingredientStore } from '../../stores/IngredientStore';
 import { nutritionistStore } from '../../stores/NutritionistStore';
 import { parseQuantity } from '../../utils/quantityParser';
 import { recipeStore } from '../../stores/RecipeStore';
-import LiveNutritionSummary from './admin/LiveNutritionSummary';
+import LiveNutritionSummary from './LiveNutritionSummary';
 import { patientStore } from '../../stores/PatientStore';
 
 // New interfaces for form state
@@ -145,6 +145,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                 const sourceDay = planMap.get(formDay.day.toUpperCase());
                 if (sourceDay) {
                     formDay.meals.forEach(formMeal => {
+                        // Fix: Explicitly cast `sourceDay` to `DayPlan` to resolve type inference issue.
                         const sourceMeal = (sourceDay as DayPlan).meals.find(m => m.name.toUpperCase() === formMeal.name.toUpperCase());
                         if (sourceMeal) {
                             formMeal.title = sourceMeal.title || '';

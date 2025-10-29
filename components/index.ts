@@ -48,3 +48,5 @@ export { default as RecipesManagement } from './admin/RecipesManagement';
 export { default as FileUploadScreen } from './FileUploadScreen';
 export { default as ViewRecipeModal } from './admin/ViewRecipeModal';
 export { default as LiveNutritionSummary } from './admin/LiveNutritionSummary';
+export { default as PatientManagement } from './admin/PatientManagement';
+export { default as AssignPlanModal } from './admin/AssignPlanModal';
