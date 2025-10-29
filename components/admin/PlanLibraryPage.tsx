@@ -2,13 +2,9 @@ import React, { useState, useRef } from 'react';
 import { observer } from 'mobx-react-lite';
 import { nutritionistStore } from '../../stores/NutritionistStore';
 import { t } from '../../i18n';
-import { DownloadIcon, ShareIcon, TrashIcon, EditIcon, ViewIcon, UploadIcon } from '../Icons';
+import { DownloadIcon, TrashIcon, EditIcon, ViewIcon, UploadIcon } from '../Icons';
 import { NutritionistPlan } from '../../types';
-import { uploadAndShareFile } from '../../services/driveService';
-import { handleSignIn } from '../../services/authService';
-import { authStore } from '../../stores/AuthStore';
 import { uiStore } from '../../stores/UIStore';
-import ShareLinkModal from '../ShareLinkModal';
 import ConfirmationModal from '../ConfirmationModal';
 import SkeletonLoader from '../SkeletonLoader';
 
@@ -34,40 +30,9 @@ interface PlanLibraryPageProps {
 
 const PlanLibraryPage: React.FC<PlanLibraryPageProps> = observer(({ onEdit, onView }) => {
     const { plans, status, deletePlan, addPlan } = nutritionistStore;
-    const [sharingPlan, setSharingPlan] = useState<NutritionistPlan | null>(null);
-    const [shareUrl, setShareUrl] = useState<string | null>(null);
     const [deletingPlan, setDeletingPlan] = useState<NutritionistPlan | null>(null);
     const [selectedPlans, setSelectedPlans] = useState<Set<number>>(new Set());
     const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleShare = async (plan: NutritionistPlan) => {
-        const shareAction = async () => {
-            if (!authStore.accessToken) {
-                uiStore.showInfoModal(t('sessionErrorTitle'), t('sessionErrorMessage'));
-                return;
-            }
-            setSharingPlan(plan);
-            try {
-                const fileId = await uploadAndShareFile(plan.planData, plan.name, authStore.accessToken);
-                const baseUrl = `${window.location.origin}${window.location.pathname}`;
-                const url = `${baseUrl}#/?plan_id=${encodeURIComponent(fileId)}`;
-
-                setShareUrl(url);
-            } catch (error) {
-                console.error("Error during plan sharing:", error);
-                uiStore.showInfoModal(t('sharePlanErrorTitle'), t('sharePlanErrorMessage', { error: error instanceof Error ? error.message : String(error) }));
-            } finally {
-                setSharingPlan(null);
-            }
-        };
-
-        if (!authStore.isLoggedIn) {
-            authStore.setLoginRedirectAction(() => shareAction());
-            handleSignIn();
-        } else {
-            await shareAction();
-        }
-    };
 
     const handleDeleteConfirm = () => {
         if (deletingPlan && deletingPlan.id) {
@@ -168,7 +133,6 @@ const PlanLibraryPage: React.FC<PlanLibraryPageProps> = observer(({ onEdit, onVi
                 accept=".json"
                 onChange={handleFileImport}
             />
-            {shareUrl && <ShareLinkModal url={shareUrl} onClose={() => setShareUrl(null)} />}
             {deletingPlan && (
                 <ConfirmationModal
                     isOpen={!!deletingPlan}
@@ -222,10 +186,6 @@ const PlanLibraryPage: React.FC<PlanLibraryPageProps> = observer(({ onEdit, onVi
                                 <button onClick={() => onView(plan)} className="flex items-center gap-2 bg-slate-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-slate-600 transition-colors text-sm"><ViewIcon /> {t('view')}</button>
                                 <button onClick={() => onEdit(plan)} className="flex items-center gap-2 bg-yellow-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-yellow-600 transition-colors text-sm"><EditIcon /> {t('edit')}</button>
                                 <button onClick={() => downloadPlan(plan)} className="flex items-center gap-2 bg-blue-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-blue-600 transition-colors text-sm"><DownloadIcon /> {t('download')}</button>
-                                <button onClick={() => handleShare(plan)} disabled={!!sharingPlan} className="flex items-center gap-2 bg-green-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-green-600 transition-colors text-sm disabled:bg-green-300">
-                                    {sharingPlan?.id === plan.id ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <ShareIcon />}
-                                    {t('sharePlan')}
-                                </button>
                                 <button onClick={() => setDeletingPlan(plan)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-gray-600 rounded-full" title={t('delete')}><TrashIcon /></button>
                             </div>
                         </div>

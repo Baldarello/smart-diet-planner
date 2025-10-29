@@ -4,10 +4,15 @@ import { patientStore } from '../../stores/PatientStore';
 import { nutritionistStore } from '../../stores/NutritionistStore';
 import { t } from '../../i18n';
 import { Patient, AssignedPlan } from '../../types';
-import { PlusCircleIcon, TrashIcon, CheckIcon, CloseIcon, EditIcon, DownloadIcon } from '../Icons';
+import { PlusCircleIcon, TrashIcon, CheckIcon, CloseIcon, EditIcon, DownloadIcon, ShareIcon } from '../Icons';
 import SkeletonLoader from '../SkeletonLoader';
 import ConfirmationModal from '../ConfirmationModal';
 import AssignPlanModal from './AssignPlanModal';
+import { uploadAndShareFile } from '../../services/driveService';
+import { handleSignIn } from '../../services/authService';
+import { authStore } from '../../stores/AuthStore';
+import { uiStore } from '../../stores/UIStore';
+import ShareLinkModal from '../ShareLinkModal';
 
 interface PatientManagementProps {
     onCreatePlanForPatient: (patient: Patient) => void;
@@ -23,6 +28,8 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
     const [deletingPatient, setDeletingPatient] = useState<Patient | null>(null);
     const [assigningPlanPatient, setAssigningPlanPatient] = useState<Patient | null>(null);
     const [unassigningPlan, setUnassigningPlan] = useState<AssignedPlan | null>(null);
+    const [sharingPlan, setSharingPlan] = useState<AssignedPlan | null>(null);
+    const [shareUrl, setShareUrl] = useState<string | null>(null);
 
     const planMap = useMemo(() => new Map(nutritionistPlans.map(p => [p.id, p.name])), [nutritionistPlans]);
 
@@ -72,6 +79,40 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
         URL.revokeObjectURL(url);
     };
 
+    const handleShare = async (plan: AssignedPlan) => {
+        const shareAction = async () => {
+            if (!authStore.accessToken) {
+                uiStore.showInfoModal(t('sessionErrorTitle'), t('sessionErrorMessage'));
+                return;
+            }
+            setSharingPlan(plan);
+            try {
+                const dataToExport = {
+                    ...plan.planData,
+                    startDate: plan.startDate,
+                    endDate: plan.endDate,
+                };
+                const fileId = await uploadAndShareFile(dataToExport, plan.planData.planName, authStore.accessToken);
+                const baseUrl = `${window.location.origin}${window.location.pathname}`;
+                const url = `${baseUrl}#/?plan_id=${encodeURIComponent(fileId!)}`;
+
+                setShareUrl(url);
+            } catch (error) {
+                console.error("Error during plan sharing:", error);
+                uiStore.showInfoModal(t('sharePlanErrorTitle'), t('sharePlanErrorMessage', { error: error instanceof Error ? error.message : String(error) }));
+            } finally {
+                setSharingPlan(null);
+            }
+        };
+
+        if (!authStore.isLoggedIn) {
+            authStore.setLoginRedirectAction(() => shareAction());
+            handleSignIn();
+        } else {
+            await shareAction();
+        }
+    };
+
     if (status === 'loading') {
         return <SkeletonLoader className="h-64 w-full" />;
     }
@@ -79,6 +120,7 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
     return (
         <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg max-w-4xl mx-auto">
             {assigningPlanPatient && <AssignPlanModal patient={assigningPlanPatient} onClose={() => setAssigningPlanPatient(null)} onAssign={() => setAssigningPlanPatient(null)} />}
+            {shareUrl && <ShareLinkModal url={shareUrl} onClose={() => setShareUrl(null)} />}
             {deletingPatient && (
                 <ConfirmationModal isOpen={!!deletingPatient} onClose={() => setDeletingPatient(null)} onConfirm={() => { deletePatient(deletingPatient!.id!); setDeletingPatient(null); }} title={t('deletePatientConfirmationTitle')}>
                     <p>{t('deletePatientConfirmationMessage')}</p>
@@ -129,6 +171,9 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
                                                     <div className="flex items-center gap-1 flex-shrink-0">
                                                         <button onClick={() => onEditAssignedPlan(plan)} className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-gray-500" title={t('edit')}><EditIcon /></button>
                                                         <button onClick={() => handleExportAssignedPlan(plan)} className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-gray-500" title={t('download')}><DownloadIcon /></button>
+                                                        <button onClick={() => handleShare(plan)} disabled={!!sharingPlan} className="p-1.5 rounded-full text-green-600 dark:text-green-400 hover:bg-slate-200 dark:hover:bg-gray-500 disabled:opacity-50" title={t('sharePlan')}>
+                                                            {sharingPlan?.id === plan.id ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div> : <ShareIcon />}
+                                                        </button>
                                                         <button onClick={() => setUnassigningPlan(plan)} className="p-1.5 rounded-full text-yellow-600 dark:text-yellow-400 hover:bg-slate-200 dark:hover:bg-gray-500" title={t('unassignPlan')}><CloseIcon /></button>
                                                     </div>
                                                 </div>
