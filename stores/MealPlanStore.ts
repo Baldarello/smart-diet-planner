@@ -44,6 +44,8 @@ interface ImportedJsonData {
     weeklyPlan: DayPlan[];
     shoppingList: ShoppingListCategory[];
     pantry?: PantryItem[];
+    startDate?: string;
+    endDate?: string;
 }
 
 const getTodayDateString = () => new Date().toLocaleDateString('en-CA');
@@ -1604,7 +1606,7 @@ export class MealPlanStore {
         return this.getDayNutritionSummary(this.currentDayPlan);
     }
 
-    processImportedData = (data: ImportedJsonData) => {
+    processImportedData = async (data: ImportedJsonData) => {
         try {
             const sanitizedPlan = data.weeklyPlan.map(day => ({
                 ...day,
@@ -1615,13 +1617,25 @@ export class MealPlanStore {
                     items: (meal.items || []).map(item => ({...item, used: false}))
                 }))
             }));
-            runInAction(() => {
-                this.planToSet = sanitizedPlan;
-                this.shoppingList = (data.shoppingList || []).map((cat, index) => ({...cat, sortOrder: index}));
-                this.pantry = data.pantry || [];
-                this.currentPlanName = data.planName || 'My Diet Plan';
-                this.status = AppStatus.AWAITING_DATES;
-            });
+            
+            if (data.startDate && data.endDate) {
+                runInAction(() => {
+                    this.shoppingList = (data.shoppingList || []).map((cat, index) => ({...cat, sortOrder: index}));
+                    this.pantry = data.pantry || [];
+                    this.currentPlanName = data.planName || 'My Diet Plan';
+                    this.planToSet = sanitizedPlan;
+                });
+                await this.commitNewPlan(data.startDate, data.endDate);
+                this.navigateTo('list', true);
+            } else {
+                runInAction(() => {
+                    this.planToSet = sanitizedPlan;
+                    this.shoppingList = (data.shoppingList || []).map((cat, index) => ({...cat, sortOrder: index}));
+                    this.pantry = data.pantry || [];
+                    this.currentPlanName = data.planName || 'My Diet Plan';
+                    this.status = AppStatus.AWAITING_DATES;
+                });
+            }
         } catch (e: any) {
             console.error("Failed to process imported JSON data", e);
             runInAction(() => {
@@ -1636,11 +1650,11 @@ export class MealPlanStore {
             this.status = AppStatus.LOADING;
         });
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             try {
                 if (!event.target?.result) throw new Error("File could not be read.");
                 const data: ImportedJsonData = JSON.parse(event.target.result as string);
-                this.processImportedData(data);
+                await this.processImportedData(data);
             } catch (e: any) {
                 console.error("Failed to parse JSON file", e);
                 runInAction(() => {
@@ -1665,7 +1679,7 @@ export class MealPlanStore {
         try {
             const data = await readSharedFile(planId);
             console.log("Imported data", data);
-            this.processImportedData(data);
+            await this.processImportedData(data);
 
             // Clean URL
             window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);

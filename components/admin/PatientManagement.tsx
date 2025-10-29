@@ -4,7 +4,7 @@ import { patientStore } from '../../stores/PatientStore';
 import { nutritionistStore } from '../../stores/NutritionistStore';
 import { t } from '../../i18n';
 import { Patient, AssignedPlan } from '../../types';
-import { PlusCircleIcon, TrashIcon, CheckIcon, CloseIcon, EditIcon } from '../Icons';
+import { PlusCircleIcon, TrashIcon, CheckIcon, CloseIcon, EditIcon, DownloadIcon } from '../Icons';
 import SkeletonLoader from '../SkeletonLoader';
 import ConfirmationModal from '../ConfirmationModal';
 import AssignPlanModal from './AssignPlanModal';
@@ -51,6 +51,25 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
             unassignPlan(unassigningPlan.id!);
         }
         setUnassigningPlan(null);
+    };
+
+    const handleExportAssignedPlan = (plan: AssignedPlan) => {
+        const dataToExport = {
+            ...plan.planData,
+            startDate: plan.startDate,
+            endDate: plan.endDate,
+        };
+        const jsonString = JSON.stringify(dataToExport, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const safePlanName = plan.planData.planName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        a.download = `diet-plan-${safePlanName}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
 
     if (status === 'loading') {
@@ -109,6 +128,7 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
                                                     </div>
                                                     <div className="flex items-center gap-1 flex-shrink-0">
                                                         <button onClick={() => onEditAssignedPlan(plan)} className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-gray-500" title={t('edit')}><EditIcon /></button>
+                                                        <button onClick={() => handleExportAssignedPlan(plan)} className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-gray-500" title={t('download')}><DownloadIcon /></button>
                                                         <button onClick={() => setUnassigningPlan(plan)} className="p-1.5 rounded-full text-yellow-600 dark:text-yellow-400 hover:bg-slate-200 dark:hover:bg-gray-500" title={t('unassignPlan')}><CloseIcon /></button>
                                                     </div>
                                                 </div>
