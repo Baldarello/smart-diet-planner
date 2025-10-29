@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { recipeStore } from '../../stores/RecipeStore';
 import { ingredientStore } from '../../stores/IngredientStore';
+import { uiStore } from '../../stores/UIStore';
 import { t } from '../../i18n';
 import { Recipe, RecipeIngredient } from '../../types';
 import { PlusCircleIcon, TrashIcon, EditIcon, CheckIcon, CloseIcon, UploadIcon, DownloadIcon, ViewIcon } from '../Icons';
@@ -10,6 +11,13 @@ import ConfirmationModal from '../ConfirmationModal';
 import UnitPicker from '../UnitPicker';
 import ViewRecipeModal from './ViewRecipeModal';
 
+// Fix: Define a form-specific ingredient type to handle string-based input values.
+interface FormRecipeIngredient {
+    ingredientName: string;
+    quantityValue: string;
+    quantityUnit: string;
+}
+
 const RecipeFormModal: React.FC<{
     recipe: Partial<Recipe> | null;
     onClose: () => void;
@@ -17,14 +25,21 @@ const RecipeFormModal: React.FC<{
 }> = observer(({ recipe, onClose, onSave }) => {
     const [name, setName] = useState(recipe?.name || '');
     const [procedure, setProcedure] = useState(recipe?.procedure || '');
-    const [ingredients, setIngredients] = useState<RecipeIngredient[]>(recipe?.ingredients || [{ ingredientName: '', quantityValue: null, quantityUnit: 'g' }]);
+    // Fix: Use the new FormRecipeIngredient type for state and convert numeric values to strings on initialization.
+    const [ingredients, setIngredients] = useState<FormRecipeIngredient[]>(
+        recipe?.ingredients?.map(ing => ({
+            ...ing,
+            quantityValue: ing.quantityValue?.toString() ?? ''
+        })) || [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }]
+    );
     const [activeAutocomplete, setActiveAutocomplete] = useState<{ itemIndex: number } | null>(null);
     const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
     const autocompleteRef = useRef<HTMLDivElement>(null);
 
-    const handleItemChange = (index: number, field: keyof RecipeIngredient, value: string | number | null) => {
+    // Fix: Update handleItemChange to use the strongly-typed FormRecipeIngredient.
+    const handleItemChange = (index: number, field: keyof FormRecipeIngredient, value: string) => {
         const newIngredients = [...ingredients];
-        (newIngredients[index] as any)[field] = value;
+        newIngredients[index][field] = value;
         setIngredients(newIngredients);
 
         if (field === 'ingredientName') {
@@ -62,25 +77,27 @@ const RecipeFormModal: React.FC<{
     };
 
     const handleAddItem = () => {
-        setIngredients([...ingredients, { ingredientName: '', quantityValue: null, quantityUnit: 'g' }]);
+        setIngredients([...ingredients, { ingredientName: '', quantityValue: '', quantityUnit: 'g' }]);
     };
 
+    // Fix: Correct the logic to ensure a single empty item remains when the last item is removed.
     const handleRemoveItem = (index: number) => {
         const newIngredients = ingredients.filter((_, i) => i !== index);
         if (newIngredients.length === 0) {
-            handleAddItem();
+            setIngredients([{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }]);
         } else {
             setIngredients(newIngredients);
         }
     };
 
+    // Fix: Correctly parse string quantity values to numbers or null on form submission.
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const finalIngredients = ingredients
             .map(ing => ({
-                ...ing,
                 ingredientName: ing.ingredientName.trim(),
-                quantityValue: typeof ing.quantityValue === 'string' && ing.quantityValue.trim() !== '' ? parseFloat(ing.quantityValue) : ing.quantityValue
+                quantityValue: ing.quantityValue.trim() !== '' ? parseFloat(ing.quantityValue) : null,
+                quantityUnit: ing.quantityUnit,
             }))
             .filter(ing => ing.ingredientName);
             
@@ -116,7 +133,7 @@ const RecipeFormModal: React.FC<{
                                             </div>
                                         )}
                                     </div>
-                                    <input type="number" step="any" placeholder={t('quantityPlaceholder')} value={item.quantityValue ?? ''} onChange={e => handleItemChange(index, 'quantityValue', e.target.value)} className="w-24 p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md" />
+                                    <input type="number" step="any" placeholder={t('quantityPlaceholder')} value={item.quantityValue} onChange={e => handleItemChange(index, 'quantityValue', e.target.value)} className="w-24 p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md" />
                                     <UnitPicker value={item.quantityUnit} onChange={unit => handleItemChange(index, 'quantityUnit', unit)} />
                                     <button type="button" onClick={() => handleRemoveItem(index)} className="text-gray-400 hover:text-red-500"><TrashIcon /></button>
                                 </div>
@@ -240,12 +257,12 @@ const RecipesManagement: React.FC = observer(() => {
                 
                 if (recipesToImport.length > 0) {
                     await bulkAddOrUpdateRecipes(recipesToImport);
-                    alert(`${recipesToImport.length} recipes imported successfully.`);
+                    uiStore.showInfoModal(t('importSuccessTitle'), t('recipesImportSuccessMessage', { count: recipesToImport.length.toString() }));
                 }
 
             } catch (error) {
                 console.error(`Error importing ${format}:`, error);
-                alert(`Error importing file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                uiStore.showInfoModal(t('errorOccurred'), t('recipesImportErrorMessage', { error: error instanceof Error ? error.message : 'Unknown error' }));
             } finally {
                 event.target.value = '';
             }

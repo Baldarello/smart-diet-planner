@@ -8,6 +8,7 @@ import { PlusCircleIcon, TrashIcon, CookieIcon } from '../Icons';
 import UnitPicker from '../UnitPicker';
 import { ingredientStore } from '../../stores/IngredientStore';
 import { nutritionistStore } from '../../stores/NutritionistStore';
+import { uiStore } from '../../stores/UIStore';
 import { parseQuantity } from '../../utils/quantityParser';
 import { recipeStore } from '../../stores/RecipeStore';
 import LiveNutritionSummary from './LiveNutritionSummary';
@@ -453,7 +454,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
         })).filter(day => day.meals.length > 0);
 
         if (weeklyPlan.length === 0) {
-            alert(t('planEmptyError'));
+            uiStore.showInfoModal(t('errorOccurred'), t('planEmptyError'));
             return null;
         }
 
@@ -526,7 +527,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
 
         } catch (error) {
             console.error("Error during plan saving:", error);
-            alert("An error occurred while saving the plan. Please check the console and try again.");
+            uiStore.showInfoModal(t('errorOccurred'), t('savePlanError'));
         } finally {
             setIsLoading(false);
         }

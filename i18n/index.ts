@@ -168,6 +168,15 @@ const translations = {
     markAsCheatMeal: "Pasto Sgarro",
     markAsRegularMeal: "Pasto Normale",
     cheatMealDescriptionPlaceholder: "Descrivi lo sgarro (es. Pizza con amici, cena fuori...)",
+    savePlanError: "Si è verificato un errore durante il salvataggio del piano. Controlla la console e riprova.",
+    sessionErrorTitle: "Errore di Sessione",
+    sessionErrorMessage: "La sessione di login non è valida. Per favore, accedi di nuovo.",
+    sharePlanErrorTitle: "Errore di Condivisione",
+    sharePlanErrorMessage: "Si è verificato un errore durante la condivisione del piano: {error}",
+    ingredientNameEmptyError: "Il nome dell'ingrediente non può essere vuoto.",
+    importSuccessTitle: "Importazione Completata",
+    recipesImportSuccessMessage: "{count} ricette importate con successo.",
+    recipesImportErrorMessage: "Errore durante l'importazione del file: {error}",
     
     // FileUpload.tsx
     clickToUpload: "Clicca per caricare",
@@ -600,6 +609,15 @@ const translations = {
     markAsCheatMeal: "Cheat Meal",
     markAsRegularMeal: "Regular Meal",
     cheatMealDescriptionPlaceholder: "Describe the cheat meal (e.g., Pizza with friends, dinner out...)",
+    savePlanError: "An error occurred while saving the plan. Please check the console and try again.",
+    sessionErrorTitle: "Session Error",
+    sessionErrorMessage: "Login session is not valid. Please log in again.",
+    sharePlanErrorTitle: "Sharing Error",
+    sharePlanErrorMessage: "An error occurred while sharing the plan: {error}",
+    ingredientNameEmptyError: "Ingredient name cannot be empty.",
+    importSuccessTitle: "Import Successful",
+    recipesImportSuccessMessage: "{count} recipes imported successfully.",
+    recipesImportErrorMessage: "Error importing file: {error}",
     
     // FileUpload.tsx
     clickToUpload: "Click to upload",

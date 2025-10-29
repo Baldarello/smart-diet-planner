@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { ingredientStore } from '../../stores/IngredientStore';
+import { uiStore } from '../../stores/UIStore';
 import { t } from '../../i18n';
 import { PlusCircleIcon, TrashIcon, EditIcon, CheckIcon, CloseIcon, RefreshIcon, UploadIcon, DownloadIcon } from '../Icons';
 import SkeletonLoader from '../SkeletonLoader';
@@ -124,7 +125,7 @@ const IngredientsManagement: React.FC = observer(() => {
     const handleSaveEdit = () => {
         if (editingItem) {
             if (!editingItem.name.trim()) {
-                alert("Ingredient name cannot be empty.");
+                uiStore.showInfoModal(t('errorOccurred'), t('ingredientNameEmptyError'));
                 return;
             }
             const updates: Partial<Omit<Ingredient, 'id'>> = {
@@ -168,7 +169,7 @@ const IngredientsManagement: React.FC = observer(() => {
         reader.onload = async (e) => {
             const text = e.target?.result as string;
             if (!text) {
-                alert(t('importErrorMessage'));
+                uiStore.showInfoModal(t('errorOccurred'), t('importErrorMessage'));
                 return;
             }
 
@@ -212,11 +213,11 @@ const IngredientsManagement: React.FC = observer(() => {
 
                 if (ingredientsToImport.length > 0) {
                     await ingredientStore.bulkAddOrUpdateIngredients(ingredientsToImport);
-                    alert(t('importSuccessMessage', { count: ingredientsToImport.length.toString() }));
+                    uiStore.showInfoModal(t('importSuccessTitle'), t('importSuccessMessage', { count: ingredientsToImport.length.toString() }));
                 }
             } catch (error) {
                 console.error('Error parsing CSV:', error);
-                alert(t('importErrorMessage'));
+                uiStore.showInfoModal(t('errorOccurred'), t('importErrorMessage'));
             } finally {
                 // Reset file input to allow re-uploading the same file
                 event.target.value = '';
@@ -233,7 +234,7 @@ const IngredientsManagement: React.FC = observer(() => {
         reader.onload = async (e) => {
             const text = e.target?.result as string;
             if (!text) {
-                alert(t('importErrorMessage'));
+                uiStore.showInfoModal(t('errorOccurred'), t('importErrorMessage'));
                 return;
             }
 
@@ -255,11 +256,11 @@ const IngredientsManagement: React.FC = observer(() => {
 
                 if (ingredientsToImport.length > 0) {
                     await ingredientStore.bulkAddOrUpdateIngredients(ingredientsToImport);
-                    alert(t('importSuccessMessage', { count: ingredientsToImport.length.toString() }));
+                    uiStore.showInfoModal(t('importSuccessTitle'), t('importSuccessMessage', { count: ingredientsToImport.length.toString() }));
                 }
             } catch (error) {
                 console.error('Error parsing JSON:', error);
-                alert(t('importErrorMessage'));
+                uiStore.showInfoModal(t('errorOccurred'), t('importErrorMessage'));
             } finally {
                 event.target.value = '';
             }

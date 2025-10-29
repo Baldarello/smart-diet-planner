@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore, AppStatus, NavigableTab } from './stores/MealPlanStore';
 import { authStore } from './stores/AuthStore';
+import { uiStore } from './stores/UIStore';
 import { t, setI18nLocaleGetter } from './i18n';
 import { syncWithDrive } from './services/syncService';
 
@@ -26,6 +27,7 @@ import AdminLoginPage from './components/admin/AdminLoginPage';
 import NutritionistPage from './components/admin/NutritionistPage';
 import NotFoundPage from './components/admin/NotFoundPage';
 import FileUploadScreen from './components/FileUploadScreen';
+import InfoModal from './components/InfoModal';
 
 import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon, ArrowLeftIcon, MenuIcon, AdminIcon } from './components/Icons';
 
@@ -76,6 +78,7 @@ const MainAppContent: React.FC = observer(() => {
 
 const MainAppLayout: React.FC = observer(() => {
     const store = mealPlanStore;
+    const { infoModal, hideInfoModal } = uiStore;
     setI18nLocaleGetter(() => store.locale);
     
     const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -370,6 +373,13 @@ const MainAppLayout: React.FC = observer(() => {
         <div className="min-h-screen">
             {store.status === AppStatus.AWAITING_DATES && <SetPlanDatesModal />}
             {showLoginSuggestion && <LoginSuggestionModal onClose={handleCloseLoginSuggestion} />}
+            <InfoModal 
+                isOpen={infoModal.isOpen}
+                onClose={hideInfoModal}
+                title={infoModal.title}
+            >
+                {infoModal.message}
+            </InfoModal>
             <Drawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)}>
                 {renderDrawerContent()}
             </Drawer>

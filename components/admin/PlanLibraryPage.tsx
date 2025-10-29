@@ -7,6 +7,7 @@ import { NutritionistPlan } from '../../types';
 import { uploadAndShareFile } from '../../services/driveService';
 import { handleSignIn } from '../../services/authService';
 import { authStore } from '../../stores/AuthStore';
+import { uiStore } from '../../stores/UIStore';
 import ShareLinkModal from '../ShareLinkModal';
 import ConfirmationModal from '../ConfirmationModal';
 import SkeletonLoader from '../SkeletonLoader';
@@ -42,7 +43,7 @@ const PlanLibraryPage: React.FC<PlanLibraryPageProps> = observer(({ onEdit, onVi
     const handleShare = async (plan: NutritionistPlan) => {
         const shareAction = async () => {
             if (!authStore.accessToken) {
-                alert("Login session is not valid. Please log in again.");
+                uiStore.showInfoModal(t('sessionErrorTitle'), t('sessionErrorMessage'));
                 return;
             }
             setSharingPlan(plan);
@@ -54,7 +55,7 @@ const PlanLibraryPage: React.FC<PlanLibraryPageProps> = observer(({ onEdit, onVi
                 setShareUrl(url);
             } catch (error) {
                 console.error("Error during plan sharing:", error);
-                alert(`An error occurred while sharing the plan: ${error instanceof Error ? error.message : String(error)}`);
+                uiStore.showInfoModal(t('sharePlanErrorTitle'), t('sharePlanErrorMessage', { error: error instanceof Error ? error.message : String(error) }));
             } finally {
                 setSharingPlan(null);
             }
@@ -106,15 +107,15 @@ const PlanLibraryPage: React.FC<PlanLibraryPageProps> = observer(({ onEdit, onVi
                             console.warn('Skipping invalid plan object in array:', plan, err);
                         }
                     }
-                    alert(`${importedCount} plans imported successfully!`);
+                    uiStore.showInfoModal(t('importSuccessTitle'), `${importedCount} plans imported successfully!`);
                 } else {
                     await importPlans(data);
-                    alert('Plan imported successfully!');
+                    uiStore.showInfoModal(t('importSuccessTitle'), 'Plan imported successfully!');
                 }
 
             } catch (error) {
                 console.error("Failed to import plan:", error);
-                alert(`Failed to import plan: ${error instanceof Error ? error.message : 'Invalid file'}`);
+                uiStore.showInfoModal(t('errorOccurred'), `Failed to import plan: ${error instanceof Error ? error.message : 'Invalid file'}`);
             } finally {
                 if (event.target) {
                     event.target.value = '';
