@@ -7,11 +7,25 @@ interface InfoModalState {
     message: React.ReactNode;
 }
 
+interface ConfirmationModalState {
+    isOpen: boolean;
+    title: string;
+    message: React.ReactNode;
+    onConfirm: () => void;
+}
+
 class UIStore {
     infoModal: InfoModalState = {
         isOpen: false,
         title: '',
         message: '',
+    };
+
+    confirmationModal: ConfirmationModalState = {
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => {},
     };
 
     constructor() {
@@ -35,6 +49,33 @@ class UIStore {
                 this.infoModal.message = '';
             }
         }, 300); // Corresponds to animation duration
+    }
+
+    showConfirmationModal(title: string, message: React.ReactNode, onConfirm: () => void) {
+        this.confirmationModal = {
+            isOpen: true,
+            title,
+            message,
+            onConfirm: () => {
+                onConfirm();
+                this.hideConfirmationModal();
+            },
+        };
+    }
+
+    hideConfirmationModal() {
+        this.confirmationModal.isOpen = false;
+        // Reset after animation
+        setTimeout(() => {
+            if (!this.confirmationModal.isOpen) {
+                this.confirmationModal = {
+                    isOpen: false,
+                    title: '',
+                    message: '',
+                    onConfirm: () => {},
+                };
+            }
+        }, 300);
     }
 }
 

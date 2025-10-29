@@ -9,6 +9,7 @@ import { initGoogleAuth } from '../../services/authService';
 import { NutritionistPlan, Patient, AssignedPlan } from '../../types';
 import PatientManagement from './PatientManagement';
 import { patientStore } from '../../stores/PatientStore';
+import { uiStore } from '../../stores/UIStore';
 
 interface NutritionistPageProps {
     onLogout: () => void;
@@ -21,6 +22,7 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
     const [planToEdit, setPlanToEdit] = useState<NutritionistPlan | AssignedPlan | null>(null);
     const [viewingPlan, setViewingPlan] = useState<NutritionistPlan | null>(null);
     const [creatingPlanForPatient, setCreatingPlanForPatient] = useState<Patient | null>(null);
+    const [isPlanFormDirty, setIsPlanFormDirty] = useState(false);
 
     useEffect(() => {
         initGoogleAuth();
@@ -58,6 +60,7 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
         }
         setCreatingPlanForPatient(null);
         setPlanToEdit(null);
+        setIsPlanFormDirty(false); // Reset dirty state
         setActiveTab(creatingPlanForPatient ? 'patients' : 'library');
     };
 
@@ -65,6 +68,7 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
         const fromPatients = !!creatingPlanForPatient;
         setPlanToEdit(null);
         setCreatingPlanForPatient(null);
+        setIsPlanFormDirty(false); // Reset dirty state
         if (fromPatients) {
             setActiveTab('patients');
         } else {
@@ -77,9 +81,24 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
         setActiveTab('plan');
     };
 
+    const handleTabChange = (tabId: NutritionistTab) => {
+        if (activeTab === 'plan' && isPlanFormDirty && tabId !== 'plan') {
+            uiStore.showConfirmationModal(
+                t('unsavedChangesTitle'),
+                t('unsavedChangesMessage'),
+                () => {
+                    setIsPlanFormDirty(false); // Acknowledge change and allow navigation
+                    setActiveTab(tabId);
+                }
+            );
+        } else {
+            setActiveTab(tabId);
+        }
+    };
+
     const renderTabButton = (tabId: NutritionistTab, label: string) => (
         <button
-            onClick={() => setActiveTab(tabId)}
+            onClick={() => handleTabChange(tabId)}
             className={`px-4 py-2 font-semibold rounded-t-lg transition-colors ${activeTab === tabId ? 'bg-slate-50 dark:bg-gray-900 text-violet-600 dark:text-violet-400 border-b-2 border-transparent' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:bg-slate-200/50 dark:hover:bg-gray-800/50'}`}
         >
             {label}
@@ -112,6 +131,7 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
                         onPlanSaved={handlePlanSaved}
                         planToEdit={planToEdit}
                         patientForPlan={creatingPlanForPatient}
+                        onDirtyStateChange={setIsPlanFormDirty}
                     />
                  )}
                  {activeTab === 'patients' && <PatientManagement onCreatePlanForPatient={handleCreatePlanForPatient} onEditAssignedPlan={handleEditAssignedPlan} />}

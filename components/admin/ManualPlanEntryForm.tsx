@@ -27,7 +27,7 @@ interface FormMeal extends Omit<Meal, 'items' | 'done' | 'nutrition' | 'actualNu
     procedure: string;
     isCheat?: boolean;
 }
-
+  
 interface FormDayPlan extends Omit<DayPlan, 'meals'> {
     meals: FormMeal[];
 }
@@ -50,6 +50,7 @@ interface ManualPlanEntryFormProps {
     onPlanSaved: (planId?: number) => void;
     planToEdit?: NutritionistPlan | AssignedPlan | null;
     patientForPlan?: Patient | null;
+    onDirtyStateChange: (isDirty: boolean) => void;
 }
 
 function useDebounce(value: any, delay: number) {
@@ -116,7 +117,7 @@ const DayNutritionSummaryDisplay: React.FC<{ summary: NutritionInfo | undefined 
 };
 
 
-const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCancel, onPlanSaved, planToEdit, patientForPlan }) => {
+const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCancel, onPlanSaved, planToEdit, patientForPlan, onDirtyStateChange }) => {
     const [planData, setPlanData] = useState<FormDayPlan[]>(createInitialPlan());
     const [planName, setPlanName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -127,22 +128,24 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
     const [activeAutocomplete, setActiveAutocomplete] = useState<{ dayIndex: number; mealIndex: number; itemIndex: number } | null>(null);
     const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
     const autocompleteRef = useRef<HTMLDivElement>(null);
+    const initialPlanState = useRef<string | null>(null);
 
     useEffect(() => {
+        // This effect runs when planToEdit or patientForPlan changes, setting the initial state of the form.
+        let initialName = '';
+        let initialPlan = createInitialPlan();
+
         if (patientForPlan) {
-            setPlanName(`Piano per ${patientForPlan.firstName} ${patientForPlan.lastName}`);
-            setPlanData(createInitialPlan());
+            initialName = `Piano per ${patientForPlan.firstName} ${patientForPlan.lastName}`;
         } else if (planToEdit) {
             const isAssigned = 'patientId' in planToEdit;
             const planDataSource = isAssigned ? (planToEdit as AssignedPlan).planData : planToEdit.planData;
             const planNameSource = isAssigned ? (planToEdit as AssignedPlan).planData.planName : planToEdit.name;
 
-            setPlanName(planNameSource);
+            initialName = planNameSource;
 
-            const editedPlanData = createInitialPlan(); // Start with a full empty week
             const planMap = new Map(planDataSource.weeklyPlan.map(d => [d.day.toUpperCase(), d]));
-
-            editedPlanData.forEach(formDay => {
+            initialPlan.forEach(formDay => {
                 const sourceDay = planMap.get(formDay.day.toUpperCase());
                 if (sourceDay) {
                     formDay.meals.forEach(formMeal => {
@@ -152,7 +155,6 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                             formMeal.title = sourceMeal.title || '';
                             formMeal.time = sourceMeal.time || formMeal.time;
                             formMeal.isCheat = sourceMeal.cheat || false;
-
                             if (sourceMeal.cheat) {
                                 formMeal.procedure = sourceMeal.cheatMealDescription || '';
                                 formMeal.items = [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }];
@@ -172,13 +174,24 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                     });
                 }
             });
-            setPlanData(editedPlanData);
-        } else {
-            // Reset form for creation
-            setPlanName('');
-            setPlanData(createInitialPlan());
         }
+        
+        setPlanName(initialName);
+        setPlanData(initialPlan);
+
+        // Store the initial state as a string for easy comparison.
+        initialPlanState.current = JSON.stringify({ planName: initialName, planData: initialPlan });
+        onDirtyStateChange(false); // Reset dirty state on prop change
     }, [planToEdit, patientForPlan]);
+
+    useEffect(() => {
+        // This effect runs whenever the form state changes to check if it's dirty.
+        if (initialPlanState.current === null) return;
+
+        const currentStateString = JSON.stringify({ planName, planData });
+        const isDirty = currentStateString !== initialPlanState.current;
+        onDirtyStateChange(isDirty);
+    }, [planName, planData, onDirtyStateChange]);
 
     useEffect(() => {
         const calculateSummaries = () => {

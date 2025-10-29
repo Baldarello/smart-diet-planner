@@ -28,6 +28,7 @@ import NutritionistPage from './components/admin/NutritionistPage';
 import NotFoundPage from './components/admin/NotFoundPage';
 import FileUploadScreen from './components/FileUploadScreen';
 import InfoModal from './components/InfoModal';
+import ConfirmationModal from './components/ConfirmationModal';
 
 import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon, ArrowLeftIcon, MenuIcon, AdminIcon } from './components/Icons';
 
@@ -78,7 +79,6 @@ const MainAppContent: React.FC = observer(() => {
 
 const MainAppLayout: React.FC = observer(() => {
     const store = mealPlanStore;
-    const { infoModal, hideInfoModal } = uiStore;
     setI18nLocaleGetter(() => store.locale);
     
     const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -373,13 +373,6 @@ const MainAppLayout: React.FC = observer(() => {
         <div className="min-h-screen">
             {store.status === AppStatus.AWAITING_DATES && <SetPlanDatesModal />}
             {showLoginSuggestion && <LoginSuggestionModal onClose={handleCloseLoginSuggestion} />}
-            <InfoModal 
-                isOpen={infoModal.isOpen}
-                onClose={hideInfoModal}
-                title={infoModal.title}
-            >
-                {infoModal.message}
-            </InfoModal>
             <Drawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)}>
                 {renderDrawerContent()}
             </Drawer>
@@ -444,6 +437,8 @@ const App: React.FC = observer(() => {
     );
     const [currentPath, setCurrentPath] = useState(window.location.hash.replace('#/', '').split('/')[0] || 'dashboard');
 
+    const { infoModal, hideInfoModal, confirmationModal, hideConfirmationModal } = uiStore;
+
     useEffect(() => {
         const handleHashChange = () => {
             const newPath = window.location.hash.replace('#/', '').split('/')[0] || 'dashboard';
@@ -466,16 +461,39 @@ const App: React.FC = observer(() => {
         window.location.hash = '/admin';
     };
 
-    switch (currentPath) {
-        case 'admin':
-            return <AdminLoginPage onLoginSuccess={handleAdminLogin} />;
-        case 'nutritionist':
-            return isAdminAuthenticated ? <NutritionistPage onLogout={handleAdminLogout} /> : <NotFoundPage />;
-        case '404':
-            return <NotFoundPage />;
-        default:
-            return <MainAppLayout />;
-    }
+    const renderPage = () => {
+        switch (currentPath) {
+            case 'admin':
+                return <AdminLoginPage onLoginSuccess={handleAdminLogin} />;
+            case 'nutritionist':
+                return isAdminAuthenticated ? <NutritionistPage onLogout={handleAdminLogout} /> : <NotFoundPage />;
+            case '404':
+                return <NotFoundPage />;
+            default:
+                return <MainAppLayout />;
+        }
+    };
+
+    return (
+        <>
+            <InfoModal 
+                isOpen={infoModal.isOpen}
+                onClose={hideInfoModal}
+                title={infoModal.title}
+            >
+                {infoModal.message}
+            </InfoModal>
+            <ConfirmationModal
+                isOpen={confirmationModal.isOpen}
+                onClose={hideConfirmationModal}
+                onConfirm={confirmationModal.onConfirm}
+                title={confirmationModal.title}
+            >
+                {confirmationModal.message}
+            </ConfirmationModal>
+            {renderPage()}
+        </>
+    );
 });
 
 export default App;
