@@ -127,21 +127,26 @@ Le categorie disponibili sono:
 - Frutta
 - Verdura e Ortaggi
 - Carboidrati e Cereali
-- Proteine (Carne, Pesce, Legumi)
+- Carne
+- Pesce
+- Legumi
+- Uova
 - Latticini e Derivati
 - Grassi e Frutta Secca
 - Condimenti e Spezie
 - Bevande
 - Altro
 
-Restituisci l'output ESCLUSIVAMENTE in formato JSON, come un oggetto dove la chiave è il nome dell'ingrediente e il valore è la stringa della categoria.
+Restituisci l'output ESCLUSIVAMENTE in formato JSON, come un array di oggetti, dove ogni oggetto ha "ingredientName" e "category".
 
 Esempio di output:
-{
-  "Petto di pollo": "Proteine (Carne, Pesce, Legumi)",
-  "Riso basmati": "Carboidrati e Cereali",
-  "Olio EVO": "Condimenti e Spezie"
-}
+[
+  { "ingredientName": "Petto di pollo", "category": "Carne" },
+  { "ingredientName": "Salmone", "category": "Pesce" },
+  { "ingredientName": "Uova", "category": "Uova" },
+  { "ingredientName": "Lenticchie", "category": "Legumi" },
+  { "ingredientName": "Riso basmati", "category": "Carboidrati e Cereali" }
+]
 
 Lista di ingredienti da categorizzare:
 ---
@@ -156,9 +161,15 @@ ${JSON.stringify(ingredientNames)}
             config: {
                 responseMimeType: 'application/json',
                 responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {},
-                    additionalProperties: { type: Type.STRING }
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            ingredientName: { type: Type.STRING },
+                            category: { type: Type.STRING }
+                        },
+                        required: ['ingredientName', 'category']
+                    }
                 },
                 temperature: 0.0,
                 safetySettings,
@@ -169,10 +180,162 @@ ${JSON.stringify(ingredientNames)}
             throw new Error("Gemini API returned an empty response for category generation.");
         }
         const jsonString = response.text.trim();
-        return JSON.parse(jsonString) as Record<string, string>;
+        const categoriesArray = JSON.parse(jsonString) as { ingredientName: string, category: string }[];
+        
+        const categoryRecord: Record<string, string> = {};
+        for (const item of categoriesArray) {
+            if (item.ingredientName && item.category) {
+                 categoryRecord[item.ingredientName] = item.category;
+            }
+        }
+        return categoryRecord;
 
     } catch (error) {
         console.error("Error calling Gemini API for ingredient categories:", error);
+        throw error;
+    }
+}
+
+
+export async function getNutritionForIngredients(ingredientNames: string[]): Promise<Record<string, { calories: number; carbs: number; protein: number; fat: number }>> {
+    if (!ai) {
+        throw new Error("AI features are disabled due to missing API key.");
+    }
+    
+    const prompt = `
+Sei un esperto di dati nutrizionali. Ti viene fornita una lista di ingredienti.
+Il tuo compito è fornire i valori nutrizionali medi (calorie, carboidrati, proteine, grassi) per 100 grammi di ciascun ingrediente.
+Usa valori numerici interi o con al massimo un decimale. Se un ingrediente non è riconoscibile, omettilo dalla risposta.
+
+Restituisci l'output ESCLUSIVAMENTE in formato JSON, come un array di oggetti. Ogni oggetto deve contenere "ingredientName" e un oggetto "nutrition" con i dati nutrizionali.
+
+Esempio di output:
+[
+  { "ingredientName": "Petto di pollo", "nutrition": { "calories": 165, "carbs": 0, "protein": 31, "fat": 3.6 } },
+  { "ingredientName": "Riso basmati", "nutrition": { "calories": 130, "carbs": 28, "protein": 2.7, "fat": 0.3 } }
+]
+
+Lista di ingredienti da analizzare:
+---
+${JSON.stringify(ingredientNames)}
+---
+`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            ingredientName: { type: Type.STRING, description: "Nome dell'ingrediente" },
+                            nutrition: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    calories: { type: Type.NUMBER, description: "Calorie totali per 100g" },
+                                    carbs: { type: Type.NUMBER, description: "Grammi di carboidrati per 100g" },
+                                    protein: { type: Type.NUMBER, description: "Grammi di proteine per 100g" },
+                                    fat: { type: Type.NUMBER, description: "Grammi di grassi per 100g" },
+                                },
+                                required: ['calories', 'carbs', 'protein', 'fat']
+                            }
+                        },
+                        required: ['ingredientName', 'nutrition']
+                    }
+                },
+                temperature: 0.0,
+                safetySettings,
+            },
+        });
+
+        if (!response.text) {
+            throw new Error("Gemini API returned an empty response for nutrition generation.");
+        }
+        const jsonString = response.text.trim();
+        const nutritionArray = JSON.parse(jsonString) as { ingredientName: string; nutrition: { calories: number; carbs: number; protein: number; fat: number; } }[];
+        
+        const nutritionRecord: Record<string, { calories: number; carbs: number; protein: number; fat: number }> = {};
+        for (const item of nutritionArray) {
+            if (item.ingredientName && item.nutrition) {
+                nutritionRecord[item.ingredientName] = item.nutrition;
+            }
+        }
+        return nutritionRecord;
+
+    } catch (error) {
+        console.error("Error calling Gemini API for ingredient nutrition:", error);
+        throw error;
+    }
+}
+
+export async function getCommonIngredients(): Promise<{name: string, category: string}[]> {
+    if (!ai) {
+        throw new Error("AI features are disabled due to missing API key.");
+    }
+    
+    const prompt = `
+Sei un assistente esperto di cibo e nutrizione.
+Il tuo compito è generare una lista di 150 ingredienti comuni utilizzati nella cucina italiana e mediterranea.
+Includi una varietà di ingredienti da tutte le principali categorie alimentari.
+
+Le categorie disponibili sono:
+- Frutta
+- Verdura e Ortaggi
+- Carboidrati e Cereali
+- Carne
+- Pesce
+- Legumi
+- Uova
+- Latticini e Derivati
+- Grassi e Frutta Secca
+- Condimenti e Spezie
+- Bevande
+- Altro
+
+Restituisci l'output ESCLUSIVAMENTE in formato JSON, come un array di oggetti, dove ogni oggetto ha "name" e "category". Non includere duplicati.
+
+Esempio di output:
+[
+  { "name": "Petto di pollo", "category": "Carne" },
+  { "name": "Riso Arborio", "category": "Carboidrati e Cereali" },
+  { "name": "Olio extra vergine d'oliva", "category": "Grassi e Frutta Secca" }
+]
+`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            name: { type: Type.STRING },
+                            category: { type: Type.STRING }
+                        },
+                        required: ['name', 'category']
+                    }
+                },
+                temperature: 0.2,
+                safetySettings,
+            },
+        });
+
+        if (!response.text) {
+            throw new Error("Gemini API returned an empty response for common ingredients generation.");
+        }
+        const jsonString = response.text.trim();
+        return JSON.parse(jsonString) as { name: string, category: string }[];
+
+    } catch (error) {
+        console.error("Error calling Gemini API for common ingredients:", error);
         throw error;
     }
 }

@@ -152,12 +152,12 @@ const MOCK_MEAL_PLAN_DATA = {
     ],
     shoppingList: [
         {
-            category: 'Proteine (Carne, Pesce, Legumi)',
-            items: [{item: 'Filetto di Salmone', quantityValue: 150, quantityUnit: 'g'}, {
-                item: 'Petto di Pollo',
-                quantityValue: 900,
-                quantityUnit: 'g'
-            }]
+            category: 'Carne',
+            items: [{ item: 'Petto di Pollo', quantityValue: 900, quantityUnit: 'g' }]
+        },
+        {
+            category: 'Pesce',
+            items: [{ item: 'Filetto di Salmone', quantityValue: 150, quantityUnit: 'g' }]
         },
         {
             category: 'Carboidrati e Cereali',
@@ -486,7 +486,7 @@ export class MealPlanStore {
                     item: 'Uova',
                     quantityValue: 6,
                     quantityUnit: 'pezzo/i',
-                    originalCategory: 'Proteine (Carne, Pesce, Legumi)',
+                    originalCategory: 'Uova',
                     expiryDate: threeDaysFromNow.toLocaleDateString('en-CA'),
                 },
                 { // Low stock item

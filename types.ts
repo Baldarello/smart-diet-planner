@@ -1,6 +1,7 @@
 
 
-// Fix: Add NutritionInfo interface
+
+
 export interface NutritionInfo {
   carbs: number;
   protein: number;
@@ -148,15 +149,50 @@ export interface Ingredient {
   id?: number;
   name: string;
   category?: string;
+  calories?: number; // per 100g
+  carbs?: number;    // per 100g
+  protein?: number; // per 100g
+  fat?: number;     // per 100g
+}
+
+export interface PlanCreationData {
+    planName: string;
+    weeklyPlan: DayPlan[];
+    shoppingList: ShoppingListCategory[];
 }
 
 export interface NutritionistPlan {
   id?: number;
   name: string;
   creationDate: string; // ISO string
-  planData: {
-    planName: string;
-    weeklyPlan: DayPlan[];
-    shoppingList: ShoppingListCategory[];
-  };
+  planData: PlanCreationData;
+}
+
+export interface RecipeIngredient {
+  ingredientName: string;
+  quantityValue: number | null;
+  quantityUnit: string;
+}
+
+export interface Recipe {
+  id?: number;
+  name: string;
+  procedure?: string;
+  ingredients: RecipeIngredient[];
+}
+
+export interface Patient {
+  id?: number;
+  firstName: string;
+  lastName: string;
+  creationDate: string; // ISO string
+}
+
+export interface AssignedPlan {
+    id?: number;
+    patientId: number;
+    planTemplateId: number;
+    startDate: string; // YYYY-MM-DD
+    endDate: string; // YYYY-MM-DD
+    planData: PlanCreationData;
 }

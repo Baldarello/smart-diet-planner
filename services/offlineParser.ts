@@ -47,7 +47,10 @@ export function categorizeIngredient(name: string): string {
     if (['frutta', 'mela', 'banana', 'arancia', 'pera', 'fragole', 'kiwi', 'pesca', 'limone', 'frutti'].some(k => lowerName.includes(k))) return 'Frutta';
     if (['verdura', 'ortaggi', 'insalata', 'pomodoro', 'carota', 'zucchina', 'melanzana', 'spinaci', 'broccoli', 'cipolla', 'aglio', 'peperone', 'fagiolini'].some(k => lowerName.includes(k))) return 'Verdura e Ortaggi';
     if (['pane', 'pasta', 'riso', 'cereali', 'patate', 'farina', 'biscottate', 'gallette', 'couscous', 'quinoa', 'farro'].some(k => lowerName.includes(k))) return 'Carboidrati e Cereali';
-    if (['carne', 'pollo', 'manzo', 'tacchino', 'pesce', 'tonno', 'salmone', 'uova', 'uovo', 'legumi', 'ceci', 'fagioli', 'lenticchie', 'tofu', 'seitan', 'sgombro'].some(k => lowerName.includes(k))) return 'Proteine (Carne, Pesce, Legumi)';
+    if (['carne', 'pollo', 'manzo', 'tacchino', 'maiale', 'agnello', 'vitello', 'prosciutto', 'salsiccia', 'bistecca'].some(k => lowerName.includes(k))) return 'Carne';
+    if (['pesce', 'tonno', 'salmone', 'sgombro', 'merluzzo', 'orata', 'spada', 'gamber', 'calamar'].some(k => lowerName.includes(k))) return 'Pesce';
+    if (['legumi', 'ceci', 'fagioli', 'lenticchie', 'piselli', 'soia', 'tofu', 'seitan'].some(k => lowerName.includes(k))) return 'Legumi';
+    if (['uova', 'uovo'].some(k => lowerName.includes(k))) return 'Uova';
     if (['latte', 'yogurt', 'formaggio', 'ricotta', 'parmigiano', 'mozzarella'].some(k => lowerName.includes(k))) return 'Latticini e Derivati';
     if (['olio', 'burro', 'noci', 'mandorle', 'semi', 'avocado'].some(k => lowerName.includes(k))) return 'Grassi e Frutta Secca';
     if (['acqua', 'caffè', 'the'].some(k => lowerName.includes(k))) return 'Bevande';
