@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ManualPlanEntryForm from '../ManualPlanEntryForm';
+import ManualPlanEntryForm from './ManualPlanEntryForm';
 import IngredientsManagement from './IngredientsManagement';
 import PlanLibraryPage from './PlanLibraryPage';
 import ViewPlanModal from './ViewPlanModal';
