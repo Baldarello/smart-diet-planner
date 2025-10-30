@@ -85,23 +85,6 @@ const MainAppLayout: React.FC = observer(() => {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [showLoginSuggestion, setShowLoginSuggestion] = useState(false);
     
-    useEffect(() => {
-        const handlePopState = (event: PopStateEvent) => {
-            const tab = event.state?.tab || window.location.hash.replace('#/', '').split('/')[0] || 'dashboard';
-            store.setActiveTab(tab as NavigableTab);
-        };
-    
-        window.addEventListener('popstate', handlePopState);
-        
-        const initialTab = window.location.hash.replace('#/', '').split('/')[0] || 'dashboard';
-        store.setActiveTab(initialTab as NavigableTab);
-        window.history.replaceState({ tab: initialTab }, '', window.location.href);
-    
-        return () => {
-            window.removeEventListener('popstate', handlePopState);
-        };
-    }, [store]);
-
     const handleBack = () => window.history.back();
 
     useEffect(() => {
@@ -352,7 +335,8 @@ const MainAppLayout: React.FC = observer(() => {
                      {(
                     <div className="px-4 pb-4 mt-auto">
                         <button onClick={() => {
-                                window.location.hash = '#/admin';
+                                window.history.pushState({}, '', '/admin');
+                                window.dispatchEvent(new PopStateEvent('popstate'));
                                 setIsDrawerOpen(false);
                             }} className="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors w-full text-left">
                             <AdminIcon />
@@ -435,30 +419,45 @@ const App: React.FC = observer(() => {
     const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(
         () => sessionStorage.getItem('isAdminAuthenticated') === 'true'
     );
-    const [currentPath, setCurrentPath] = useState(window.location.hash.replace('#/', '').split('/')[0] || 'dashboard');
+    
+    const getPathFromUrl = () => window.location.pathname.replace(/^\//, '').split('/')[0] || 'dashboard';
+    const [currentPath, setCurrentPath] = useState(getPathFromUrl());
 
     const { infoModal, hideInfoModal, confirmationModal, hideConfirmationModal } = uiStore;
 
     useEffect(() => {
-        const handleHashChange = () => {
-            const newPath = window.location.hash.replace('#/', '').split('/')[0] || 'dashboard';
-            setCurrentPath(newPath);
+        const handleLocationChange = () => {
+            const path = getPathFromUrl();
+            setCurrentPath(path);
+            
+            const adminRoutes = ['admin', 'nutritionist', '404'];
+            if (!adminRoutes.includes(path)) {
+                mealPlanStore.setActiveTab(path as NavigableTab);
+            }
         };
-        window.addEventListener('hashchange', handleHashChange);
-        handleHashChange(); // Initial check
-        return () => window.removeEventListener('hashchange', handleHashChange);
+
+        window.addEventListener('popstate', handleLocationChange);
+        
+        // Initial check to set the correct tab from the URL on load.
+        handleLocationChange();
+        // Also replace the initial state to ensure our state object is there if the user navigates away and back.
+        window.history.replaceState({ tab: getPathFromUrl() }, '', window.location.href);
+
+        return () => window.removeEventListener('popstate', handleLocationChange);
     }, []);
 
     const handleAdminLogin = () => {
         sessionStorage.setItem('isAdminAuthenticated', 'true');
         setIsAdminAuthenticated(true);
-        window.location.hash = '/nutritionist';
+        window.history.pushState({}, '', '/nutritionist');
+        window.dispatchEvent(new PopStateEvent('popstate'));
     };
 
     const handleAdminLogout = () => {
         sessionStorage.removeItem('isAdminAuthenticated');
         setIsAdminAuthenticated(false);
-        window.location.hash = '/admin';
+        window.history.pushState({}, '', '/admin');
+        window.dispatchEvent(new PopStateEvent('popstate'));
     };
 
     const renderPage = () => {
