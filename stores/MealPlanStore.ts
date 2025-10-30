@@ -1065,16 +1065,14 @@ export class MealPlanStore {
     }
 
     navigateTo = (tab: NavigableTab, replace = false) => {
-        this.setActiveTab(tab); // Update internal state immediately
-        const newUrl = `#/${tab}`;
-        const currentHash = window.location.hash;
-        
-        if (currentHash !== newUrl) {
+        const newUrl = `/${tab}`;
+        if (window.location.pathname !== newUrl) {
             if (replace) {
                 window.history.replaceState({ tab }, '', newUrl);
             } else {
-                window.location.hash = newUrl;
+                window.history.pushState({ tab }, '', newUrl);
             }
+            window.dispatchEvent(new PopStateEvent('popstate', { state: { tab } }));
         }
     }
 
