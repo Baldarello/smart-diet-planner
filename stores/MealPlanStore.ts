@@ -348,14 +348,9 @@ export class MealPlanStore {
             }
         });
 
-        // Handle shared plan URLs, where the plan_id is in the hash
-        const hash = window.location.hash;
-        const hashQueryPart = hash.split('?')[1];
-        let planIdFromUrl: string | null = null;
-        if (hashQueryPart) {
-            const params = new URLSearchParams(hashQueryPart);
-            planIdFromUrl = params.get('plan_id');
-        }
+        // Handle shared plan URLs from query parameters
+        const queryParams = new URLSearchParams(window.location.search);
+        const planIdFromUrl = queryParams.get('plan_id');
 
         if (planIdFromUrl) {
             await this.importPlanFromUrl(planIdFromUrl);
@@ -1679,8 +1674,8 @@ export class MealPlanStore {
             console.log("Imported data", data);
             await this.processImportedData(data);
 
-            // Clean URL
-            window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);
+            // Clean URL by removing query parameters
+            window.history.replaceState({}, document.title, window.location.pathname);
 
         } catch (e: any) {
             console.error("Failed to import from URL", e);
