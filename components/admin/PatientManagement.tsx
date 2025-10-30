@@ -92,9 +92,9 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
                     startDate: plan.startDate,
                     endDate: plan.endDate,
                 };
-                const fileId = await uploadAndShareFile(dataToExport, plan.planData.planName, authStore.accessToken);
-                const baseUrl = `${window.location.origin}${window.location.pathname}`;
-                const url = `${baseUrl}#/?plan_id=${encodeURIComponent(fileId!)}`;
+                const driveUrl = await uploadAndShareFile(dataToExport, plan.planData.planName, authStore.accessToken);
+                const baseUrl = `${window.location.origin}`;
+                const url = `${baseUrl}/?plan_id=${encodeURIComponent(driveUrl!)}`;
 
                 setShareUrl(url);
             } catch (error) {
