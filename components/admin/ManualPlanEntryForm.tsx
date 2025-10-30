@@ -528,7 +528,8 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
             }
 
             if (planToEdit && 'patientId' in planToEdit) { // It's an AssignedPlan
-                await patientStore.updateAssignedPlan(planToEdit.id!, finalData);
+                // Fix: Corrected the method name from 'updateAssignedPlan' to 'updateAssignedPlanData'
+                await patientStore.updateAssignedPlanData(planToEdit.id!, finalData);
                 onPlanSaved(planToEdit.id);
             } else if (planToEdit && 'creationDate' in planToEdit) { // It's a NutritionistPlan (template)
                 await nutritionistStore.updatePlan(planToEdit.id!, finalData);

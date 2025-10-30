@@ -140,6 +140,9 @@ const translations = {
     unassignPlan: "Disassocia Piano",
     unassignPlanConfirmationTitle: "Conferma Disassociazione",
     unassignPlanConfirmationMessage: "Sei sicuro di voler disassociare questo piano dal paziente?",
+    bodyDataButton: "Dati Corporei",
+    bodyDataModalTitle: "Dati Corporei per {name}",
+    showBodyMetricsInAppLabel: "Mostra sezione Dati Corporei nell'app del paziente",
 
 
     // SetPlanDatesModal.tsx
@@ -584,6 +587,9 @@ const translations = {
     unassignPlan: "Unassign Plan",
     unassignPlanConfirmationTitle: "Confirm Unassignment",
     unassignPlanConfirmationMessage: "Are you sure you want to unassign this plan from the patient?",
+    bodyDataButton: "Body Data",
+    bodyDataModalTitle: "Body Data for {name}",
+    showBodyMetricsInAppLabel: "Show Body Metrics section in patient's app",
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Set Plan Duration",

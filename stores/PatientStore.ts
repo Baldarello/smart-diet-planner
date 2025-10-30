@@ -56,6 +56,16 @@ class PatientStore {
         }
     }
 
+    async updatePatient(id: number, updates: Partial<Patient>) {
+        try {
+            await db.patients.update(id, updates);
+            await this.loadPatients();
+        } catch (e) {
+            console.error(`Failed to update patient ${id}`, e);
+            throw e;
+        }
+    }
+
     async deletePatient(id: number) {
         try {
             // Also delete all assigned plans for this patient
@@ -123,7 +133,7 @@ class PatientStore {
         }
     }
 
-    async updateAssignedPlan(assignmentId: number, planData: PlanCreationData) {
+    async updateAssignedPlanData(assignmentId: number, planData: PlanCreationData) {
         try {
             const assignment = await db.assignedPlans.get(assignmentId);
             if (assignment) {
@@ -137,6 +147,16 @@ class PatientStore {
             }
         } catch (e) {
             console.error(`Failed to update assigned plan ${assignmentId}`, e);
+            throw e;
+        }
+    }
+
+    async updateAssignedPlanDates(assignmentId: number, startDate: string, endDate: string) {
+        try {
+            await db.assignedPlans.update(assignmentId, { startDate, endDate });
+            await this.loadAssignedPlans();
+        } catch (e) {
+            console.error(`Failed to update dates for assigned plan ${assignmentId}`, e);
             throw e;
         }
     }
