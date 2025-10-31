@@ -455,7 +455,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                         }
                         return {
                             ingredientName: name,
-                            fullDescription: `${item.quantityValue.trim() || ''}${unit} ${name}`.trim(),
+                            fullDescription: [item.quantityValue.trim(), unit, name].filter(Boolean).join(' '),
                             used: false,
                         };
                     });

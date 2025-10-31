@@ -22,7 +22,8 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
     };
     
     const commonInputProps = {
-        className: "mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent sm:text-sm appearance-none"
+        readOnly: true,
+        className: "mt-1 block w-full px-3 py-2 bg-slate-100 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-transparent focus:border-transparent sm:text-sm appearance-none cursor-not-allowed"
     };
 
     return (
@@ -35,7 +36,6 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                             type="date"
                             id="start-date-editor"
                             value={mealPlanStore.startDate || ''}
-                            onChange={(e) => mealPlanStore.setPlanStartDate(e.target.value)}
                             {...commonInputProps}
                         />
                     </div>
@@ -45,7 +45,6 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                             type="date"
                             id="end-date-editor"
                             value={mealPlanStore.endDate || ''}
-                            onChange={(e) => mealPlanStore.setPlanEndDate(e.target.value)}
                             min={mealPlanStore.startDate || ''}
                             {...commonInputProps}
                         />
@@ -86,28 +85,7 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                                                     {meal.title && <p className={`text-sm font-medium text-violet-600 dark:text-violet-400 truncate`}>{meal.title}</p>}
                                                      {meal.cheat && <span className="text-xs font-bold uppercase text-orange-500 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50 px-2 py-1 rounded-full mt-1 inline-block">{t('cheatMealBadge')}</span>}
                                                 </div>
-                                                {isMasterPlanView && !meal.cheat && (
-                                                    <div className="flex items-center gap-1 sm:gap-2">
-                                                        <div className="hidden sm:flex items-center gap-2">
-                                                            <MealTimeEditor dayIndex={dayIndex} mealIndex={mealIndex} />
-                                                            <MealModificationControl dayIndex={dayIndex} mealIndex={mealIndex} onResetClick={() => setResettingMeal({ dayIndex, mealIndex })} />
-                                                        </div>
-                                                        <div className="relative sm:hidden">
-                                                            <button onClick={(e) => { e.stopPropagation(); setActionsMenu({ dayIndex, mealIndex }); }} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
-                                                                <MoreVertIcon />
-                                                            </button>
-                                                            {isMenuOpen && (
-                                                                <MealActionsPopup
-                                                                    dayIndex={dayIndex}
-                                                                    mealIndex={mealIndex}
-                                                                    onClose={() => setActionsMenu(null)}
-                                                                    onResetClick={() => setResettingMeal({ dayIndex, mealIndex })}
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {!isMasterPlanView && meal.time && !meal.cheat && (
+                                                {meal.time && !meal.cheat && (
                                                     <div className="flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
                                                         <ClockIcon />
                                                         <span>{meal.time}</span>
@@ -132,7 +110,7 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                                                         dayIndex={dayIndex} 
                                                         mealIndex={mealIndex} 
                                                         mealIsDone={false} 
-                                                        isEditable={isMasterPlanView}
+                                                        isEditable={false}
                                                         showCheckbox={false}
                                                     />
                                                     {meal.procedure && (
