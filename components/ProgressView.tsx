@@ -43,8 +43,6 @@ const ProgressView: React.FC = observer(() => {
             }
             const dates = filteredData.map(d => d.date);
             try {
-                // Fix: Explicitly type the result from Dexie to prevent `log` from being inferred as `unknown`.
-                // This resolves the error "Property 'meals' does not exist on type 'unknown'".
                 const logs: DailyLog[] = await db.dailyLogs.where('date').anyOf(dates).toArray();
                 const logMap = new Map(logs.map(log => [log.date, log]));
 
@@ -67,19 +65,25 @@ const ProgressView: React.FC = observer(() => {
         const labels = filteredData.map(d => formatDateForChart(d.date));
         const weight = filteredData.map(d => d.weightKg);
         const waterIntake = filteredData.map(d => d.waterIntakeMl);
-
-        const fatMass = filteredData.map(d => {
+        
+        const fatMassData = filteredData.map(d => {
             if (unitMode === 'percentage') {
-                return d.bodyFatPercentage ?? (d.weightKg && d.bodyFatKg ? (d.bodyFatKg / d.weightKg) * 100 : null);
+                return d.bodyFatPercentage ?? (d.weightKg && d.bodyFatKg != null ? (d.bodyFatKg / d.weightKg) * 100 : null);
             }
             return d.bodyFatKg;
         });
-    
-        const leanMass = filteredData.map(d => {
+        
+        const leanMassData = filteredData.map((d, i) => {
+            const weightKg = d.weightKg;
             if (unitMode === 'percentage') {
-                return d.weightKg && d.leanMassKg ? (d.leanMassKg / d.weightKg) * 100 : null;
+                const fatPct = fatMassData[i];
+                return fatPct != null ? 100 - fatPct : null;
             }
-            return d.leanMassKg;
+            // Absolute mode
+            if (d.leanMassKg != null) return d.leanMassKg;
+            const fatKg = fatMassData[i];
+            if (weightKg != null && fatKg != null) return weightKg - fatKg;
+            return null;
         });
     
         const bodyWater = filteredData.map(d => {
@@ -92,8 +96,8 @@ const ProgressView: React.FC = observer(() => {
         return {
             labels,
             weight,
-            fatMass,
-            leanMass,
+            fatMass: fatMassData,
+            leanMass: leanMassData,
             bodyWater,
             waterIntake,
             adherence: filteredData.map(d => d.adherence),
@@ -175,19 +179,22 @@ const ProgressView: React.FC = observer(() => {
                     <div>
                         <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('bodyCompositionChartTitle')}</h3>
                         <ProgressChart
-                            type="line"
+                            type="area"
+                            stacked={true}
                             labels={chartData.labels}
+                            yAxisMin={unitMode === 'percentage' ? 0 : undefined}
+                            yAxisMax={unitMode === 'percentage' ? 100 : undefined}
                             datasets={[
-                                ...(hasData(chartData.fatMass) ? [{
-                                    label: t('bodyFat'),
-                                    data: chartData.fatMass,
-                                    color: 'rgba(236, 72, 153, 1)',
-                                    unit: unitMode === 'absolute' ? t('unitKg') : t('unitPercent'),
-                                }] : []),
                                 ...(hasData(chartData.leanMass) ? [{
                                     label: t('leanMass'),
                                     data: chartData.leanMass,
                                     color: 'rgba(14, 165, 233, 1)',
+                                    unit: unitMode === 'absolute' ? t('unitKg') : t('unitPercent'),
+                                }] : []),
+                                ...(hasData(chartData.fatMass) ? [{
+                                    label: t('bodyFat'),
+                                    data: chartData.fatMass,
+                                    color: 'rgba(236, 72, 153, 1)',
                                     unit: unitMode === 'absolute' ? t('unitKg') : t('unitPercent'),
                                 }] : [])
                             ]}

@@ -58,46 +58,24 @@ const PatientProgressModal: React.FC<PatientProgressModalProps> = observer(({ pa
         const labels = filteredData.map(d => formatDateForChart(d.date));
         const weight = filteredData.map(d => d.weightKg);
 
-        const fatMass = filteredData.map(d => {
-            const weightKg = d.weightKg;
-            if (!weightKg) return null;
-
+        const fatMassData = filteredData.map(d => {
             if (unitMode === 'percentage') {
-                if (d.bodyFatPercentage != null) return d.bodyFatPercentage;
-                if (d.bodyFatKg != null) return (d.bodyFatKg / weightKg) * 100;
-                return null;
-            } else { // absolute
-                if (d.bodyFatKg != null) return d.bodyFatKg;
-                if (d.bodyFatPercentage != null) return (d.bodyFatPercentage / 100) * weightKg;
-                return null;
+                return d.bodyFatPercentage ?? (d.weightKg && d.bodyFatKg != null ? (d.bodyFatKg / d.weightKg) * 100 : null);
             }
+            return d.bodyFatKg;
         });
 
-        const leanMass = filteredData.map(d => {
+        const leanMassData = filteredData.map((d, i) => {
             const weightKg = d.weightKg;
-            if (!weightKg) return null;
-
-            let leanMassKg: number | null = null;
-            if (d.leanMassKg != null) {
-                leanMassKg = d.leanMassKg;
-            } else {
-                let bodyFatKg: number | null = null;
-                if (d.bodyFatKg != null) {
-                    bodyFatKg = d.bodyFatKg;
-                } else if (d.bodyFatPercentage != null) {
-                    bodyFatKg = (d.bodyFatPercentage / 100) * weightKg;
-                }
-                if (bodyFatKg != null) {
-                    leanMassKg = weightKg - bodyFatKg;
-                }
-            }
-            if (leanMassKg == null) return null;
-
             if (unitMode === 'percentage') {
-                return (leanMassKg / weightKg) * 100;
-            } else { // absolute
-                return leanMassKg;
+                const fatPct = fatMassData[i];
+                return fatPct != null ? 100 - fatPct : null;
             }
+            // Absolute mode
+            if (d.leanMassKg != null) return d.leanMassKg;
+            const fatKg = fatMassData[i];
+            if (weightKg != null && fatKg != null) return weightKg - fatKg;
+            return null;
         });
 
         const bodyWater = filteredData.map(d => {
@@ -118,8 +96,8 @@ const PatientProgressModal: React.FC<PatientProgressModalProps> = observer(({ pa
         return {
             labels,
             weight,
-            fatMass,
-            leanMass,
+            fatMass: fatMassData,
+            leanMass: leanMassData,
             bodyWater,
         };
     }, [filteredData, unitMode]);
@@ -197,19 +175,22 @@ const PatientProgressModal: React.FC<PatientProgressModalProps> = observer(({ pa
                                         <div>
                                             <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('bodyCompositionChartTitle')}</h3>
                                             <ProgressChart
-                                                type="line"
+                                                type="area"
+                                                stacked={true}
                                                 labels={chartData.labels}
+                                                yAxisMin={unitMode === 'percentage' ? 0 : undefined}
+                                                yAxisMax={unitMode === 'percentage' ? 100 : undefined}
                                                 datasets={[
-                                                    ...(hasData(chartData.fatMass) ? [{
-                                                        label: t('bodyFat'),
-                                                        data: chartData.fatMass,
-                                                        color: 'rgba(236, 72, 153, 1)',
-                                                        unit: unitMode === 'absolute' ? t('unitKg') : t('unitPercent'),
-                                                    }] : []),
                                                     ...(hasData(chartData.leanMass) ? [{
                                                         label: t('leanMass'),
                                                         data: chartData.leanMass,
                                                         color: 'rgba(14, 165, 233, 1)',
+                                                        unit: unitMode === 'absolute' ? t('unitKg') : t('unitPercent'),
+                                                    }] : []),
+                                                    ...(hasData(chartData.fatMass) ? [{
+                                                        label: t('bodyFat'),
+                                                        data: chartData.fatMass,
+                                                        color: 'rgba(236, 72, 153, 1)',
                                                         unit: unitMode === 'absolute' ? t('unitKg') : t('unitPercent'),
                                                     }] : [])
                                                 ]}

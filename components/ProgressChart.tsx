@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect, useMemo } from 'react';
 import { PlusIcon, MinusIcon, ChevronLeftIcon, ChevronRightIcon, RefreshIcon } from './Icons';
 
 type ChartType = 'line' | 'bar' | 'area';
@@ -16,9 +16,10 @@ interface ProgressChartProps {
     datasets: Dataset[];
     yAxisMin?: number;
     yAxisMax?: number;
+    stacked?: boolean;
 }
 
-const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, yAxisMin: yAxisMinProp, yAxisMax: yAxisMaxProp }) => {
+const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, yAxisMin: yAxisMinProp, yAxisMax: yAxisMaxProp, stacked = false }) => {
     const [tooltip, setTooltip] = useState<{ x: number; y: number; content: React.ReactNode; visible: boolean } | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const svgRef = useRef<SVGSVGElement>(null);
@@ -28,7 +29,6 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
     const [isPanning, setIsPanning] = useState(false);
     const panStartRef = useRef({ x: 0, domainMin: 0, domainMax: 0 });
 
-    // Fix: Moved the 'padding' constant declaration before its use in the useEffect hook.
     const padding = { top: 20, right: 30, bottom: 50, left: 60 };
 
     useLayoutEffect(() => {
@@ -100,44 +100,54 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
     const startIndex = Math.max(0, Math.floor(viewDomain.min));
     const endIndex = Math.min(labels.length - 1, Math.ceil(viewDomain.max));
 
-    let yMin: number, yMax: number;
+    const { yMin, yMax } = useMemo(() => {
+        if (yAxisMinProp !== undefined && yAxisMaxProp !== undefined) {
+            return { yMin: yAxisMinProp, yMax: yAxisMaxProp };
+        }
     
-    if (yAxisMinProp !== undefined && yAxisMaxProp !== undefined) {
-        yMin = yAxisMinProp;
-        yMax = yAxisMaxProp;
-    } else {
-        const visibleData = datasets.flatMap(d => 
-            d.data.slice(startIndex, endIndex + 1)
-        ).filter(d => typeof d === 'number' && !isNaN(d)) as number[];
-        
-        yMin = visibleData.length > 0 ? Math.min(...visibleData) : 0;
-        yMax = visibleData.length > 0 ? Math.max(...visibleData) : 1;
-        
-        const isNonNegativeBarOrArea = (type === 'bar' || type === 'area') && (visibleData.length === 0 || yMin >= 0);
-        if (isNonNegativeBarOrArea) {
-            yMin = 0;
-        }
-
-        const yRange = yMax - yMin;
-        if (yRange === 0) {
-            yMax = yMax + 1;
-            if (!isNonNegativeBarOrArea) {
-                 yMin = yMin - 1;
-            }
+        if (stacked) {
+            const sums = new Array(labels.length).fill(0);
+            datasets.forEach(dataset => {
+                dataset.data.forEach((value, i) => {
+                    if (i >= startIndex && i <= endIndex) {
+                        const numValue = (typeof value === 'number' && !isNaN(value)) ? value : 0;
+                        sums[i] += numValue;
+                    }
+                });
+            });
+            let maxY = sums.length > 0 ? Math.max(...sums) : 1;
+            const yRange = maxY - 0;
+            if (yRange === 0) maxY += 1;
+            else maxY += yRange * 0.1;
+            return { yMin: 0, yMax: Math.ceil(maxY) };
         } else {
-            yMax += yRange * 0.1;
-            if (!isNonNegativeBarOrArea) {
-                yMin -= yRange * 0.1;
+            const visibleData = datasets.flatMap(d => d.data.slice(startIndex, endIndex + 1))
+                .filter(d => typeof d === 'number' && !isNaN(d)) as number[];
+            
+            let minY = visibleData.length > 0 ? Math.min(...visibleData) : 0;
+            let maxY = visibleData.length > 0 ? Math.max(...visibleData) : 1;
+            
+            const isNonNegative = (type === 'bar' || type === 'area') && (visibleData.length === 0 || minY >= 0);
+            if (isNonNegative) {
+                minY = 0;
             }
+    
+            const yRange = maxY - minY;
+            if (yRange === 0) {
+                maxY += 1;
+                if (!isNonNegative) minY -= 1;
+            } else {
+                maxY += yRange * 0.1;
+                if (!isNonNegative) minY -= yRange * 0.1;
+            }
+    
+            minY = Math.floor(minY);
+            maxY = Math.ceil(maxY);
+            
+            if (minY === maxY) maxY += 1;
+            return { yMin: minY, yMax: maxY };
         }
-
-        yMin = Math.floor(yMin);
-        yMax = Math.ceil(yMax);
-        
-        if (yMin === yMax) {
-            yMax += 1;
-        }
-    }
+    }, [datasets, startIndex, endIndex, stacked, yAxisMinProp, yAxisMaxProp, labels.length, type]);
 
 
     const x = (i: number): number => {
@@ -334,7 +344,55 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
         });
     };
 
+    const buildSegmentPath = (segment: {x:number, y0:number, y1:number}[]) => {
+        if (segment.length === 0) return '';
+        const upperLine = segment.map(p => `L ${p.x},${p.y1}`).join(' ').substring(2);
+        const lowerLine = segment.map(p => `L ${p.x},${p.y0}`).reverse().join(' ').substring(2);
+        const firstPoint = segment[0];
+        const lastPoint = segment[segment.length - 1];
+        return `M ${firstPoint.x},${firstPoint.y1} ${upperLine} L ${lastPoint.x},${lastPoint.y0} ${lowerLine} Z`;
+    }
+
     const renderPaths = () => {
+        if (type === 'area' && stacked) {
+            const yOffsets = new Array(labels.length).fill(0);
+    
+            return datasets.map((dataset, i) => {
+                let pathSegments: string[] = [];
+                let currentSegment: {x:number, y0:number, y1:number}[] = [];
+    
+                for (let j = 0; j < dataset.data.length; j++) {
+                    const value = dataset.data[j] as number;
+                    if (value != null && !isNaN(value)) {
+                        currentSegment.push({
+                            x: x(j),
+                            y0: y(yOffsets[j]),
+                            y1: y(yOffsets[j] + value)
+                        });
+                    } else {
+                        if (currentSegment.length > 0) {
+                            pathSegments.push(buildSegmentPath(currentSegment));
+                            currentSegment = [];
+                        }
+                    }
+                }
+                if (currentSegment.length > 0) {
+                    pathSegments.push(buildSegmentPath(currentSegment));
+                }
+    
+                dataset.data.forEach((d, j) => {
+                    const value = d as number;
+                    if (value != null && !isNaN(value)) {
+                        yOffsets[j] += value;
+                    }
+                });
+    
+                const color = dataset.color.replace('1)', '0.6)');
+    
+                return <path key={i} d={pathSegments.join(' ')} fill={color} stroke="none" />;
+            }).reverse(); // Draw from top to bottom so borders overlap correctly if drawn
+        }
+
         return datasets.map((dataset, i) => {
              const pathData = dataset.data.reduce((path, d, j) => {
                 const value = d as number;
