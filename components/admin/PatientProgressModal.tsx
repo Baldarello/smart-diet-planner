@@ -175,7 +175,7 @@ const PatientProgressModal: React.FC<PatientProgressModalProps> = observer(({ pa
                                         <div>
                                             <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('bodyCompositionChartTitle')}</h3>
                                             <ProgressChart
-                                                type="area"
+                                                type={unitMode === 'percentage' ? 'area' : 'bar'}
                                                 stacked={true}
                                                 labels={chartData.labels}
                                                 yAxisMin={unitMode === 'percentage' ? 0 : undefined}

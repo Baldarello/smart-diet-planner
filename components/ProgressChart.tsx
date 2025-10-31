@@ -431,8 +431,41 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
         const domainWidth = viewDomain.max - viewDomain.min;
         const totalItems = domainWidth > 0 ? domainWidth : labels.length;
         const barWidth = (width - padding.left - padding.right) / (totalItems + 1) * 0.8;
-        const groupWidth = barWidth / datasets.length;
 
+        if (stacked) {
+            const yOffsets = new Array(labels.length).fill(0);
+            return Array.from({length: endIndex - startIndex + 1}).map((_, i) => {
+                const dataIndex = startIndex + i;
+                return (
+                    <g key={dataIndex}>
+                        {datasets.map((dataset, j) => {
+                            const value = dataset.data[dataIndex] as number;
+                            if (value == null || isNaN(value)) return null;
+    
+                            const y0 = y(yOffsets[dataIndex]);
+                            yOffsets[dataIndex] += value;
+                            const y1 = y(yOffsets[dataIndex]);
+    
+                            const barHeight = Math.max(0, y0 - y1);
+                            
+                            return (
+                                <rect
+                                    key={`${dataIndex}-${j}`}
+                                    x={x(dataIndex) - barWidth / 2}
+                                    y={y1}
+                                    width={barWidth}
+                                    height={barHeight}
+                                    fill={dataset.color}
+                                />
+                            );
+                        })}
+                    </g>
+                )
+            });
+        }
+    
+        // Original grouped bar logic
+        const groupWidth = barWidth / datasets.length;
         return Array.from({length: endIndex - startIndex + 1}).map((_, i) => {
              const dataIndex = startIndex + i;
              return (
@@ -440,7 +473,7 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
                     {datasets.map((dataset, j) => {
                         const value = dataset.data[dataIndex] as number;
                         if (value == null || isNaN(value)) return null;
-
+    
                         const xPos = x(dataIndex) - barWidth / 2 + j * groupWidth;
                         const yPos = y(value);
                         const barHeight = Math.max(0, height - padding.bottom - yPos);
