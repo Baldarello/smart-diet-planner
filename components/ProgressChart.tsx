@@ -93,10 +93,6 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
     }, [dimensions.width, padding.left, padding.right, labels.length, setViewDomain]);
 
 
-    const { width, height } = dimensions;
-
-    if (width === 0) return <div ref={containerRef} style={{ height: `${height}px` }} />;
-
     const startIndex = Math.max(0, Math.floor(viewDomain.min));
     const endIndex = Math.min(labels.length - 1, Math.ceil(viewDomain.max));
 
@@ -148,7 +144,9 @@ const ProgressChart: React.FC<ProgressChartProps> = ({ type, labels, datasets, y
             return { yMin: minY, yMax: maxY };
         }
     }, [datasets, startIndex, endIndex, stacked, yAxisMinProp, yAxisMaxProp, labels.length, type]);
-
+    
+    const { width, height } = dimensions;
+    if (width === 0) return <div ref={containerRef} style={{ height: `${height}px` }} />;
 
     const x = (i: number): number => {
         const domainWidth = viewDomain.max - viewDomain.min;
