@@ -1,35 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { observer } from 'mobx-react-lite';
 import { pdfSettingsStore } from '../../stores/PdfSettingsStore';
 import { t } from '../../i18n';
 import { UploadIcon, TrashIcon } from '../Icons';
+import Switch from '../Switch';
 
 const PdfSettingsPage: React.FC = observer(() => {
-    const { settings, setHeaderText, setFooterText, setLogo, removeLogo, isHydrated } = pdfSettingsStore;
-    const [header, setHeader] = useState('');
-    const [footer, setFooter] = useState('');
+    const { settings, setHeaderText, setFooterText, setLogo, removeLogo, isHydrated, setPrimaryColor, setFontFamily, setBaseFontSize, setShowPageNumbers } = pdfSettingsStore;
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [saved, setSaved] = useState(false);
-
-    useEffect(() => {
-        if (isHydrated) {
-            setHeader(settings.headerText);
-            setFooter(settings.footerText);
-        }
-    }, [isHydrated, settings.headerText, settings.footerText]);
 
     const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file && (file.type === 'image/jpeg' || file.type === 'image/png')) {
             setLogo(file);
         }
-    };
-
-    const handleSave = () => {
-        setHeaderText(header);
-        setFooterText(footer);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
     };
 
     if (!isHydrated) {
@@ -39,9 +23,9 @@ const PdfSettingsPage: React.FC = observer(() => {
     return (
         <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg max-w-4xl mx-auto">
             <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-6">Impostazioni PDF</h3>
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                 {/* Logo section */}
-                <div>
+                <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Logo</label>
                     <div className="mt-2 flex items-center gap-4">
                         {settings.logo ? (
@@ -73,40 +57,74 @@ const PdfSettingsPage: React.FC = observer(() => {
                     </div>
                 </div>
 
-                {/* Header Text */}
-                <div>
-                    <label htmlFor="header-text" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Testo Intestazione</label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Questo testo apparirà sotto il logo (se presente) e sopra il nome del piano.</p>
-                    <textarea
-                        id="header-text"
-                        rows={3}
-                        value={header}
-                        onChange={e => setHeader(e.target.value)}
-                        className="w-full mt-1 p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-violet-500 focus:border-violet-500"
-                    />
+                {/* Colors and Fonts */}
+                <div className="space-y-6">
+                     <div>
+                        <label htmlFor="primary-color" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Colore Primario (Titoli)</label>
+                        <input
+                            id="primary-color"
+                            type="color"
+                            value={settings.primaryColor}
+                            onChange={e => setPrimaryColor(e.target.value)}
+                            className="mt-1 h-10 w-full p-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="font-family" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Stile Font</label>
+                        <select
+                            id="font-family"
+                            value={settings.fontFamily}
+                            onChange={e => setFontFamily(e.target.value as 'Sans-serif' | 'Serif')}
+                            className="w-full mt-1 p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md"
+                        >
+                            <option>Sans-serif</option>
+                            <option>Serif</option>
+                        </select>
+                    </div>
+                     <div>
+                        <label htmlFor="font-size" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Dimensione Font (px)</label>
+                        <input
+                            id="font-size"
+                            type="number"
+                            value={settings.baseFontSize}
+                            onChange={e => setBaseFontSize(parseInt(e.target.value, 10))}
+                            className="w-full mt-1 p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md"
+                        />
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-700/50 rounded-lg">
+                        <label htmlFor="show-page-numbers" className="font-medium text-gray-700 dark:text-gray-300">Mostra Numeri di Pagina</label>
+                        <Switch
+                            id="show-page-numbers"
+                            checked={settings.showPageNumbers}
+                            onChange={setShowPageNumbers}
+                        />
+                    </div>
                 </div>
 
-                {/* Footer Text */}
-                <div>
-                    <label htmlFor="footer-text" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Testo Piè di Pagina</label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Questo testo apparirà in fondo a ogni pagina del PDF.</p>
-                    <textarea
-                        id="footer-text"
-                        rows={3}
-                        value={footer}
-                        onChange={e => setFooter(e.target.value)}
-                        className="w-full mt-1 p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-violet-500 focus:border-violet-500"
-                    />
-                </div>
-
-                {/* Save button */}
-                <div className="flex justify-end">
-                    <button
-                        onClick={handleSave}
-                        className="bg-violet-600 text-white font-semibold px-6 py-2 rounded-full hover:bg-violet-700 transition-colors"
-                    >
-                        {saved ? 'Salvato!' : 'Salva Impostazioni'}
-                    </button>
+                {/* Text sections */}
+                <div className="space-y-6">
+                    <div>
+                        <label htmlFor="header-text" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Testo Intestazione</label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Apparirà sotto il logo.</p>
+                        <textarea
+                            id="header-text"
+                            rows={4}
+                            value={settings.headerText}
+                            onChange={e => setHeaderText(e.target.value)}
+                            className="w-full mt-1 p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="footer-text" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Testo Piè di Pagina</label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Apparirà in fondo a ogni pagina.</p>
+                        <textarea
+                            id="footer-text"
+                            rows={4}
+                            value={settings.footerText}
+                            onChange={e => setFooterText(e.target.value)}
+                            className="w-full mt-1 p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md"
+                        />
+                    </div>
                 </div>
             </div>
         </div>

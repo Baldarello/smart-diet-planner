@@ -44,75 +44,107 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
         }
         
         const { settings } = pdfSettingsStore;
-        const { logo, headerText, footerText } = settings;
+        const { logo, headerText, footerText, primaryColor, fontFamily, baseFontSize, showPageNumbers } = settings;
 
-        let html = `
-            <html>
-            <head>
-                <title>Piano Nutrizionale - ${planName}</title>
-                <style>
-                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; }
-                    @media print { 
-                        body { -webkit-print-color-adjust: exact; } 
-                        @page {
-                            margin: 40px;
-                            @bottom-center {
-                                content: "${footerText.replace(/"/g, "'").replace(/\n/g, '\\A ')}";
-                                font-size: 9pt;
-                                color: #666;
-                                white-space: pre;
-                            }
-                        }
-                    }
-                    .page-container { width: 100%; max-width: 800px; margin: 0 auto; padding: 20px; }
-                    .header { text-align: center; margin-bottom: 20px; }
-                    .logo { max-height: 80px; margin-bottom: 10px; }
-                    .header-text { white-space: pre-wrap; color: #555; }
-                    h1 { color: #8b5cf6; border-bottom: 2px solid #8b5cf6; padding-bottom: 10px; text-align: center; }
-                    h2 { color: #6d28d9; margin-top: 30px; border-bottom: 1px solid #ddd; padding-bottom: 5px;}
-                    h3 { color: #333; margin-top: 20px; margin-bottom: 10px; font-weight: 600; }
-                    ul { list-style-type: none; padding-left: 0; }
-                    li { background-color: #f9fafb; border-left: 3px solid #c4b5fd; padding: 8px 12px; margin-bottom: 5px; border-radius: 4px; }
-                    p { margin-top: 5px; }
-                </style>
-            </head>
-            <body>
-                <div class="page-container">
-                    <div class="header">
-                        ${logo ? `<img src="${logo}" alt="Logo" class="logo"/>` : ''}
-                        ${headerText ? `<div class="header-text">${headerText.replace(/\n/g, '<br>')}</div>` : ''}
-                    </div>
-                    <h1>${planName}</h1>`;
-        
+        let mainContentHtml = `<h1>${planName}</h1>`;
         weeklyPlan.forEach(day => {
-            html += `<h2>${day.day}</h2>`;
+            mainContentHtml += `<h2>${day.day}</h2>`;
             day.meals.forEach(meal => {
-                html += `<h3>${meal.name}${meal.title ? ` - ${meal.title}` : ''}</h3>`;
+                mainContentHtml += `<h3>${meal.name}${meal.title ? ` - ${meal.title}` : ''}</h3>`;
                 if(meal.cheat) {
-                     html += `<p><strong>Sgarro:</strong> ${meal.cheatMealDescription || 'N/A'}</p>`;
+                     mainContentHtml += `<p><strong>Sgarro:</strong> ${meal.cheatMealDescription || 'N/A'}</p>`;
                 } else {
                     if (meal.items.length > 0) {
-                        html += '<ul>';
+                        mainContentHtml += '<ul>';
                         meal.items.forEach(item => {
-                            html += `<li>${item.fullDescription}</li>`;
+                            mainContentHtml += `<li>${item.fullDescription}</li>`;
                         });
-                        html += '</ul>';
+                        mainContentHtml += '</ul>';
                     }
                     if (meal.procedure) {
-                        html += `<p><strong>Procedura:</strong><br>${meal.procedure.replace(/\n/g, '<br>')}</p>`;
+                        mainContentHtml += `<p class="procedure"><strong>Procedura:</strong><br>${meal.procedure.replace(/\n/g, '<br>')}</p>`;
                     }
                 }
             });
         });
 
-        html += '</div></body></html>';
+        const html = `
+            <html>
+            <head>
+                <title>Piano Nutrizionale - ${planName}</title>
+                <style>
+                    body { 
+                        font-family: ${fontFamily === 'Serif' ? 'Georgia, serif' : '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'}; 
+                        line-height: 1.6; 
+                        color: #333;
+                        font-size: ${baseFontSize}px;
+                        counter-reset: page;
+                    }
+                    @media print { 
+                        body { -webkit-print-color-adjust: exact; } 
+                        thead, tfoot { display: table-header-group; }
+                    }
+                    table { width: 100%; border-collapse: collapse; }
+                    thead, tfoot { page-break-inside: avoid; }
+                    thead td { padding: 20px 0; border-bottom: 1px solid #eee; }
+                    tfoot td { padding: 20px 0; border-top: 1px solid #eee; }
+                    .header { text-align: center; }
+                    .logo { max-height: 80px; margin-bottom: 10px; }
+                    .header-text { white-space: pre-wrap; color: #555; }
+                    .footer-content { text-align: center; font-size: 0.8em; color: #666; white-space: pre-wrap; }
+                    .page-number { text-align: center; font-size: 0.8em; color: #666; }
+                    .page-number::before { counter-increment: page; content: "Pag. " counter(page); }
+                    
+                    h1, h2 { color: ${primaryColor}; }
+                    h1 { border-bottom: 2px solid ${primaryColor}; padding-bottom: 10px; text-align: center; font-size: 2.2em; margin-bottom: 20px;}
+                    h2 { margin-top: 30px; border-bottom: 1px solid #ddd; padding-bottom: 5px; font-size: 1.8em;}
+                    h3 { color: #333; margin-top: 20px; margin-bottom: 10px; font-weight: 600; font-size: 1.4em;}
+                    ul { list-style-type: none; padding-left: 0; }
+                    li { background-color: #f9fafb; border-left: 3px solid ${primaryColor}; opacity: 0.8; padding: 8px 12px; margin-bottom: 5px; border-radius: 4px; }
+                    p { margin-top: 5px; }
+                    .procedure { margin-top: 10px; font-style: italic; }
+                </style>
+            </head>
+            <body>
+                <table>
+                    <thead>
+                        <tr>
+                            <td>
+                                <div class="header">
+                                    ${logo ? `<img src="${logo}" alt="Logo" class="logo"/>` : ''}
+                                    ${headerText ? `<div class="header-text">${headerText.replace(/\n/g, '<br>')}</div>` : ''}
+                                </div>
+                            </td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                ${mainContentHtml}
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td>
+                                <div class="footer-content">${footerText.replace(/\n/g, '<br>')}</div>
+                                ${showPageNumbers ? '<div class="page-number"></div>' : ''}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </body>
+            </html>`;
 
         const win = window.open('', '_blank');
         if (win) {
             win.document.write(html);
             win.document.close();
             win.focus();
-            win.print();
+            setTimeout(() => {
+                win.print();
+                win.close();
+            }, 250); // Small delay to ensure content is rendered before printing
         }
         onClose();
     };

@@ -4,6 +4,10 @@ export interface PdfSettings {
     logo: string | null; // base64 string
     headerText: string;
     footerText: string;
+    primaryColor: string;
+    fontFamily: 'Sans-serif' | 'Serif';
+    baseFontSize: number;
+    showPageNumbers: boolean;
 }
 
 const PDF_SETTINGS_KEY = 'nutritionist_pdf_settings';
@@ -13,6 +17,10 @@ class PdfSettingsStore {
         logo: null,
         headerText: 'Piano Nutrizionale',
         footerText: 'Dott. Nutrizionista Rossi - Via Roma 1, 12345 Città - P.IVA 1234567890',
+        primaryColor: '#8b5cf6',
+        fontFamily: 'Sans-serif',
+        baseFontSize: 14,
+        showPageNumbers: true,
     };
     isHydrated = false;
 
@@ -63,6 +71,22 @@ class PdfSettingsStore {
     
     setFooterText(text: string) {
         this.saveSettings({ footerText: text });
+    }
+
+    setPrimaryColor(color: string) {
+        this.saveSettings({ primaryColor: color });
+    }
+
+    setFontFamily(font: 'Sans-serif' | 'Serif') {
+        this.saveSettings({ fontFamily: font });
+    }
+
+    setBaseFontSize(size: number) {
+        this.saveSettings({ baseFontSize: size });
+    }
+
+    setShowPageNumbers(show: boolean) {
+        this.saveSettings({ showPageNumbers: show });
     }
 }
 
