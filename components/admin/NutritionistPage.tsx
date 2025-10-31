@@ -10,12 +10,13 @@ import { NutritionistPlan, Patient, AssignedPlan } from '../../types';
 import PatientManagement from './PatientManagement';
 import { patientStore } from '../../stores/PatientStore';
 import { uiStore } from '../../stores/UIStore';
+import PdfSettingsPage from './PdfSettingsPage';
 
 interface NutritionistPageProps {
     onLogout: () => void;
 }
 
-type NutritionistTab = 'plan' | 'patients' | 'library' | 'ingredients' | 'recipes';
+type NutritionistTab = 'plan' | 'patients' | 'library' | 'ingredients' | 'recipes' | 'pdfSettings';
 
 const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
     const [activeTab, setActiveTab] = useState<NutritionistTab>('patients');
@@ -121,6 +122,7 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
                         {renderTabButton('library', t('planLibraryTab'))}
                         {renderTabButton('ingredients', t('manageIngredientsTab'))}
                         {renderTabButton('recipes', t('manageRecipesTab'))}
+                        {renderTabButton('pdfSettings', t('pdfSettingsTab'))}
                     </div>
                 </nav>
             </header>
@@ -138,6 +140,7 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
                  {activeTab === 'library' && <PlanLibraryPage onEdit={handleEditPlan} onView={handleViewPlan} />}
                  {activeTab === 'ingredients' && <IngredientsManagement />}
                  {activeTab === 'recipes' && <RecipesManagement />}
+                 {activeTab === 'pdfSettings' && <PdfSettingsPage />}
             </main>
             {viewingPlan && <ViewPlanModal plan={viewingPlan} onClose={() => setViewingPlan(null)} />}
         </div>

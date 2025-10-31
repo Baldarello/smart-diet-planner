@@ -56,3 +56,4 @@ export { default as PatientSettingsModal } from './admin/PatientSettingsModal';
 export { default as PatientProgressModal } from './admin/PatientProgressModal';
 export { default as DietHistoryModal } from './admin/DietHistoryModal';
 export { default as DownloadPlanModal } from './admin/DownloadPlanModal';
+export { default as PdfSettingsPage } from './admin/PdfSettingsPage';

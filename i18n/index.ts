@@ -157,6 +157,7 @@ const translations = {
     downloadPlanOptions: "Opzioni di Download",
     downloadAsJson: "Scarica JSON",
     downloadAsPdf: "Scarica PDF",
+    pdfSettingsTab: "Impostazioni PDF",
 
 
     // SetPlanDatesModal.tsx
@@ -624,6 +625,7 @@ const translations = {
     downloadPlanOptions: "Download Options",
     downloadAsJson: "Download JSON",
     downloadAsPdf: "Download PDF",
+    pdfSettingsTab: "PDF Settings",
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Set Plan Duration",

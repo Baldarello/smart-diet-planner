@@ -198,70 +198,71 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
                 <div className="space-y-4">
                     {filteredPatients.map(patient => {
                         const patientPlans = (assignedPlansByPatient.get(patient.id!) || []).slice().sort((a, b) => b.startDate.localeCompare(a.startDate));
-                        const displayedPlans = patientPlans.length > 2 ? patientPlans.slice(0, 2) : patientPlans;
+                        const hasMoreThanTwoPlans = patientPlans.length > 2;
+                        const displayedPlans = hasMoreThanTwoPlans ? patientPlans.slice(0, 2) : patientPlans;
                         return (
-                            <div key={patient.id} className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                <div className="w-full sm:w-auto flex-grow">
+                            <div key={patient.id} className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                                <div className="flex justify-between items-start mb-2">
                                     <p className="font-bold text-lg text-gray-800 dark:text-gray-200">{patient.lastName}, {patient.firstName}</p>
-                                    <div className="mt-2 space-y-2">
-                                        <div className="flex items-center gap-4">
-                                            <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400">{t('assignedPlan')}</h4>
-                                            {patientPlans.length > 2 && (
-                                                <button onClick={() => setViewingHistoryForPatient(patient)} className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline">
-                                                    {t('viewHistory')} ({patientPlans.length})
-                                                </button>
-                                            )}
-                                        </div>
-                                        {displayedPlans.length > 0 ? (
-                                            displayedPlans.map(plan => (
-                                                <div key={plan.id} className="bg-slate-100 dark:bg-gray-600 p-2 rounded-md flex justify-between items-center gap-2">
-                                                    <div>
-                                                        <p className="font-medium text-gray-800 dark:text-gray-200">{plan.planData.planName}</p>
-                                                        <p className="text-xs text-gray-500 dark:text-gray-400">{plan.startDate} - {plan.endDate}</p>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                                        <button onClick={() => onEditAssignedPlan(plan)} className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-gray-500" title={t('edit')}><EditIcon /></button>
-                                                        <button onClick={() => setDownloadingPlan(plan)} className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-gray-500" title={t('download')}><DownloadIcon /></button>
-                                                        <button onClick={() => handleShare(plan)} disabled={!!sharingPlan} className="p-1.5 rounded-full text-green-600 dark:text-green-400 hover:bg-slate-200 dark:hover:bg-gray-500 disabled:opacity-50" title={t('sharePlan')}>
-                                                            {sharingPlan?.id === plan.id ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div> : <ShareIcon />}
-                                                        </button>
-                                                        <button onClick={() => setUnassigningPlan(plan)} className="p-1.5 rounded-full text-yellow-600 dark:text-yellow-400 hover:bg-slate-200 dark:hover:bg-gray-500" title={t('unassignPlan')}><CloseIcon /></button>
-                                                    </div>
+                                    <div className="relative flex-shrink-0">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setActionsMenuPatientId(patient.id === actionsMenuPatientId ? null : patient.id!);
+                                            }}
+                                            className="p-2 rounded-full text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/50 hover:bg-green-200 dark:hover:bg-green-800"
+                                            title="Azioni"
+                                        >
+                                            <MoreVertIcon />
+                                        </button>
+                                        {actionsMenuPatientId === patient.id && (
+                                            <div
+                                                ref={actionsMenuRef}
+                                                className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-20 border dark:border-gray-700 animate-slide-in-up"
+                                                style={{ animationDuration: '0.2s' }}
+                                            >
+                                                <div className="py-1">
+                                                    <button onClick={() => { setViewingProgressPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><ProgressIcon /> {t('tabProgress')}</button>
+                                                    <button onClick={() => { setEditingBodyDataPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><BodyIcon /> {t('bodyDataButton')}</button>
+                                                    <button onClick={() => { setEditingSettingsPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><SettingsIcon /> {t('settingsButton')}</button>
+                                                    <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+                                                    <button onClick={() => { onCreatePlanForPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><PlusCircleIcon /> {t('createPersonalizedPlan')}</button>
+                                                    <button onClick={() => { setAssigningPlanPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><CheckIcon /> {t('assignExistingPlan')}</button>
+                                                    <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+                                                    <button onClick={() => { setDeletingPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 flex items-center gap-3"><TrashIcon /> {t('delete')}</button>
                                                 </div>
-                                            ))
-                                        ) : (
-                                            <p className="text-sm italic text-gray-500 dark:text-gray-400">{t('noPlanAssigned')}</p>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
-                                <div className="relative self-end sm:self-center flex-shrink-0">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setActionsMenuPatientId(patient.id === actionsMenuPatientId ? null : patient.id!);
-                                        }}
-                                        className="p-2 rounded-full text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/50 hover:bg-green-200 dark:hover:bg-green-800"
-                                        title="Azioni"
-                                    >
-                                        <MoreVertIcon />
-                                    </button>
-                                    {actionsMenuPatientId === patient.id && (
-                                        <div
-                                            ref={actionsMenuRef}
-                                            className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-20 border dark:border-gray-700 animate-slide-in-up"
-                                            style={{ animationDuration: '0.2s' }}
-                                        >
-                                            <div className="py-1">
-                                                <button onClick={() => { setViewingProgressPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><ProgressIcon /> {t('tabProgress')}</button>
-                                                <button onClick={() => { setEditingBodyDataPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><BodyIcon /> {t('bodyDataButton')}</button>
-                                                <button onClick={() => { setEditingSettingsPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><SettingsIcon /> {t('settingsButton')}</button>
-                                                <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
-                                                <button onClick={() => { onCreatePlanForPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><PlusCircleIcon /> {t('createPersonalizedPlan')}</button>
-                                                <button onClick={() => { setAssigningPlanPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><CheckIcon /> {t('assignExistingPlan')}</button>
-                                                <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
-                                                <button onClick={() => { setDeletingPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 flex items-center gap-3"><TrashIcon /> {t('delete')}</button>
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-4">
+                                        <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400">{t('assignedPlan')}</h4>
+                                        {hasMoreThanTwoPlans && (
+                                            <button onClick={() => setViewingHistoryForPatient(patient)} className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline">
+                                                {t('viewHistory')} ({patientPlans.length})
+                                            </button>
+                                        )}
+                                    </div>
+                                    {displayedPlans.length > 0 ? (
+                                        displayedPlans.map(plan => (
+                                            <div key={plan.id} className="bg-slate-100 dark:bg-gray-600 p-2 rounded-md flex justify-between items-center gap-2">
+                                                <div>
+                                                    <p className="font-medium text-gray-800 dark:text-gray-200">{plan.planData.planName}</p>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400">{plan.startDate} - {plan.endDate}</p>
+                                                </div>
+                                                <div className="flex items-center gap-1 flex-shrink-0">
+                                                    <button onClick={() => onEditAssignedPlan(plan)} className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-gray-500" title={t('edit')}><EditIcon /></button>
+                                                    <button onClick={() => setDownloadingPlan(plan)} className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-gray-500" title={t('download')}><DownloadIcon /></button>
+                                                    <button onClick={() => handleShare(plan)} disabled={!!sharingPlan} className="p-1.5 rounded-full text-green-600 dark:text-green-400 hover:bg-slate-200 dark:hover:bg-gray-500 disabled:opacity-50" title={t('sharePlan')}>
+                                                        {sharingPlan?.id === plan.id ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div> : <ShareIcon />}
+                                                    </button>
+                                                    <button onClick={() => setUnassigningPlan(plan)} className="p-1.5 rounded-full text-yellow-600 dark:text-yellow-400 hover:bg-slate-200 dark:hover:bg-gray-500" title={t('unassignPlan')}><CloseIcon /></button>
+                                                </div>
                                             </div>
-                                        </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-sm italic text-gray-500 dark:text-gray-400">{t('noPlanAssigned')}</p>
                                     )}
                                 </div>
                             </div>
