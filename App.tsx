@@ -29,6 +29,7 @@ import NotFoundPage from './components/admin/NotFoundPage';
 import FileUploadScreen from './components/FileUploadScreen';
 import InfoModal from './components/InfoModal';
 import ConfirmationModal from './components/ConfirmationModal';
+import AchievementsModal from './components/AchievementsModal';
 
 import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon, ArrowLeftIcon, MenuIcon, AdminIcon } from './components/Icons';
 
@@ -403,7 +404,9 @@ const App: React.FC = observer(() => {
         confirmationModalTitle,
         confirmationModalMessage,
         confirmationModalOnConfirm,
-        hideConfirmationModal 
+        hideConfirmationModal,
+        achievementsModalIsOpen,
+        hideAchievementsModal
     } = uiStore;
 
     useEffect(() => {
@@ -471,6 +474,10 @@ const App: React.FC = observer(() => {
             >
                 {confirmationModalMessage}
             </ConfirmationModal>
+            <AchievementsModal
+                isOpen={achievementsModalIsOpen}
+                onClose={hideAchievementsModal}
+            />
             {renderPage()}
         </>
     );

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { authStore } from '../stores/AuthStore';
+import { uiStore } from '../stores/UIStore';
 import { t } from '../i18n';
 import { ClockIcon, FlameIcon, WaterDropIcon, StepsIcon, TodayIcon, WarningIcon, PantryIcon } from './Icons';
 import ProgressChart from './ProgressChart';
@@ -131,7 +132,6 @@ const AlertItem: React.FC<{ item: PantryItem, type: 'expired' | 'expiring' | 'st
 const DashboardView: React.FC = observer(() => {
     const store = mealPlanStore;
     const user = authStore.userProfile;
-    const [isAchievementsModalOpen, setIsAchievementsModalOpen] = useState(false);
 
     const getTodayDateString = () => new Date().toLocaleDateString('en-CA');
 
@@ -192,128 +192,125 @@ const DashboardView: React.FC = observer(() => {
     const hasAlerts = expiredItems.length > 0 || expiringSoonItems.length > 0 || lowStockItems.length > 0;
 
     return (
-        <>
-            <div className="max-w-6xl mx-auto space-y-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{welcomeMessage()}</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">{t('dashboardSubtitle')}</p>
-                </div>
+        <div className="max-w-6xl mx-auto space-y-6">
+            <div>
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{welcomeMessage()}</h1>
+                <p className="text-gray-500 dark:text-gray-400 mt-1">{t('dashboardSubtitle')}</p>
+            </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Main Content Column */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Upcoming Meals */}
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300">{t('upcomingMeals')}</h2>
-                                <button 
-                                    onClick={handleGoToToday} 
-                                    className="flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors"
-                                    title={t('goToTodayView')}
-                                >
-                                    <TodayIcon />
-                                    <span className="hidden sm:inline">{t('goToToday')}</span>
-                                </button>
-                            </div>
-                            {upcomingMeals && upcomingMeals.length > 0 ? (
-                                <div className="space-y-3">
-                                    {upcomingMeals.map((meal, index) => <UpcomingMealCard key={index} meal={meal} />)}
-                                </div>
-                            ) : (
-                                <p className="text-center text-gray-500 dark:text-gray-400 py-4">{t('noUpcomingMeals')}</p>
-                            )}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Content Column */}
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Upcoming Meals */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300">{t('upcomingMeals')}</h2>
+                            <button 
+                                onClick={handleGoToToday} 
+                                className="flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors"
+                                title={t('goToTodayView')}
+                            >
+                                <TodayIcon />
+                                <span className="hidden sm:inline">{t('goToToday')}</span>
+                            </button>
                         </div>
-
-                         {/* Pantry Alerts */}
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                             <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300">{t('dashboardPantryAlerts')}</h2>
-                                <button 
-                                    onClick={handleGoToPantry} 
-                                    className="flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors"
-                                    title={t('tabPantry')}
-                                >
-                                    <PantryIcon />
-                                    <span className="hidden sm:inline">{t('tabPantry')}</span>
-                                </button>
+                        {upcomingMeals && upcomingMeals.length > 0 ? (
+                            <div className="space-y-3">
+                                {upcomingMeals.map((meal, index) => <UpcomingMealCard key={index} meal={meal} />)}
                             </div>
-                            {hasAlerts ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-                                    {expiredItems.length > 0 && (
-                                        <div className="sm:col-span-2 md:col-span-1">
-                                            <h3 className="font-semibold text-red-600 dark:text-red-400 mb-2">{t('dashboardExpired')}</h3>
-                                            <div className="space-y-2">
-                                                {expiredItems.map(item => <AlertItem key={item.item} item={item} type="expired" onClick={handleGoToPantry} />)}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {expiringSoonItems.length > 0 && (
-                                        <div className="sm:col-span-2 md:col-span-1">
-                                            <h3 className="font-semibold text-orange-600 dark:text-orange-400 mb-2">{t('dashboardExpiringSoon')}</h3>
-                                            <div className="space-y-2">
-                                                {expiringSoonItems.map(item => <AlertItem key={item.item} item={item} type="expiring" onClick={handleGoToPantry} />)}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {lowStockItems.length > 0 && (
-                                        <div className="sm:col-span-2 md:col-span-1">
-                                            <h3 className="font-semibold text-yellow-600 dark:text-yellow-400 mb-2">{t('dashboardLowStock')}</h3>
-                                            <div className="space-y-2">
-                                                {lowStockItems.map(item => <AlertItem key={item.item} item={item} type="stock" onClick={handleGoToPantry} />)}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <p className="text-center text-gray-500 dark:text-gray-400 py-4">{t('dashboardNoAlerts')}</p>
-                            )}
-                        </div>
-                        
-                        {/* Streaks & Achievements */}
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                             <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300">{t('streaksAndAchievements')}</h2>
-                                <button 
-                                    onClick={() => setIsAchievementsModalOpen(true)}
-                                    className="text-sm font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors"
-                                >
-                                    {t('viewAllAchievements')}
-                                </button>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <StreakItem count={adherenceStreak} label={t('adherenceStreak')} icon={<FlameIcon />} />
-                                <StreakItem count={hydrationStreak} label={t('hydrationStreak')} icon={<WaterDropIcon />} />
-                            </div>
-                        </div>
-
-                    </div>
-
-                    {/* Sidebar Column */}
-                    <div className="space-y-6">
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                            <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4">{t('todaysProgress')}</h2>
-                            <div className="grid grid-cols-2 gap-4">
-                                <CircularProgress progress={stepsProgress} goal={store.stepGoal} label={t('steps')} unit="" color="text-teal-500" icon={<StepsIcon />} />
-                                <CircularProgress progress={waterProgress} goal={waterGoalMl} label={t('hydration')} unit="ml" color="text-blue-500" icon={<WaterDropIcon />} />
-                            </div>
-                        </div>
-                        {weightData.some(d => d != null) && (
-                            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg overflow-hidden">
-                                <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4">{t('weightTrend')}</h2>
-                                <ProgressChart
-                                    type="line"
-                                    labels={weightLabels}
-                                    datasets={[ { label: t('weight'), data: weightData, color: 'rgba(139, 92, 246, 1)', unit: t('unitKg') } ]}
-                                    yAxisMin={yAxisMin}
-                                    yAxisMax={yAxisMax}
-                                />
-                            </div>
+                        ) : (
+                            <p className="text-center text-gray-500 dark:text-gray-400 py-4">{t('noUpcomingMeals')}</p>
                         )}
                     </div>
+
+                     {/* Pantry Alerts */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                         <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300">{t('dashboardPantryAlerts')}</h2>
+                            <button 
+                                onClick={handleGoToPantry} 
+                                className="flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors"
+                                title={t('tabPantry')}
+                            >
+                                <PantryIcon />
+                                <span className="hidden sm:inline">{t('tabPantry')}</span>
+                            </button>
+                        </div>
+                        {hasAlerts ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                                {expiredItems.length > 0 && (
+                                    <div className="sm:col-span-2 md:col-span-1">
+                                        <h3 className="font-semibold text-red-600 dark:text-red-400 mb-2">{t('dashboardExpired')}</h3>
+                                        <div className="space-y-2">
+                                            {expiredItems.map(item => <AlertItem key={item.item} item={item} type="expired" onClick={handleGoToPantry} />)}
+                                        </div>
+                                    </div>
+                                )}
+                                {expiringSoonItems.length > 0 && (
+                                    <div className="sm:col-span-2 md:col-span-1">
+                                        <h3 className="font-semibold text-orange-600 dark:text-orange-400 mb-2">{t('dashboardExpiringSoon')}</h3>
+                                        <div className="space-y-2">
+                                            {expiringSoonItems.map(item => <AlertItem key={item.item} item={item} type="expiring" onClick={handleGoToPantry} />)}
+                                        </div>
+                                    </div>
+                                )}
+                                {lowStockItems.length > 0 && (
+                                    <div className="sm:col-span-2 md:col-span-1">
+                                        <h3 className="font-semibold text-yellow-600 dark:text-yellow-400 mb-2">{t('dashboardLowStock')}</h3>
+                                        <div className="space-y-2">
+                                            {lowStockItems.map(item => <AlertItem key={item.item} item={item} type="stock" onClick={handleGoToPantry} />)}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="text-center text-gray-500 dark:text-gray-400 py-4">{t('dashboardNoAlerts')}</p>
+                        )}
+                    </div>
+                    
+                    {/* Streaks & Achievements */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                         <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300">{t('streaksAndAchievements')}</h2>
+                            <button 
+                                onClick={() => uiStore.showAchievementsModal()}
+                                className="text-sm font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors"
+                            >
+                                {t('viewAllAchievements')}
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <StreakItem count={adherenceStreak} label={t('adherenceStreak')} icon={<FlameIcon />} />
+                            <StreakItem count={hydrationStreak} label={t('hydrationStreak')} icon={<WaterDropIcon />} />
+                        </div>
+                    </div>
+
+                </div>
+
+                {/* Sidebar Column */}
+                <div className="space-y-6">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                        <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4">{t('todaysProgress')}</h2>
+                        <div className="grid grid-cols-2 gap-4">
+                            <CircularProgress progress={stepsProgress} goal={store.stepGoal} label={t('steps')} unit="" color="text-teal-500" icon={<StepsIcon />} />
+                            <CircularProgress progress={waterProgress} goal={waterGoalMl} label={t('hydration')} unit="ml" color="text-blue-500" icon={<WaterDropIcon />} />
+                        </div>
+                    </div>
+                    {weightData.some(d => d != null) && (
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg overflow-hidden">
+                            <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4">{t('weightTrend')}</h2>
+                            <ProgressChart
+                                type="line"
+                                labels={weightLabels}
+                                datasets={[ { label: t('weight'), data: weightData, color: 'rgba(139, 92, 246, 1)', unit: t('unitKg') } ]}
+                                yAxisMin={yAxisMin}
+                                yAxisMax={yAxisMax}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
-            <AchievementsModal isOpen={isAchievementsModalOpen} onClose={() => setIsAchievementsModalOpen(false)} />
-        </>
+        </div>
     );
 });
 
