@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { Patient, BodyMetrics, ProgressRecord } from '../../types';
-import { t } from '../../i18n';
+import { t } from '../../i1n';
 import { CloseIcon, TrashIcon, EditIcon } from '../Icons';
 import { patientStore } from '../../stores/PatientStore';
 import ConfirmationModal from '../ConfirmationModal';
@@ -73,10 +73,10 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
             // When weight changes, recalculate everything
             if (metric === 'weightKg') {
                 if (newState.bodyFatKg !== undefined) {
-                    newState.bodyFatPercentage = numericValue !== undefined ? parseFloat(((newState.bodyFatKg / numericValue) * 100).toFixed(1)) : undefined;
+                    newState.bodyFatPercentage = numericValue !== undefined ? parseFloat(((newState.bodyFatKg / numericValue) * 100).toFixed(2)) : undefined;
                 }
                 if (newState.bodyWaterLiters !== undefined) {
-                    newState.bodyWaterPercentage = numericValue !== undefined ? parseFloat(((newState.bodyWaterLiters / numericValue) * 100).toFixed(1)) : undefined;
+                    newState.bodyWaterPercentage = numericValue !== undefined ? parseFloat(((newState.bodyWaterLiters / numericValue) * 100).toFixed(2)) : undefined;
                 }
             }
             
@@ -104,7 +104,7 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
             } else { // absolute
                 newState.bodyFatKg = numericValue;
                 if (newState.weightKg !== undefined && numericValue !== undefined) {
-                    newState.bodyFatPercentage = parseFloat(((numericValue / newState.weightKg) * 100).toFixed(1));
+                    newState.bodyFatPercentage = parseFloat(((numericValue / newState.weightKg) * 100).toFixed(2));
                 }
             }
             // Recalculate lean mass
@@ -132,7 +132,7 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
             // Recalculate fat mass from lean mass and weight
             if (newState.weightKg !== undefined && newState.leanMassKg !== undefined) {
                 newState.bodyFatKg = parseFloat((newState.weightKg - newState.leanMassKg).toFixed(2));
-                newState.bodyFatPercentage = parseFloat(((newState.bodyFatKg / newState.weightKg) * 100).toFixed(1));
+                newState.bodyFatPercentage = parseFloat(((newState.bodyFatKg / newState.weightKg) * 100).toFixed(2));
             } else {
                 newState.bodyFatKg = undefined;
                 newState.bodyFatPercentage = undefined;
@@ -153,7 +153,7 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
             } else { // 'absolute' mode ('liters')
                 newState.bodyWaterLiters = numericValue;
                 if (newState.weightKg !== undefined && numericValue !== undefined) {
-                    newState.bodyWaterPercentage = parseFloat(((numericValue / newState.weightKg) * 100).toFixed(1));
+                    newState.bodyWaterPercentage = parseFloat(((numericValue / newState.weightKg) * 100).toFixed(2));
                 }
             }
             return newState;
@@ -173,7 +173,7 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
         let leanMass = '';
         if (unitMode === 'percentage') {
             if (weightKg && leanMassKg != null && weightKg > 0) {
-                leanMass = ((leanMassKg / weightKg) * 100).toFixed(1);
+                leanMass = ((leanMassKg / weightKg) * 100).toFixed(2);
             }
         } else { // absolute
             leanMass = leanMassKg === undefined ? '' : String(leanMassKg);
