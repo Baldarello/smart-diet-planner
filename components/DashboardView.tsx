@@ -135,6 +135,13 @@ const DashboardView: React.FC = observer(() => {
         store.navigateTo('pantry');
     };
 
+    const welcomeMessage = () => {
+        if (user && user.name) {
+            return t('dashboardWelcome', { name: user.name.split(' ')[0] });
+        }
+        return t('dashboardWelcome').split(',')[0] + '!';
+    };
+
     // Upcoming meals
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -172,7 +179,7 @@ const DashboardView: React.FC = observer(() => {
         <>
             <div className="max-w-6xl mx-auto space-y-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{t('dashboardWelcome', { name: user?.name.split(' ')[0] || '' })}</h1>
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{welcomeMessage()}</h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">{t('dashboardSubtitle')}</p>
                 </div>
 

@@ -60,3 +60,47 @@ export function formatQuantity(value: number | null, unit: string): string {
     const roundedValue = Math.round(value * 100) / 100;
     return `${roundedValue} ${unit}`;
 }
+
+
+export function splitQuantityAndName(description: string): { quantity: string | null; name: string } {
+    if (!description) {
+        return { quantity: null, name: '' };
+    }
+    const desc = description.trim();
+
+    // Handle number words like "un vasetto", "mezza mela"
+    const words = desc.split(/\s+/);
+    if (Object.prototype.hasOwnProperty.call(numberWords, words[0].toLowerCase())) {
+        let quantity = words[0];
+        let nameStartIndex = 1;
+        // Check if the second word is part of the quantity (e.g., "un vasetto")
+        if (words.length > 1 && !['di', 'd\''].includes(words[1].toLowerCase())) {
+            quantity += ` ${words[1]}`;
+            nameStartIndex = 2;
+        }
+        let name = words.slice(nameStartIndex).join(' ');
+        if (name.toLowerCase().startsWith('di ')) name = name.substring(3).trim();
+        else if (name.toLowerCase().startsWith("d'")) name = name.substring(2).trim();
+        return { quantity, name: name.charAt(0).toUpperCase() + name.slice(1) };
+    }
+
+    // Regex to capture a leading quantity/unit part, and the rest as the name.
+    const match = desc.match(/^(\d+[\.,]?\d*\s*[a-zA-ZÀ-ú\/]+|\d+[\.,]?\d*)\s*(.*)/);
+
+    if (match) {
+        let quantity = match[1].trim();
+        let name = match[2].trim();
+        
+        if (name.toLowerCase().startsWith('di ')) {
+            name = name.substring(3).trim();
+        } else if (name.toLowerCase().startsWith("d'")) {
+            name = name.substring(2).trim();
+        }
+
+        name = name ? name.charAt(0).toUpperCase() + name.slice(1) : '';
+
+        return { quantity, name };
+    }
+
+    return { quantity: null, name: description };
+}
