@@ -92,8 +92,12 @@ const AlertItem: React.FC<{ item: PantryItem, type: 'expired' | 'expiring' | 'st
     
     let date = '';
     if (isDateAlert && item.expiryDate) {
-        const [year, month, day] = item.expiryDate.split('-');
-        date = `${day}/${month}/${year}`;
+        try {
+            const [year, month, day] = item.expiryDate.split('-');
+            date = `${day}/${month}/${year}`;
+        } catch(e) {
+            date = item.expiryDate;
+        }
     }
 
     const config = {
@@ -162,8 +166,12 @@ const DashboardView: React.FC = observer(() => {
     // Chart data
     const last7DaysHistory = store.progressHistory.slice(-7);
     const weightLabels = last7DaysHistory.map(d => {
-        const [year, month, day] = d.date.split('-');
-        return `${day}/${month}`;
+        try {
+            const [year, month, day] = d.date.split('-');
+            return `${day}/${month}`;
+        } catch {
+            return d.date;
+        }
     });
     const weightData = last7DaysHistory.map(d => d.weightKg);
 

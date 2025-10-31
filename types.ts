@@ -100,6 +100,8 @@ export interface ProgressRecord {
   plannedCalories: number;
   actualCalories: number;
   weightKg?: number;
+  // Fix: Add optional 'heightCm' property to align with data being saved in PatientStore and accessed in BodyDataModal.
+  heightCm?: number;
   bodyFatPercentage?: number;
   leanMassKg?: number;
   stepsTaken: number;

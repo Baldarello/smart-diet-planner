@@ -161,38 +161,52 @@ class PatientStore {
         }
     }
 
-    async savePatientProgress(patientId: number, date: string, metrics: BodyMetrics) {
+    async savePatientProgress(patientId: number, date: string, metrics: BodyMetrics, recordId?: number) {
         try {
-            let record = await db.progressHistory
-                .where({ patientId: patientId, date: date })
-                .first();
-
-            if (!record) {
-                record = {
-                    patientId,
-                    date,
-                    adherence: 0,
-                    plannedCalories: 0,
-                    actualCalories: 0,
-                    stepsTaken: 0,
-                    waterIntakeMl: 0,
+            let recordToPut: ProgressRecord;
+    
+            if (recordId) {
+                const existingRecord = await db.progressHistory.get(recordId);
+                if (!existingRecord) throw new Error("Record to update not found");
+                if (existingRecord.patientId !== patientId) throw new Error("Record does not belong to the specified patient.");
+    
+                recordToPut = {
+                    ...existingRecord,
+                    date, // Allow date update
+                    ...metrics
                 };
+            } else {
+                let record = await db.progressHistory
+                    .where({ patientId: patientId, date: date })
+                    .first();
+    
+                if (!record) {
+                    record = {
+                        patientId,
+                        date,
+                        adherence: 0,
+                        plannedCalories: 0,
+                        actualCalories: 0,
+                        stepsTaken: 0,
+                        waterIntakeMl: 0,
+                    };
+                }
+                recordToPut = { ...record, ...metrics };
             }
-
-            const updatedRecord: ProgressRecord = {
-                ...record,
+    
+            await db.progressHistory.put(recordToPut);
+    
+            // Also update the patient's latest bodyMetrics as a snapshot
+            const latestPatientMetrics = {
                 weightKg: metrics.weightKg,
+                heightCm: metrics.heightCm,
                 bodyFatPercentage: metrics.bodyFatPercentage,
                 leanMassKg: metrics.leanMassKg,
                 bodyWaterPercentage: metrics.bodyWaterPercentage,
             };
-
-            await db.progressHistory.put(updatedRecord);
-
-            // Also update the patient's latest bodyMetrics as a snapshot
-            await this.updatePatient(patientId, { bodyMetrics: metrics });
+            await this.updatePatient(patientId, { bodyMetrics: latestPatientMetrics });
         } catch (error) {
-            console.error(`Failed to save progress for patient ${patientId} on ${date}`, error);
+            console.error(`Failed to save progress for patient ${patientId}`, error);
             throw error;
         }
     }
@@ -205,6 +219,15 @@ class PatientStore {
         } catch (error) {
             console.error(`Failed to get progress history for patient ${patientId}`, error);
             return [];
+        }
+    }
+
+    async deletePatientProgress(recordId: number) {
+        try {
+            await db.progressHistory.delete(recordId);
+        } catch (error) {
+            console.error(`Failed to delete progress record ${recordId}`, error);
+            throw error;
         }
     }
 }
