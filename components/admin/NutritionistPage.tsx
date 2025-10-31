@@ -18,7 +18,7 @@ interface NutritionistPageProps {
 type NutritionistTab = 'plan' | 'patients' | 'library' | 'ingredients' | 'recipes';
 
 const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
-    const [activeTab, setActiveTab] = useState<NutritionistTab>('plan');
+    const [activeTab, setActiveTab] = useState<NutritionistTab>('patients');
     const [planToEdit, setPlanToEdit] = useState<NutritionistPlan | AssignedPlan | null>(null);
     const [viewingPlan, setViewingPlan] = useState<NutritionistPlan | null>(null);
     const [creatingPlanForPatient, setCreatingPlanForPatient] = useState<Patient | null>(null);
