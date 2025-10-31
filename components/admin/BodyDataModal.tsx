@@ -12,7 +12,8 @@ interface BodyDataModalProps {
 
 const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose }) => {
     const [bodyMetrics, setBodyMetrics] = useState<BodyMetrics>(patient.bodyMetrics || {});
-    const [showInApp, setShowInApp] = useState(patient.showBodyMetricsInApp || false);
+    const [showInApp, setShowInApp] = useState(patient.showBodyMetricsInApp ?? true);
+    const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
     const [isSaving, setIsSaving] = useState(false);
 
     const handleMetricChange = (metric: keyof BodyMetrics, value: string) => {
@@ -23,10 +24,14 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            await patientStore.updatePatient(patient.id!, {
-                bodyMetrics,
-                showBodyMetricsInApp: showInApp
-            });
+            await patientStore.savePatientProgress(patient.id!, date, bodyMetrics);
+
+            // Only update the patient entity if the 'showInApp' setting has changed
+            if (patient.showBodyMetricsInApp !== showInApp) {
+                await patientStore.updatePatient(patient.id!, {
+                    showBodyMetricsInApp: showInApp
+                });
+            }
             onClose();
         } catch (error) {
             console.error("Failed to save body data", error);
@@ -55,21 +60,31 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 animate-slide-in-up" onClick={e => e.stopPropagation()}>
-                <header className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">{t('bodyDataModalTitle', { name: `${patient.firstName} ${patient.lastName}` })}</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-xl p-8 animate-slide-in-up" onClick={e => e.stopPropagation()}>
+                <header className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{t('bodyDataModalTitle', { name: `${patient.firstName} ${patient.lastName}` })}</h2>
                     <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><CloseIcon /></button>
                 </header>
                 
-                <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-6">
+                    <div>
+                        <label htmlFor="metric-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Data Rilevamento</label>
+                        <input
+                            type="date"
+                            id="metric-date"
+                            value={date}
+                            onChange={e => setDate(e.target.value)}
+                            className="mt-1 block w-full sm:w-1/2 p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md"
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <MetricInput label={t('weight')} unit={t('unitKg')} value={bodyMetrics.weightKg} onChange={v => handleMetricChange('weightKg', v)} />
                         <MetricInput label={t('height')} unit={t('unitCm')} value={bodyMetrics.heightCm} onChange={v => handleMetricChange('heightCm', v)} />
                         <MetricInput label={t('bodyFat')} unit={t('unitPercent')} value={bodyMetrics.bodyFatPercentage} onChange={v => handleMetricChange('bodyFatPercentage', v)} />
                         <MetricInput label={t('leanMass')} unit={t('unitKg')} value={bodyMetrics.leanMassKg} onChange={v => handleMetricChange('leanMassKg', v)} />
                         <MetricInput label={t('bodyWater')} unit={t('unitPercent')} value={bodyMetrics.bodyWaterPercentage} onChange={v => handleMetricChange('bodyWaterPercentage', v)} />
                     </div>
-                    <div className="flex items-center p-3 bg-slate-50 dark:bg-gray-700/50 rounded-lg">
+                    <div className="flex items-center p-4 bg-slate-50 dark:bg-gray-700/50 rounded-lg">
                         <input
                             id="show-metrics-toggle"
                             type="checkbox"
@@ -81,9 +96,9 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
                     </div>
                 </div>
 
-                <footer className="mt-6 flex justify-end gap-3">
-                    <button onClick={onClose} className="bg-gray-200 dark:bg-gray-600 font-semibold px-4 py-2 rounded-full">{t('cancel')}</button>
-                    <button onClick={handleSave} disabled={isSaving} className="bg-violet-600 text-white font-semibold px-4 py-2 rounded-full disabled:bg-violet-400">
+                <footer className="mt-8 flex justify-end gap-4">
+                    <button onClick={onClose} className="bg-gray-200 dark:bg-gray-600 font-semibold px-6 py-2 rounded-full">{t('cancel')}</button>
+                    <button onClick={handleSave} disabled={isSaving} className="bg-violet-600 text-white font-semibold px-6 py-2 rounded-full disabled:bg-violet-400">
                         {isSaving ? t('recalculating') : t('save')}
                     </button>
                 </footer>

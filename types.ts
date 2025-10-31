@@ -3,6 +3,7 @@
 
 
 
+
 export interface NutritionInfo {
   carbs: number;
   protein: number;
@@ -93,6 +94,7 @@ export interface BodyMetrics {
 
 export interface ProgressRecord {
   id?: number;
+  patientId?: number;
   date: string; // YYYY-MM-DD
   adherence: number; // 0-100
   plannedCalories: number;

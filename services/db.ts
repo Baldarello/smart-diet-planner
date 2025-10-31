@@ -16,7 +16,7 @@ export interface AppState {
 
 export class MySubClassedDexie extends Dexie {
   appState!: Table<AppState, string>;
-  progressHistory!: Table<ProgressRecord, string>; // Primary key is the 'date' string
+  progressHistory!: Table<ProgressRecord, number>; // Primary key is 'id'
   dailyLogs!: Table<DailyLog, string>; // To store daily instances of the meal plan
   ingredients!: Table<Ingredient, number>;
   nutritionistPlans!: Table<NutritionistPlan, number>;
@@ -61,6 +61,10 @@ export class MySubClassedDexie extends Dexie {
     
     (this as Dexie).version(10).stores({
         assignedPlans: '++id, patientId, startDate, endDate'
+    });
+
+    (this as Dexie).version(11).stores({
+      progressHistory: '++id, date, patientId, [patientId+date]'
     });
   }
 }
