@@ -47,6 +47,8 @@ interface ImportedJsonData {
     startDate?: string;
     endDate?: string;
     showBodyMetricsInApp?: boolean;
+    stepGoal?: number;
+    hydrationGoalLiters?: number;
 }
 
 const getTodayDateString = () => new Date().toLocaleDateString('en-CA');
@@ -1637,6 +1639,8 @@ export class MealPlanStore {
                     this.currentPlanName = data.planName || 'My Diet Plan';
                     this.planToSet = sanitizedPlan;
                     this.showBodyMetricsInApp = data.showBodyMetricsInApp ?? false;
+                    if (data.stepGoal) this.stepGoal = data.stepGoal;
+                    if (data.hydrationGoalLiters) this.hydrationGoalLiters = data.hydrationGoalLiters;
                 });
                 await this.commitNewPlan(data.startDate, data.endDate);
                 this.navigateTo('list', true);
@@ -1647,6 +1651,8 @@ export class MealPlanStore {
                     this.pantry = data.pantry || [];
                     this.currentPlanName = data.planName || 'My Diet Plan';
                     this.showBodyMetricsInApp = data.showBodyMetricsInApp ?? false;
+                    if (data.stepGoal) this.stepGoal = data.stepGoal;
+                    if (data.hydrationGoalLiters) this.hydrationGoalLiters = data.hydrationGoalLiters;
                     this.status = AppStatus.AWAITING_DATES;
                 });
             }

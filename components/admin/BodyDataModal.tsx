@@ -31,7 +31,6 @@ const MetricInput: React.FC<{ label: string; unit: string; value: string; onChan
 
 const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose }) => {
     const [bodyMetrics, setBodyMetrics] = useState<BodyMetrics>(patient.bodyMetrics || {});
-    const [showInApp, setShowInApp] = useState(patient.showBodyMetricsInApp ?? true);
     const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
     const [isSaving, setIsSaving] = useState(false);
     const [isDateFocused, setIsDateFocused] = useState(false);
@@ -193,11 +192,6 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
         setIsSaving(true);
         try {
             await patientStore.savePatientProgress(patient.id!, date, bodyMetrics, editingRecord?.id);
-
-            if (patient.showBodyMetricsInApp !== showInApp) {
-                await patientStore.updatePatient(patient.id!, { showBodyMetricsInApp: showInApp });
-            }
-            
             handleCancelEdit(); // Reset form state
             await fetchHistory(); // Refresh history
             setActiveTab('history'); // Switch to history view after saving
@@ -303,10 +297,6 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
                                 <MetricInput label={t('bodyFat')} unit={unitMode === 'percentage' ? '%' : t('unitKg')} value={displayValues.fat} onChange={handleFatChange} />
                                 <MetricInput label={t('leanMass')} unit={unitMode === 'percentage' ? '%' : t('unitKg')} value={displayValues.leanMass} onChange={handleLeanMassChange} />
                                 <MetricInput label={t('bodyWater')} unit={unitMode === 'percentage' ? '%' : t('unitLiters')} value={displayValues.water} onChange={handleWaterChange} />
-                            </div>
-                            <div className="flex items-center p-4 bg-slate-50 dark:bg-gray-700/50 rounded-lg">
-                                <input id="show-metrics-toggle" type="checkbox" checked={showInApp} onChange={e => setShowInApp(e.target.checked)} className="h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500"/>
-                                <label htmlFor="show-metrics-toggle" className="ml-3 block text-sm font-medium text-gray-700 dark:text-gray-300">{t('showBodyMetricsInAppLabel')}</label>
                             </div>
                         </div>
                     </div>
