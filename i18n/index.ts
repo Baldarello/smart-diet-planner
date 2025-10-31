@@ -151,6 +151,12 @@ const translations = {
     patientSettingsModalTitle: "Impostazioni per {name}",
     patientStepGoalLabel: "Obiettivo Passi Giornaliero (default)",
     patientHydrationGoalLabel: "Obiettivo Idratazione (Litri, default)",
+    searchPatientsPlaceholder: "Cerca per nome o cognome...",
+    viewHistory: "Vedi Storico",
+    dietHistoryModalTitle: "Storico Piani per {name}",
+    downloadPlanOptions: "Opzioni di Download",
+    downloadAsJson: "Scarica JSON",
+    downloadAsPdf: "Scarica PDF",
 
 
     // SetPlanDatesModal.tsx
@@ -612,6 +618,12 @@ const translations = {
     patientSettingsModalTitle: "Settings for {name}",
     patientStepGoalLabel: "Daily Step Goal (default)",
     patientHydrationGoalLabel: "Hydration Goal (Liters, default)",
+    searchPatientsPlaceholder: "Search by name or surname...",
+    viewHistory: "View History",
+    dietHistoryModalTitle: "Plan History for {name}",
+    downloadPlanOptions: "Download Options",
+    downloadAsJson: "Download JSON",
+    downloadAsPdf: "Download PDF",
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Set Plan Duration",

@@ -7,21 +7,7 @@ import { NutritionistPlan } from '../../types';
 import { uiStore } from '../../stores/UIStore';
 import ConfirmationModal from '../ConfirmationModal';
 import SkeletonLoader from '../SkeletonLoader';
-
-// Utility to trigger download
-const downloadPlan = (plan: NutritionistPlan) => {
-    const jsonString = JSON.stringify(plan.planData, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const safePlanName = plan.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    a.download = `diet-plan-${safePlanName}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-};
+import DownloadPlanModal from './DownloadPlanModal';
 
 interface PlanLibraryPageProps {
     onEdit: (plan: NutritionistPlan) => void;
@@ -31,6 +17,7 @@ interface PlanLibraryPageProps {
 const PlanLibraryPage: React.FC<PlanLibraryPageProps> = observer(({ onEdit, onView }) => {
     const { plans, status, deletePlan, addPlan } = nutritionistStore;
     const [deletingPlan, setDeletingPlan] = useState<NutritionistPlan | null>(null);
+    const [downloadingPlan, setDownloadingPlan] = useState<NutritionistPlan | null>(null);
     const [selectedPlans, setSelectedPlans] = useState<Set<number>>(new Set());
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -143,6 +130,7 @@ const PlanLibraryPage: React.FC<PlanLibraryPageProps> = observer(({ onEdit, onVi
                     <p>{t('deletePlanConfirmationMessage')}</p>
                 </ConfirmationModal>
             )}
+            {downloadingPlan && <DownloadPlanModal plan={downloadingPlan} onClose={() => setDownloadingPlan(null)} />}
             <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-6">{t('planLibraryTab')}</h3>
              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-6 border-b dark:border-gray-700 pb-4">
                 <button
@@ -188,7 +176,7 @@ const PlanLibraryPage: React.FC<PlanLibraryPageProps> = observer(({ onEdit, onVi
                                 <div className="flex items-center gap-2 self-end sm:self-center flex-wrap justify-end">
                                     <button onClick={() => onView(plan)} className="flex items-center gap-2 bg-slate-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-slate-600 transition-colors text-sm"><ViewIcon /> {t('view')}</button>
                                     <button onClick={() => onEdit(plan)} className="flex items-center gap-2 bg-yellow-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-yellow-600 transition-colors text-sm"><EditIcon /> {t('edit')}</button>
-                                    <button onClick={() => downloadPlan(plan)} className="flex items-center gap-2 bg-blue-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-blue-600 transition-colors text-sm"><DownloadIcon /> {t('download')}</button>
+                                    <button onClick={() => setDownloadingPlan(plan)} className="flex items-center gap-2 bg-blue-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-blue-600 transition-colors text-sm"><DownloadIcon /> {t('download')}</button>
                                     <button onClick={() => setDeletingPlan(plan)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-gray-600 rounded-full" title={t('delete')}><TrashIcon /></button>
                                 </div>
                             </div>
