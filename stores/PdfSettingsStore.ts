@@ -6,7 +6,11 @@ export interface PdfSettings {
     footerText: string;
     primaryColor: string;
     fontFamily: 'Sans-serif' | 'Serif';
-    baseFontSize: number;
+    fontSizeH1: number;
+    fontSizeH2: number;
+    fontSizeH3: number;
+    fontSizeBody: number;
+    lineHeight: number;
     showPageNumbers: boolean;
 }
 
@@ -19,7 +23,11 @@ class PdfSettingsStore {
         footerText: 'Dott. Nutrizionista Rossi - Via Roma 1, 12345 Città - P.IVA 1234567890',
         primaryColor: '#8b5cf6',
         fontFamily: 'Sans-serif',
-        baseFontSize: 14,
+        fontSizeH1: 24,
+        fontSizeH2: 20,
+        fontSizeH3: 16,
+        fontSizeBody: 12,
+        lineHeight: 1.6,
         showPageNumbers: true,
     };
     isHydrated = false;
@@ -34,6 +42,11 @@ class PdfSettingsStore {
         if (savedSettings) {
             try {
                 const parsed = JSON.parse(savedSettings);
+                // Migrate old setting
+                if (parsed.baseFontSize && !parsed.fontSizeBody) {
+                    parsed.fontSizeBody = parsed.baseFontSize;
+                    delete parsed.baseFontSize;
+                }
                 runInAction(() => {
                     this.settings = { ...this.settings, ...parsed };
                 });
@@ -81,9 +94,11 @@ class PdfSettingsStore {
         this.saveSettings({ fontFamily: font });
     }
 
-    setBaseFontSize(size: number) {
-        this.saveSettings({ baseFontSize: size });
-    }
+    setFontSizeH1(size: number) { this.saveSettings({ fontSizeH1: size }); }
+    setFontSizeH2(size: number) { this.saveSettings({ fontSizeH2: size }); }
+    setFontSizeH3(size: number) { this.saveSettings({ fontSizeH3: size }); }
+    setFontSizeBody(size: number) { this.saveSettings({ fontSizeBody: size }); }
+    setLineHeight(height: number) { this.saveSettings({ lineHeight: height }); }
 
     setShowPageNumbers(show: boolean) {
         this.saveSettings({ showPageNumbers: show });
