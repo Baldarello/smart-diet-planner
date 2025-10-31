@@ -16,13 +16,17 @@ const PdfSettingsPage: React.FC = observer(() => {
         removeLogo, 
         isHydrated, 
         setPrimaryColor, 
+        setTextColor,
         setFontFamily, 
         setFontSizeH1,
         setFontSizeH2,
         setFontSizeH3,
         setFontSizeBody,
         setLineHeight,
-        setShowPageNumbers 
+        setShowPageNumbers,
+        setShowMealNutrition,
+        setShowDailySummary,
+        setShowProcedures
     } = pdfSettingsStore;
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,27 +98,48 @@ const PdfSettingsPage: React.FC = observer(() => {
                                 <input id="primary-color" type="color" value={settings.primaryColor} onChange={e => setPrimaryColor(e.target.value)} className="mt-1 h-10 w-full p-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer"/>
                             </div>
                             <div>
+                                <label htmlFor="text-color" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Colore Testo</label>
+                                <input id="text-color" type="color" value={settings.textColor} onChange={e => setTextColor(e.target.value)} className="mt-1 h-10 w-full p-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer"/>
+                            </div>
+                            <div>
                                 <label htmlFor="font-family" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Stile Font</label>
-                                <select id="font-family" value={settings.fontFamily} onChange={e => setFontFamily(e.target.value as 'Sans-serif' | 'Serif')} className="w-full mt-1 p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md h-10">
+                                <select id="font-family" value={settings.fontFamily} onChange={e => setFontFamily(e.target.value as any)} className="w-full mt-1 p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md h-10">
                                     <option>Sans-serif</option>
                                     <option>Serif</option>
+                                    <option>Roboto</option>
+                                    <option>Lato</option>
+                                    <option>Merriweather</option>
                                 </select>
                             </div>
+                            <RangeSlider label="Interlinea" value={settings.lineHeight} onChange={setLineHeight} min={1.2} max={2.2} step={0.1} unit="" />
                             <RangeSlider label="Dimensione Titolo H1" value={settings.fontSizeH1} onChange={setFontSizeH1} min={18} max={48} step={1} unit="px" />
                             <RangeSlider label="Dimensione Titolo H2" value={settings.fontSizeH2} onChange={setFontSizeH2} min={16} max={36} step={1} unit="px" />
                             <RangeSlider label="Dimensione Titolo H3" value={settings.fontSizeH3} onChange={setFontSizeH3} min={14} max={28} step={1} unit="px" />
                             <RangeSlider label="Dimensione Testo" value={settings.fontSizeBody} onChange={setFontSizeBody} min={8} max={20} step={1} unit="px" />
-                            <RangeSlider label="Interlinea" value={settings.lineHeight} onChange={setLineHeight} min={1.2} max={2.2} step={0.1} unit="" />
                         </div>
                     </div>
                     
                     {/* Section: Options */}
                     <div>
-                         <h4 className="text-lg font-semibold text-violet-700 dark:text-violet-400 mb-4">Opzioni</h4>
-                         <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-700/50 rounded-lg">
-                            <label htmlFor="show-page-numbers" className="font-medium text-gray-700 dark:text-gray-300">Mostra Numeri di Pagina</label>
-                            <Switch id="show-page-numbers" checked={settings.showPageNumbers} onChange={setShowPageNumbers}/>
-                        </div>
+                         <h4 className="text-lg font-semibold text-violet-700 dark:text-violet-400 mb-4">Opzioni di Visualizzazione</h4>
+                         <div className="space-y-3">
+                            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-700/50 rounded-lg">
+                                <label htmlFor="show-procedures" className="font-medium text-gray-700 dark:text-gray-300">Mostra Procedure Pasti</label>
+                                <Switch id="show-procedures" checked={settings.showProcedures} onChange={setShowProcedures}/>
+                            </div>
+                             <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-700/50 rounded-lg">
+                                <label htmlFor="show-meal-nutrition" className="font-medium text-gray-700 dark:text-gray-300">Mostra Nutrizione per Pasto</label>
+                                <Switch id="show-meal-nutrition" checked={settings.showMealNutrition} onChange={setShowMealNutrition}/>
+                            </div>
+                            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-700/50 rounded-lg">
+                                <label htmlFor="show-daily-summary" className="font-medium text-gray-700 dark:text-gray-300">Mostra Riepilogo Nutrizionale Giornaliero</label>
+                                <Switch id="show-daily-summary" checked={settings.showDailySummary} onChange={setShowDailySummary}/>
+                            </div>
+                            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-700/50 rounded-lg">
+                                <label htmlFor="show-page-numbers" className="font-medium text-gray-700 dark:text-gray-300">Mostra Numeri di Pagina</label>
+                                <Switch id="show-page-numbers" checked={settings.showPageNumbers} onChange={setShowPageNumbers}/>
+                            </div>
+                         </div>
                     </div>
                 </div>
             </div>

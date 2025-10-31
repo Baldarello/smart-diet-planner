@@ -1,5 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { UserProfile } from '../types';
+import { tokenClient } from '../services/authService';
 
 const ACCESS_TOKEN_KEY = 'google_access_token';
 const USER_PROFILE_KEY = 'google_user_profile';
@@ -36,8 +37,16 @@ export class AuthStore {
                     });
                     return token;
                 } else {
-                    // Token is invalid/expired
-                    throw new Error("Token validation failed.");
+                    // Token is invalid/expired. Try to silently refresh.
+                    console.log("Access token expired or invalid. Attempting silent refresh.");
+                    if (tokenClient) {
+                        // This will trigger the callback in authService if successful
+                        tokenClient.requestAccessToken({ prompt: '' });
+                    } else {
+                        console.warn("Token client not ready for silent refresh. User will be logged out.");
+                        this.setLoggedOut();
+                    }
+                    return null; // Act as logged out while refresh is attempted.
                 }
             } else {
                  this.setLoggedOut();
