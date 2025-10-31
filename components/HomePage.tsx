@@ -26,7 +26,7 @@ const HomePage: React.FC = observer(() => {
         <div className="max-w-6xl mx-auto py-8 text-center">
             {/* Hero Section */}
             <section className="py-16">
-                <h1 className="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600 mb-4 break-words">
+                <h1 className="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600 mb-4 break-words pb-5">
                     {t('homeTitle')}
                 </h1>
                 <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto mb-8 break-words">
