@@ -1,79 +1,56 @@
-import { makeAutoObservable } from 'mobx';
+import { makeAutoObservable, observable } from 'mobx';
 import React from 'react';
 
-interface InfoModalState {
-    isOpen: boolean;
-    title: string;
-    message: React.ReactNode;
-}
-
-interface ConfirmationModalState {
-    isOpen: boolean;
-    title: string;
-    message: React.ReactNode;
-    onConfirm: () => void;
-}
-
 class UIStore {
-    infoModal: InfoModalState = {
-        isOpen: false,
-        title: '',
-        message: '',
-    };
+    infoModalIsOpen = false;
+    infoModalTitle = '';
+    infoModalMessage: React.ReactNode = null;
 
-    confirmationModal: ConfirmationModalState = {
-        isOpen: false,
-        title: '',
-        message: '',
-        onConfirm: () => {},
-    };
+    confirmationModalIsOpen = false;
+    confirmationModalTitle = '';
+    confirmationModalMessage: React.ReactNode = null;
+    confirmationModalOnConfirm: () => void = () => {};
 
     constructor() {
-        makeAutoObservable(this, {}, { autoBind: true });
+        makeAutoObservable(this, {
+            infoModalMessage: observable.ref,
+            confirmationModalMessage: observable.ref,
+        }, { autoBind: true });
     }
 
     showInfoModal(title: string, message: React.ReactNode) {
-        this.infoModal = {
-            isOpen: true,
-            title,
-            message,
-        };
+        this.infoModalIsOpen = true;
+        this.infoModalTitle = title;
+        this.infoModalMessage = message;
     }
 
     hideInfoModal() {
-        this.infoModal.isOpen = false;
-        // Reset content after it's hidden to prevent flash of old content
+        this.infoModalIsOpen = false;
         setTimeout(() => {
-            if (!this.infoModal.isOpen) {
-                this.infoModal.title = '';
-                this.infoModal.message = '';
+            if (!this.infoModalIsOpen) {
+                this.infoModalTitle = '';
+                this.infoModalMessage = null;
             }
-        }, 300); // Corresponds to animation duration
+        }, 300);
     }
 
     showConfirmationModal(title: string, message: React.ReactNode, onConfirm: () => void) {
-        this.confirmationModal = {
-            isOpen: true,
-            title,
-            message,
-            onConfirm: () => {
-                onConfirm();
-                this.hideConfirmationModal();
-            },
+        this.confirmationModalIsOpen = true;
+        this.confirmationModalTitle = title;
+        this.confirmationModalMessage = message;
+        this.confirmationModalOnConfirm = () => {
+            onConfirm();
+            this.hideConfirmationModal();
         };
     }
 
     hideConfirmationModal() {
-        this.confirmationModal.isOpen = false;
-        // Reset after animation
+        this.confirmationModalIsOpen = false;
         setTimeout(() => {
-            if (!this.confirmationModal.isOpen) {
-                this.confirmationModal = {
-                    isOpen: false,
-                    title: '',
-                    message: '',
-                    onConfirm: () => {},
-                };
+            if (!this.confirmationModalIsOpen) {
+                this.confirmationModalTitle = '';
+                this.confirmationModalMessage = null;
+                this.confirmationModalOnConfirm = () => {};
             }
         }, 300);
     }

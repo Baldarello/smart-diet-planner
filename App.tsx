@@ -394,7 +394,17 @@ const App: React.FC = observer(() => {
     const getPathFromUrl = () => window.location.pathname.replace(/^\//, '').split('/')[0] || 'dashboard';
     const [currentPath, setCurrentPath] = useState(getPathFromUrl());
 
-    const { infoModal, hideInfoModal, confirmationModal, hideConfirmationModal } = uiStore;
+    const { 
+        infoModalIsOpen,
+        infoModalTitle,
+        infoModalMessage,
+        hideInfoModal, 
+        confirmationModalIsOpen,
+        confirmationModalTitle,
+        confirmationModalMessage,
+        confirmationModalOnConfirm,
+        hideConfirmationModal 
+    } = uiStore;
 
     useEffect(() => {
         const handleLocationChange = () => {
@@ -447,19 +457,19 @@ const App: React.FC = observer(() => {
     return (
         <>
             <InfoModal 
-                isOpen={infoModal.isOpen}
+                isOpen={infoModalIsOpen}
                 onClose={hideInfoModal}
-                title={infoModal.title}
+                title={infoModalTitle}
             >
-                {infoModal.message}
+                {infoModalMessage}
             </InfoModal>
             <ConfirmationModal
-                isOpen={confirmationModal.isOpen}
+                isOpen={confirmationModalIsOpen}
                 onClose={hideConfirmationModal}
-                onConfirm={confirmationModal.onConfirm}
-                title={confirmationModal.title}
+                onConfirm={confirmationModalOnConfirm}
+                title={confirmationModalTitle}
             >
-                {confirmationModal.message}
+                {confirmationModalMessage}
             </ConfirmationModal>
             {renderPage()}
         </>
