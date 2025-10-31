@@ -1,8 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { nutritionistStore } from '../../stores/NutritionistStore';
 import { t } from '../../i18n';
-import { DownloadIcon, TrashIcon, EditIcon, ViewIcon, UploadIcon } from '../Icons';
+import { DownloadIcon, TrashIcon, EditIcon, ViewIcon, UploadIcon, MoreVertIcon } from '../Icons';
 import { NutritionistPlan } from '../../types';
 import { uiStore } from '../../stores/UIStore';
 import ConfirmationModal from '../ConfirmationModal';
@@ -20,6 +20,20 @@ const PlanLibraryPage: React.FC<PlanLibraryPageProps> = observer(({ onEdit, onVi
     const [downloadingPlan, setDownloadingPlan] = useState<NutritionistPlan | null>(null);
     const [selectedPlans, setSelectedPlans] = useState<Set<number>>(new Set());
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [actionsMenuPlanId, setActionsMenuPlanId] = useState<number | null>(null);
+    const actionsMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
+                setActionsMenuPlanId(null);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [actionsMenuRef]);
 
     const handleDeleteConfirm = () => {
         if (deletingPlan && deletingPlan.id) {
@@ -174,9 +188,31 @@ const PlanLibraryPage: React.FC<PlanLibraryPageProps> = observer(({ onEdit, onVi
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 self-end sm:self-center flex-wrap justify-end">
-                                    <button onClick={() => onView(plan)} className="flex items-center gap-2 bg-slate-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-slate-600 transition-colors text-sm"><ViewIcon /> {t('view')}</button>
-                                    <button onClick={() => onEdit(plan)} className="flex items-center gap-2 bg-yellow-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-yellow-600 transition-colors text-sm"><EditIcon /> {t('edit')}</button>
-                                    <button onClick={() => setDownloadingPlan(plan)} className="flex items-center gap-2 bg-blue-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-blue-600 transition-colors text-sm"><DownloadIcon /> {t('download')}</button>
+                                    <div className="relative flex-shrink-0">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setActionsMenuPlanId(plan.id === actionsMenuPlanId ? null : plan.id!);
+                                            }}
+                                            className="p-2 rounded-full text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/50 hover:bg-green-200 dark:hover:bg-green-800"
+                                            title="Azioni"
+                                        >
+                                            <MoreVertIcon />
+                                        </button>
+                                        {actionsMenuPlanId === plan.id && (
+                                            <div
+                                                ref={actionsMenuRef}
+                                                className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-20 border dark:border-gray-700 animate-slide-in-up"
+                                                style={{ animationDuration: '0.2s' }}
+                                            >
+                                                <div className="py-1">
+                                                    <button onClick={() => { onView(plan); setActionsMenuPlanId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><ViewIcon /> {t('view')}</button>
+                                                    <button onClick={() => { onEdit(plan); setActionsMenuPlanId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><EditIcon /> {t('edit')}</button>
+                                                    <button onClick={() => { setDownloadingPlan(plan); setActionsMenuPlanId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><DownloadIcon /> {t('download')}</button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                     <button onClick={() => setDeletingPlan(plan)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-gray-600 rounded-full" title={t('delete')}><TrashIcon /></button>
                                 </div>
                             </div>
