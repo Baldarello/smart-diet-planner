@@ -5,6 +5,7 @@ import { authStore } from './stores/AuthStore';
 import { uiStore } from './stores/UIStore';
 import { t, setI18nLocaleGetter } from './i18n';
 import { syncWithDrive } from './services/syncService';
+import { initGoogleAuth } from './services/authService';
 
 import Loader from './components/Loader';
 import ErrorMessage from './components/ErrorMessage';
@@ -30,8 +31,9 @@ import FileUploadScreen from './components/FileUploadScreen';
 import InfoModal from './components/InfoModal';
 import ConfirmationModal from './components/ConfirmationModal';
 import AchievementsModal from './components/AchievementsModal';
+import HomePage from './components/HomePage';
 
-import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon, ArrowLeftIcon, MenuIcon, AdminIcon } from './components/Icons';
+import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, UploadIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon, ArrowLeftIcon, MenuIcon, AdminIcon } from './components/Icons';
 
 const MainAppContent: React.FC = observer(() => {
     const store = mealPlanStore;
@@ -50,7 +52,7 @@ const MainAppContent: React.FC = observer(() => {
                 case 'settings': return <SettingsView />;
                 case 'archive': return <ArchiveView />;
                 case 'upload': return <FileUploadScreen />;
-                default: return <FileUploadScreen />;
+                default: return <HomePage />;
             }
         }
 
@@ -90,6 +92,7 @@ const MainAppLayout: React.FC = observer(() => {
 
     useEffect(() => {
         const initializeApp = async () => {
+            initGoogleAuth(); // Centralized initialization
             const restoredToken = await authStore.init();
             if (restoredToken) {
                 // This will sync and then call mealPlanStore.init() inside its finally block
@@ -284,14 +287,22 @@ const MainAppLayout: React.FC = observer(() => {
 
                     {renderSimulateButton()}
 
-                    <div className="py-6">
-                        <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('navigation')}</h3>
-                        <div className="flex flex-col space-y-1">
-                            {store.status === AppStatus.SUCCESS && store.currentPlanId && (
-                                planSpecificTabs.map(renderTab)
-                            )}
+                    {store.status === AppStatus.SUCCESS && store.currentPlanId ? (
+                        <div className="py-6">
+                            <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('navigation')}</h3>
+                            <div className="flex flex-col space-y-1">
+                                {planSpecificTabs.map(renderTab)}
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                         <div className="py-6">
+                            <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('navigation')}</h3>
+                            <div className="flex flex-col space-y-1">
+                                {renderTab({ id: 'upload', icon: <UploadIcon />, label: t('uploadNew') })}
+                                {renderTab({ id: 'archive', icon: <ArchiveIcon />, label: t('tabArchive') })}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Spacer */}

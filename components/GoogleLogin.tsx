@@ -1,19 +1,13 @@
 import React, { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { authStore } from '../stores/AuthStore';
-import { handleSignIn, handleSignOut, initGoogleAuth } from '../services/authService';
+import { handleSignIn, handleSignOut } from '../services/authService';
 import { t } from '../i18n';
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
 const GoogleLogin: React.FC = observer(() => {
     
-    useEffect(() => {
-        if (CLIENT_ID) {
-            initGoogleAuth();
-        }
-    }, []);
-
     if (!CLIENT_ID) {
         return (
             <button

@@ -6,19 +6,39 @@ interface PdfPreviewProps {
 }
 
 const PdfPreview: React.FC<PdfPreviewProps> = ({ settings }) => {
-    const fontFamily = settings.fontFamily === 'Serif' 
-        ? 'Georgia, serif' 
-        : '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+    let fontFamily = '';
+    switch (settings.fontFamily) {
+        case 'Serif':
+            fontFamily = 'Georgia, serif';
+            break;
+        case 'Roboto':
+        case 'Lato':
+        case 'Merriweather':
+            fontFamily = `'${settings.fontFamily}', sans-serif`;
+            break;
+        default:
+            fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+            break;
+    }
+
+    const googleFonts = ['Roboto', 'Lato', 'Merriweather'];
 
     return (
         <div className="bg-white shadow-lg rounded-lg overflow-hidden border dark:border-gray-700">
+             {googleFonts.includes(settings.fontFamily) && (
+                <>
+                    <link rel="preconnect" href="https://fonts.googleapis.com" />
+                    <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
+                    <link href={`https://fonts.googleapis.com/css2?family=${settings.fontFamily.replace(' ', '+')}:wght@400;700&display=swap`} rel="stylesheet" />
+                </>
+            )}
             <div 
                 className="p-8 aspect-[1/1.414] w-full overflow-hidden transform scale-[0.9] origin-top relative"
                 style={{
                     fontFamily,
                     fontSize: `${settings.fontSizeBody}px`,
                     lineHeight: settings.lineHeight,
-                    color: '#333'
+                    color: settings.textColor
                 }}
             >
                 {/* Header */}
@@ -50,6 +70,12 @@ const PdfPreview: React.FC<PdfPreviewProps> = ({ settings }) => {
                         30g di Frutti di Bosco
                     </li>
                 </ul>
+                
+                {settings.showProcedures && (
+                    <p style={{ marginTop: '10px', fontStyle: 'italic', fontSize: '0.9em' }}>
+                        <strong>Procedura:</strong><br/>Mescolare lo yogurt con i frutti di bosco.
+                    </p>
+                )}
                 
                 {/* Footer */}
                 <div style={{ position: 'absolute', bottom: '30px', left: '30px', right: '30px', textAlign: 'center', fontSize: '0.7em', color: '#666', borderTop: '1px solid #eee', paddingTop: '10px' }}>

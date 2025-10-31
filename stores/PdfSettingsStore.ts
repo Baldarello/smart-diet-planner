@@ -5,13 +5,17 @@ export interface PdfSettings {
     headerText: string;
     footerText: string;
     primaryColor: string;
-    fontFamily: 'Sans-serif' | 'Serif';
+    textColor: string;
+    fontFamily: 'Sans-serif' | 'Serif' | 'Roboto' | 'Lato' | 'Merriweather';
     fontSizeH1: number;
     fontSizeH2: number;
     fontSizeH3: number;
     fontSizeBody: number;
     lineHeight: number;
     showPageNumbers: boolean;
+    showMealNutrition: boolean;
+    showDailySummary: boolean;
+    showProcedures: boolean;
 }
 
 const PDF_SETTINGS_KEY = 'nutritionist_pdf_settings';
@@ -22,6 +26,7 @@ class PdfSettingsStore {
         headerText: 'Piano Nutrizionale',
         footerText: 'Dott. Nutrizionista Rossi - Via Roma 1, 12345 Città - P.IVA 1234567890',
         primaryColor: '#8b5cf6',
+        textColor: '#333333',
         fontFamily: 'Sans-serif',
         fontSizeH1: 24,
         fontSizeH2: 20,
@@ -29,6 +34,9 @@ class PdfSettingsStore {
         fontSizeBody: 12,
         lineHeight: 1.6,
         showPageNumbers: true,
+        showMealNutrition: true,
+        showDailySummary: true,
+        showProcedures: true,
     };
     isHydrated = false;
 
@@ -89,8 +97,12 @@ class PdfSettingsStore {
     setPrimaryColor(color: string) {
         this.saveSettings({ primaryColor: color });
     }
+    
+    setTextColor(color: string) {
+        this.saveSettings({ textColor: color });
+    }
 
-    setFontFamily(font: 'Sans-serif' | 'Serif') {
+    setFontFamily(font: 'Sans-serif' | 'Serif' | 'Roboto' | 'Lato' | 'Merriweather') {
         this.saveSettings({ fontFamily: font });
     }
 
@@ -100,9 +112,10 @@ class PdfSettingsStore {
     setFontSizeBody(size: number) { this.saveSettings({ fontSizeBody: size }); }
     setLineHeight(height: number) { this.saveSettings({ lineHeight: height }); }
 
-    setShowPageNumbers(show: boolean) {
-        this.saveSettings({ showPageNumbers: show });
-    }
+    setShowPageNumbers(show: boolean) { this.saveSettings({ showPageNumbers: show }); }
+    setShowMealNutrition(show: boolean) { this.saveSettings({ showMealNutrition: show }); }
+    setShowDailySummary(show: boolean) { this.saveSettings({ showDailySummary: show }); }
+    setShowProcedures(show: boolean) { this.saveSettings({ showProcedures: show }); }
 }
 
 export const pdfSettingsStore = new PdfSettingsStore();

@@ -38,6 +38,7 @@ export { default as UnitPicker } from './UnitPicker';
 export { default as Switch } from './Switch';
 export { default as ShareLinkModal } from './ShareLinkModal';
 export { default as InfoModal } from './InfoModal';
+export { default as HomePage } from './HomePage';
 export * from './Icons';
 export { default as AdminLoginPage } from './admin/AdminLoginPage';
 export { default as NutritionistPage } from './admin/NutritionistPage';

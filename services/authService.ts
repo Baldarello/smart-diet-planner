@@ -33,11 +33,11 @@ declare global {
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
 
-let tokenClient: google.accounts.oauth2.TokenClient | null = null;
+export let tokenClient: google.accounts.oauth2.TokenClient | null = null;
 
 export const initGoogleAuth = () => {
-    if (typeof google === 'undefined' || !CLIENT_ID) {
-        console.error("Google GSI script not loaded or Client ID not configured.");
+    if (tokenClient || typeof google === 'undefined' || !CLIENT_ID) {
+        // Already initialized or GSI script not loaded.
         return;
     }
 
@@ -102,7 +102,8 @@ export const handleSignIn = () => {
     
     // now tokenClient might be set if GSI script was loaded.
     if (tokenClient) {
-        tokenClient.requestAccessToken();
+        // Use 'popup' to ensure a better user experience on subsequent sign-ins.
+        tokenClient.requestAccessToken({ prompt: 'popup' });
     } else {
         // This might happen if GSI script is not loaded yet.
         // The user might need to click again.
