@@ -312,6 +312,11 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
                     </div>
                 ) : (
                     <div className="overflow-y-auto p-8">
+                         <div className="flex justify-end items-center gap-2 mb-4">
+                            <span className="text-sm font-medium uppercase text-gray-600 dark:text-gray-400">{t('unitKg')}/{t('unitLiters')}</span>
+                            <Switch checked={unitMode === 'percentage'} onChange={c => setUnitMode(c ? 'percentage' : 'absolute')} />
+                            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">%</span>
+                        </div>
                         {history.length > 0 ? (
                              <div className="relative overflow-x-auto shadow-md sm:rounded-lg">
                                 <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
@@ -319,28 +324,65 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
                                         <tr>
                                             <th scope="col" className="px-6 py-3">{t('dateColumn')}</th>
                                             <th scope="col" className="px-6 py-3 text-right">{t('weight')} ({t('unitKg')})</th>
-                                            <th scope="col" className="px-6 py-3 text-right">{t('bodyFat')} ({t('unitKg')})</th>
-                                            <th scope="col" className="px-6 py-3 text-right">{t('leanMass')} ({t('unitKg')})</th>
-                                            <th scope="col" className="px-6 py-3 text-right">{t('bodyWater')} ({t('unitLiters')})</th>
+                                            <th scope="col" className="px-6 py-3 text-right">{t('bodyFat')} ({unitMode === 'percentage' ? '%' : t('unitKg')})</th>
+                                            <th scope="col" className="px-6 py-3 text-right">{t('leanMass')} ({unitMode === 'percentage' ? '%' : t('unitKg')})</th>
+                                            <th scope="col" className="px-6 py-3 text-right">{t('bodyWater')} ({unitMode === 'percentage' ? '%' : t('unitLiters')})</th>
                                             <th scope="col" className="px-6 py-3 text-right">{t('actionsColumnHeader')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {history.map(record => (
-                                            <tr key={record.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 group">
-                                                <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">{formatHistoryDate(record.date)}</th>
-                                                <td className="px-6 py-4 text-right">{record.weightKg?.toFixed(1) ?? '-'}</td>
-                                                <td className="px-6 py-4 text-right">{record.bodyFatKg?.toFixed(1) ?? '-'}</td>
-                                                <td className="px-6 py-4 text-right">{record.leanMassKg?.toFixed(1) ?? '-'}</td>
-                                                <td className="px-6 py-4 text-right">{record.bodyWaterLiters?.toFixed(1) ?? '-'}</td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => handleEdit(record)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400" title={t('editItemTitle')}><EditIcon /></button>
-                                                        <button onClick={() => setDeletingRecord(record)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400" title={t('deleteItemTitle')}><TrashIcon /></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {history.map(record => {
+                                            const { weightKg } = record;
+
+                                            let bodyFatDisplay: string = '-';
+                                            if (unitMode === 'percentage') {
+                                                const value = record.bodyFatPercentage ?? (weightKg && record.bodyFatKg != null ? (record.bodyFatKg / weightKg) * 100 : null);
+                                                if (value != null) bodyFatDisplay = value.toFixed(1);
+                                            } else {
+                                                const value = record.bodyFatKg ?? (weightKg && record.bodyFatPercentage != null ? (record.bodyFatPercentage / 100) * weightKg : null);
+                                                if (value != null) bodyFatDisplay = value.toFixed(1);
+                                            }
+                                
+                                            let leanMassDisplay: string = '-';
+                                            if (unitMode === 'percentage') {
+                                                if (record.leanMassKg != null && weightKg != null && weightKg > 0) {
+                                                    leanMassDisplay = ((record.leanMassKg / weightKg) * 100).toFixed(1);
+                                                } else {
+                                                    const fatPercentage = record.bodyFatPercentage ?? (weightKg && record.bodyFatKg != null ? (record.bodyFatKg / weightKg) * 100 : null);
+                                                    if (fatPercentage != null) {
+                                                        leanMassDisplay = (100 - fatPercentage).toFixed(1);
+                                                    }
+                                                }
+                                            } else {
+                                                const value = record.leanMassKg ?? (weightKg != null && record.bodyFatKg != null ? weightKg - record.bodyFatKg : null);
+                                                if (value != null) leanMassDisplay = value.toFixed(1);
+                                            }
+
+                                            let bodyWaterDisplay: string = '-';
+                                            if (unitMode === 'percentage') {
+                                                const value = record.bodyWaterPercentage ?? (weightKg && record.bodyWaterLiters != null ? (record.bodyWaterLiters / weightKg) * 100 : null);
+                                                if (value != null) bodyWaterDisplay = value.toFixed(1);
+                                            } else {
+                                                const value = record.bodyWaterLiters ?? (weightKg && record.bodyWaterPercentage != null ? (record.bodyWaterPercentage / 100) * weightKg : null);
+                                                if (value != null) bodyWaterDisplay = value.toFixed(1);
+                                            }
+
+                                            return (
+                                                <tr key={record.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 group">
+                                                    <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">{formatHistoryDate(record.date)}</th>
+                                                    <td className="px-6 py-4 text-right">{record.weightKg?.toFixed(1) ?? '-'}</td>
+                                                    <td className="px-6 py-4 text-right">{bodyFatDisplay}</td>
+                                                    <td className="px-6 py-4 text-right">{leanMassDisplay}</td>
+                                                    <td className="px-6 py-4 text-right">{bodyWaterDisplay}</td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button onClick={() => handleEdit(record)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400" title={t('editItemTitle')}><EditIcon /></button>
+                                                            <button onClick={() => setDeletingRecord(record)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400" title={t('deleteItemTitle')}><TrashIcon /></button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
