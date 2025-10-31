@@ -82,7 +82,7 @@ const AchievementsModal: React.FC<AchievementsModalProps> = observer(({ isOpen, 
     const locked = Object.keys(allAchievementsConfig).filter(key => !earnedAchievements.includes(key));
     
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title" onClick={onClose}>
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-[80] p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title" onClick={onClose}>
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl p-6 animate-slide-in-up flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                     <h2 id="modal-title" className="text-2xl font-bold text-gray-800 dark:text-gray-200">{t('allAchievementsTitle')}</h2>
