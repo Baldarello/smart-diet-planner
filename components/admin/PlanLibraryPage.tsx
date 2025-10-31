@@ -167,29 +167,33 @@ const PlanLibraryPage: React.FC<PlanLibraryPageProps> = observer(({ onEdit, onVi
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {plans.map(plan => (
-                        <div key={plan.id} className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div className="flex items-center flex-grow">
-                                <input
-                                    type="checkbox"
-                                    checked={!!plan.id && selectedPlans.has(plan.id)}
-                                    onChange={() => plan.id && toggleSelection(plan.id)}
-                                    className="h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500 cursor-pointer mr-4 flex-shrink-0"
-                                    aria-labelledby={`plan-name-${plan.id}`}
-                                />
-                                <div className="min-w-0">
-                                    <p id={`plan-name-${plan.id}`} className="font-bold text-lg text-gray-800 dark:text-gray-200 truncate">{plan.name}</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('createdOn')} {new Date(plan.creationDate).toLocaleDateString('en-GB')}</p>
+                    {plans.map(plan => {
+                        const date = new Date(plan.creationDate);
+                        const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+                        return (
+                            <div key={plan.id} className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                <div className="flex items-center flex-grow">
+                                    <input
+                                        type="checkbox"
+                                        checked={!!plan.id && selectedPlans.has(plan.id)}
+                                        onChange={() => plan.id && toggleSelection(plan.id)}
+                                        className="h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500 cursor-pointer mr-4 flex-shrink-0"
+                                        aria-labelledby={`plan-name-${plan.id}`}
+                                    />
+                                    <div className="min-w-0">
+                                        <p id={`plan-name-${plan.id}`} className="font-bold text-lg text-gray-800 dark:text-gray-200 truncate">{plan.name}</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">{t('createdOn')} {formattedDate}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 self-end sm:self-center flex-wrap justify-end">
+                                    <button onClick={() => onView(plan)} className="flex items-center gap-2 bg-slate-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-slate-600 transition-colors text-sm"><ViewIcon /> {t('view')}</button>
+                                    <button onClick={() => onEdit(plan)} className="flex items-center gap-2 bg-yellow-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-yellow-600 transition-colors text-sm"><EditIcon /> {t('edit')}</button>
+                                    <button onClick={() => downloadPlan(plan)} className="flex items-center gap-2 bg-blue-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-blue-600 transition-colors text-sm"><DownloadIcon /> {t('download')}</button>
+                                    <button onClick={() => setDeletingPlan(plan)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-gray-600 rounded-full" title={t('delete')}><TrashIcon /></button>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2 self-end sm:self-center flex-wrap justify-end">
-                                <button onClick={() => onView(plan)} className="flex items-center gap-2 bg-slate-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-slate-600 transition-colors text-sm"><ViewIcon /> {t('view')}</button>
-                                <button onClick={() => onEdit(plan)} className="flex items-center gap-2 bg-yellow-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-yellow-600 transition-colors text-sm"><EditIcon /> {t('edit')}</button>
-                                <button onClick={() => downloadPlan(plan)} className="flex items-center gap-2 bg-blue-500 text-white font-semibold px-4 py-2 rounded-full hover:bg-blue-600 transition-colors text-sm"><DownloadIcon /> {t('download')}</button>
-                                <button onClick={() => setDeletingPlan(plan)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-gray-600 rounded-full" title={t('delete')}><TrashIcon /></button>
-                            </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
             )}
         </div>

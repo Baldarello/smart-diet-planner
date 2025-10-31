@@ -89,7 +89,12 @@ const StreakItem: React.FC<{ count: number, label: string, icon: React.ReactNode
 
 const AlertItem: React.FC<{ item: PantryItem, type: 'expired' | 'expiring' | 'stock', onClick: () => void }> = ({ item, type, onClick }) => {
     const isDateAlert = type === 'expiring' || type === 'expired';
-    const date = isDateAlert ? new Date(item.expiryDate!).toLocaleDateString(mealPlanStore.locale === 'it' ? 'it-IT' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+    
+    let date = '';
+    if (isDateAlert && item.expiryDate) {
+        const [year, month, day] = item.expiryDate.split('-');
+        date = `${day}/${month}/${year}`;
+    }
 
     const config = {
         expired: {
@@ -156,7 +161,10 @@ const DashboardView: React.FC = observer(() => {
     
     // Chart data
     const last7DaysHistory = store.progressHistory.slice(-7);
-    const weightLabels = last7DaysHistory.map(d => new Date(d.date).toLocaleDateString(store.locale === 'it' ? 'it-IT' : 'en-GB', { day: '2-digit', month: '2-digit' }));
+    const weightLabels = last7DaysHistory.map(d => {
+        const [year, month, day] = d.date.split('-');
+        return `${day}/${month}`;
+    });
     const weightData = last7DaysHistory.map(d => d.weightKg);
 
     // Calculate focused Y-axis for weight chart

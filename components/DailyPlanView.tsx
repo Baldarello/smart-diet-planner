@@ -64,10 +64,8 @@ const DailyPlanView: React.FC = observer(() => {
     const isFirstDay = startDate ? currentDate <= startDate : false;
     const isLastDay = endDate ? currentDate >= endDate : false;
 
-    const displayDate = new Date(currentDate).toLocaleDateString(
-        mealPlanStore.locale === 'it' ? 'it-IT' : 'en-GB',
-        { day: '2-digit', month: '2-digit', year: 'numeric' }
-    );
+    const [year, month, day] = currentDate.split('-');
+    const displayDate = `${day}/${month}/${year}`;
     const formattedDayName = dailyPlan.day.charAt(0) + dailyPlan.day.slice(1).toLowerCase();
 
     const MealsContent = (
