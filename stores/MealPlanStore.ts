@@ -46,6 +46,7 @@ interface ImportedJsonData {
     pantry?: PantryItem[];
     startDate?: string;
     endDate?: string;
+    showBodyMetricsInApp?: boolean;
 }
 
 const getTodayDateString = () => new Date().toLocaleDateString('en-CA');
@@ -242,6 +243,7 @@ export class MealPlanStore {
     recalculatingProgress = false;
     showMacros = false;
     showCheatMealButton = false;
+    showBodyMetricsInApp = true;
 
     // Global goals and settings
     hydrationGoalLiters = 3;
@@ -421,6 +423,7 @@ export class MealPlanStore {
                     this.lastModified = data.lastModified || Date.now();
                     this.showMacros = data.showMacros ?? false;
                     this.showCheatMealButton = data.showCheatMealButton ?? false;
+                    this.showBodyMetricsInApp = data.showBodyMetricsInApp ?? true; // Default to true for existing users
 
                     if (data.sentNotifications) {
                         this.sentNotifications = new Map(data.sentNotifications);
@@ -1145,6 +1148,7 @@ export class MealPlanStore {
                 lastModified: this.lastModified,
                 showMacros: this.showMacros,
                 showCheatMealButton: this.showCheatMealButton,
+                showBodyMetricsInApp: this.showBodyMetricsInApp,
             };
             await db.appState.put({key: 'dietPlanData', value: dataToSave as StoredState});
         } catch (error) {
@@ -1617,6 +1621,7 @@ export class MealPlanStore {
                     this.pantry = data.pantry || [];
                     this.currentPlanName = data.planName || 'My Diet Plan';
                     this.planToSet = sanitizedPlan;
+                    this.showBodyMetricsInApp = data.showBodyMetricsInApp ?? false;
                 });
                 await this.commitNewPlan(data.startDate, data.endDate);
                 this.navigateTo('list', true);
@@ -1626,6 +1631,7 @@ export class MealPlanStore {
                     this.shoppingList = (data.shoppingList || []).map((cat, index) => ({...cat, sortOrder: index}));
                     this.pantry = data.pantry || [];
                     this.currentPlanName = data.planName || 'My Diet Plan';
+                    this.showBodyMetricsInApp = data.showBodyMetricsInApp ?? false;
                     this.status = AppStatus.AWAITING_DATES;
                 });
             }

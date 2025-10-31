@@ -2,6 +2,7 @@
 
 
 
+
 export interface NutritionInfo {
   carbs: number;
   protein: number;
@@ -137,6 +138,7 @@ export interface StoredState {
     lastModified?: number;
     showMacros?: boolean;
     showCheatMealButton?: boolean;
+    showBodyMetricsInApp?: boolean;
 }
 
 export interface SyncedData {
@@ -186,6 +188,8 @@ export interface Patient {
   firstName: string;
   lastName: string;
   creationDate: string; // ISO string
+  bodyMetrics?: BodyMetrics;
+  showBodyMetricsInApp?: boolean;
 }
 
 export interface AssignedPlan {

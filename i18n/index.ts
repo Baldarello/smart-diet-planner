@@ -7,8 +7,6 @@ const translations = {
     mainSubtitle: "Il tuo assistente intelligente per la pianificazione dei pasti.",
     changeDiet: "Nuovo Piano",
     changeDietTitle: "Crea o ripristina un piano",
-    exportPlan: "Esporta",
-    exportPlanTitle: "Esporta i dati del piano in formato JSON",
     tabDashboard: "Dashboard",
     tabDaily: "Oggi",
     goToToday: "Vai a Oggi",
@@ -31,7 +29,6 @@ const translations = {
     offlineModeTitle: "Modalità Offline: Quota API superata. Funzionalità di base attive.",
     cancelAndReturn: "Annulla e torna al piano",
     restoreFromArchiveTitle: "Oppure, ripristina un piano archiviato",
-    planManagement: "Gestione Piano",
     settings: "Impostazioni",
     theme: "Tema",
     language: "Lingua",
@@ -140,6 +137,9 @@ const translations = {
     unassignPlan: "Disassocia Piano",
     unassignPlanConfirmationTitle: "Conferma Disassociazione",
     unassignPlanConfirmationMessage: "Sei sicuro di voler disassociare questo piano dal paziente?",
+    bodyDataButton: "Dati Corporei",
+    bodyDataModalTitle: "Dati Corporei per {name}",
+    showBodyMetricsInAppLabel: "Mostra sezione Dati Corporei nell'app del paziente",
 
 
     // SetPlanDatesModal.tsx
@@ -451,8 +451,6 @@ const translations = {
     mainSubtitle: "Your intelligent meal planning assistant.",
     changeDiet: "New Plan",
     changeDietTitle: "Create or restore a plan",
-    exportPlan: "Export",
-    exportPlanTitle: "Export plan data to a JSON file",
     tabDashboard: "Dashboard",
     tabDaily: "Today",
     goToToday: "Go to Today",
@@ -475,7 +473,6 @@ const translations = {
     offlineModeTitle: "Offline Mode: API quota exceeded. Basic functionality is active.",
     cancelAndReturn: "Cancel and return to plan",
     restoreFromArchiveTitle: "Or, restore an archived plan",
-    planManagement: "Plan Management",
     settings: "Settings",
     theme: "Theme",
     language: "Language",
@@ -584,6 +581,9 @@ const translations = {
     unassignPlan: "Unassign Plan",
     unassignPlanConfirmationTitle: "Confirm Unassignment",
     unassignPlanConfirmationMessage: "Are you sure you want to unassign this plan from the patient?",
+    bodyDataButton: "Body Data",
+    bodyDataModalTitle: "Body Data for {name}",
+    showBodyMetricsInAppLabel: "Show Body Metrics section in patient's app",
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Set Plan Duration",

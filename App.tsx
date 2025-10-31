@@ -30,7 +30,7 @@ import FileUploadScreen from './components/FileUploadScreen';
 import InfoModal from './components/InfoModal';
 import ConfirmationModal from './components/ConfirmationModal';
 
-import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ExportIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon, ArrowLeftIcon, MenuIcon, AdminIcon } from './components/Icons';
+import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, ChangeDietIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon, ArrowLeftIcon, MenuIcon, AdminIcon } from './components/Icons';
 
 const MainAppContent: React.FC = observer(() => {
     const store = mealPlanStore;
@@ -199,27 +199,6 @@ const MainAppLayout: React.FC = observer(() => {
         };
     }, [store, store.currentPlanId]);
 
-    const handleExport = () => {
-        const dataToExport = {
-            planName: store.currentPlanName,
-            weeklyPlan: store.masterMealPlan,
-            shoppingList: store.shoppingList,
-            pantry: store.pantry,
-        };
-
-        const jsonString = JSON.stringify(dataToExport, null, 2);
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const safePlanName = store.currentPlanName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        a.download = `diet-plan-${safePlanName}-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    };
-
     const renderDrawerContent = () => {
         const isPlanLocked = !store.shoppingListManaged && !!store.currentPlanId;
         const planSpecificTabs = [
@@ -232,11 +211,6 @@ const MainAppLayout: React.FC = observer(() => {
             { id: 'progress', icon: <ProgressIcon />, label: t('tabProgress') },
         ];
         
-        const generalTabs = [
-            { id: 'archive', icon: <ArchiveIcon />, label: t('tabArchive') },
-            { id: 'settings', icon: <SettingsIcon />, label: t('tabSettings') },
-        ];
-
         const handleNavigate = (tab: NavigableTab) => {
             store.navigateTo(tab);
             setIsDrawerOpen(false);
@@ -301,52 +275,49 @@ const MainAppLayout: React.FC = observer(() => {
 
         return (
             <div className="flex flex-col h-full">
-                <div className="border-b dark:border-gray-700 pb-6">
-                    <GoogleLogin />
-                </div>
+                {/* Top section */}
+                <div className="flex-shrink-0">
+                    <div className="border-b dark:border-gray-700 pb-6">
+                        <GoogleLogin />
+                    </div>
 
-                {renderSimulateButton()}
+                    {renderSimulateButton()}
 
-                <div className="border-b dark:border-gray-700 py-6">
-                    <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('navigation')}</h3>
-                    <div className="flex flex-col space-y-1">
-                        {store.status === AppStatus.SUCCESS && store.currentPlanId && (
-                            planSpecificTabs.map(renderTab)
-                        )}
-                        {generalTabs.map(renderTab)}
+                    <div className="py-6">
+                        <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('navigation')}</h3>
+                        <div className="flex flex-col space-y-1">
+                            {store.status === AppStatus.SUCCESS && store.currentPlanId && (
+                                planSpecificTabs.map(renderTab)
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                <div className="py-6 flex-grow">
-                    <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('planManagement')}</h3>
-                    <div className="flex flex-col space-y-1">
-                        <button onClick={() => handleNavigate('upload')} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
-                            <ChangeDietIcon /> <span className="ml-3">{t('changeDiet')}</span>
-                        </button>
-                        {store.status === AppStatus.SUCCESS && store.currentPlanId && (
-                            <button onClick={handleExport} className="w-full text-left bg-transparent hover:bg-violet-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold px-4 py-3 rounded-lg transition-colors flex items-center">
-                                <ExportIcon /> <span className="ml-3">{t('exportPlan')}</span>
+                {/* Spacer */}
+                <div className="flex-grow"></div>
+
+                {/* Bottom section */}
+                <div className="flex-shrink-0">
+                    <div className="py-6 border-t dark:border-gray-700">
+                        <div className="flex flex-col space-y-1">
+                            {renderTab({ id: 'settings', icon: <SettingsIcon />, label: t('tabSettings') })}
+                        </div>
+                    </div>
+                    
+                    {(
+                        <div className="px-4 pb-4">
+                            <button onClick={() => {
+                                    window.history.pushState({}, '', '/admin');
+                                    window.dispatchEvent(new PopStateEvent('popstate'));
+                                    setIsDrawerOpen(false);
+                                }} className="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors w-full text-left">
+                                <AdminIcon />
+                                <span>{t('adminLoginTitle')}</span>
                             </button>
-                        )}
-                    </div>
+                        </div>
+                    )}
+                    {renderExitSimulationButton()}
                 </div>
-                
-                {/*{process.env.BUILD_TYPE === 'web' && (*/}
-                     {(
-                    <div className="px-4 pb-4 mt-auto">
-                        <button onClick={() => {
-                                window.history.pushState({}, '', '/admin');
-                                window.dispatchEvent(new PopStateEvent('popstate'));
-                                setIsDrawerOpen(false);
-                            }} className="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors w-full text-left">
-                            <AdminIcon />
-                            <span>{t('adminLoginTitle')}</span>
-                        </button>
-                    </div>
-                )}
-
-
-                {renderExitSimulationButton()}
             </div>
         );
     }

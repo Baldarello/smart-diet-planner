@@ -185,7 +185,7 @@ const DailyPlanView: React.FC = observer(() => {
         <>
             <HydrationTracker />
             <StepTracker />
-            <BodyMetricsTracker />
+            {mealPlanStore.showBodyMetricsInApp && <BodyMetricsTracker />}
         </>
     );
 
