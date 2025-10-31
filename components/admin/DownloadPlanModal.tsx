@@ -31,9 +31,16 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
     };
 
     const handlePdfDownload = () => {
-        const planData = 'planData' in plan ? plan.planData : plan;
-        const planName = 'name' in plan ? plan.name : planData.planData.planName;
-        const weeklyPlan : DayPlan[] = 'weeklyPlan' in planData ? planData.weeklyPlan : plan.planData.weeklyPlan;
+        let planName: string;
+        let weeklyPlan: DayPlan[];
+    
+        if ('name' in plan) { // NutritionistPlan
+            planName = plan.name;
+            weeklyPlan = plan.planData.weeklyPlan;
+        } else { // AssignedPlan
+            planName = plan.planData.planName;
+            weeklyPlan = plan.planData.weeklyPlan;
+        }
         
         let html = `
             <html>

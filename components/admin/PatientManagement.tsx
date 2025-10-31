@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { patientStore } from '../../stores/PatientStore';
 import { nutritionistStore } from '../../stores/NutritionistStore';
 import { t } from '../../i18n';
 import { Patient, AssignedPlan, NutritionistPlan } from '../../types';
-import { PlusCircleIcon, TrashIcon, CheckIcon, CloseIcon, EditIcon, DownloadIcon, ShareIcon, BodyIcon, ProgressIcon, SettingsIcon } from '../Icons';
+import { PlusCircleIcon, TrashIcon, CheckIcon, CloseIcon, EditIcon, DownloadIcon, ShareIcon, BodyIcon, ProgressIcon, SettingsIcon, MoreVertIcon } from '../Icons';
 import SkeletonLoader from '../SkeletonLoader';
 import ConfirmationModal from '../ConfirmationModal';
 import AssignPlanModal from './AssignPlanModal';
@@ -41,6 +41,20 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
     const [searchTerm, setSearchTerm] = useState('');
     const [viewingHistoryForPatient, setViewingHistoryForPatient] = useState<Patient | null>(null);
     const [downloadingPlan, setDownloadingPlan] = useState<AssignedPlan | null>(null);
+    const [actionsMenuPatientId, setActionsMenuPatientId] = useState<number | null>(null);
+    const actionsMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
+                setActionsMenuPatientId(null);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [actionsMenuRef]);
 
 
     const assignedPlansByPatient = useMemo(() => {
@@ -187,7 +201,7 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
                         const displayedPlans = patientPlans.length > 2 ? patientPlans.slice(0, 2) : patientPlans;
                         return (
                             <div key={patient.id} className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                <div className="w-full sm:w-auto">
+                                <div className="w-full sm:w-auto flex-grow">
                                     <p className="font-bold text-lg text-gray-800 dark:text-gray-200">{patient.lastName}, {patient.firstName}</p>
                                     <div className="mt-2 space-y-2">
                                         <div className="flex items-center gap-4">
@@ -220,13 +234,35 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
                                         )}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
-                                    <button onClick={() => setViewingProgressPatient(patient)} className="text-sm bg-teal-500 text-white font-semibold px-3 py-1.5 rounded-full hover:bg-teal-600 flex items-center gap-1.5"><ProgressIcon /> {t('tabProgress')}</button>
-                                    <button onClick={() => setEditingBodyDataPatient(patient)} className="text-sm bg-indigo-500 text-white font-semibold px-3 py-1.5 rounded-full hover:bg-indigo-600 flex items-center gap-1.5"><BodyIcon /> {t('bodyDataButton')}</button>
-                                    <button onClick={() => setEditingSettingsPatient(patient)} className="text-sm bg-gray-500 text-white font-semibold px-3 py-1.5 rounded-full hover:bg-gray-600 flex items-center gap-1.5"><SettingsIcon /> {t('settingsButton')}</button>
-                                    <button onClick={() => onCreatePlanForPatient(patient)} className="text-sm bg-blue-500 text-white font-semibold px-3 py-1.5 rounded-full hover:bg-blue-600">{t('createPersonalizedPlan')}</button>
-                                    <button onClick={() => setAssigningPlanPatient(patient)} className="text-sm bg-green-500 text-white font-semibold px-3 py-1.5 rounded-full hover:bg-green-600">{t('assignExistingPlan')}</button>
-                                    <button onClick={() => setDeletingPatient(patient)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-gray-900 rounded-full"><TrashIcon /></button>
+                                <div className="relative self-end sm:self-center flex-shrink-0">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActionsMenuPatientId(patient.id === actionsMenuPatientId ? null : patient.id!);
+                                        }}
+                                        className="p-2 rounded-full text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/50 hover:bg-green-200 dark:hover:bg-green-800"
+                                        title="Azioni"
+                                    >
+                                        <MoreVertIcon />
+                                    </button>
+                                    {actionsMenuPatientId === patient.id && (
+                                        <div
+                                            ref={actionsMenuRef}
+                                            className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-20 border dark:border-gray-700 animate-slide-in-up"
+                                            style={{ animationDuration: '0.2s' }}
+                                        >
+                                            <div className="py-1">
+                                                <button onClick={() => { setViewingProgressPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><ProgressIcon /> {t('tabProgress')}</button>
+                                                <button onClick={() => { setEditingBodyDataPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><BodyIcon /> {t('bodyDataButton')}</button>
+                                                <button onClick={() => { setEditingSettingsPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><SettingsIcon /> {t('settingsButton')}</button>
+                                                <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+                                                <button onClick={() => { onCreatePlanForPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><PlusCircleIcon /> {t('createPersonalizedPlan')}</button>
+                                                <button onClick={() => { setAssigningPlanPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><CheckIcon /> {t('assignExistingPlan')}</button>
+                                                <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+                                                <button onClick={() => { setDeletingPatient(patient); setActionsMenuPatientId(null); }} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 flex items-center gap-3"><TrashIcon /> {t('delete')}</button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )
