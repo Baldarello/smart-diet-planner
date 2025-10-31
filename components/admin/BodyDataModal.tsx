@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { Patient, BodyMetrics, ProgressRecord } from '../../types';
-import { t } from '../../i1n';
+import { t } from '../../i18n';
 import { CloseIcon, TrashIcon, EditIcon } from '../Icons';
 import { patientStore } from '../../stores/PatientStore';
 import ConfirmationModal from '../ConfirmationModal';
