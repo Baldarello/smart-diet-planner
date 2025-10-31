@@ -33,10 +33,7 @@ const PatientProgressModal: React.FC<PatientProgressModalProps> = observer(({ pa
     const formatDateForChart = (dateStr: string) => {
         const { locale } = mealPlanStore;
         const date = new Date(dateStr);
-        if (locale === 'it') {
-            return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
-        }
-        return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+        return date.toLocaleDateString(locale === 'it' ? 'it-IT' : 'en-GB', { day: '2-digit', month: '2-digit' });
     };
 
     const filteredData = useMemo(() => {

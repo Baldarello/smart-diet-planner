@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { SendToShoppingListIcon, PlusCircleIcon, WarningIcon, EditIcon, CheckIcon, CloseIcon } from './Icons';
@@ -31,6 +31,17 @@ const PantryItemRow: React.FC<{pantryItem: PantryItem}> = observer(({pantryItem}
     
     const [thresholdValue, setThresholdValue] = useState('');
     const [thresholdUnit, setThresholdUnit] = useState(pantryItem.quantityUnit);
+    const [isExpiryDateFocused, setIsExpiryDateFocused] = useState(false);
+
+    const formattedExpiryDate = useMemo(() => {
+        if (!pantryItem.expiryDate) return '';
+        try {
+            const [year, month, day] = pantryItem.expiryDate.split('-');
+            return `${day}/${month}/${year}`;
+        } catch(e) {
+            return pantryItem.expiryDate;
+        }
+    }, [pantryItem.expiryDate]);
 
     useEffect(() => {
         if (pantryItem.lowStockThreshold) {
@@ -102,7 +113,15 @@ const PantryItemRow: React.FC<{pantryItem: PantryItem}> = observer(({pantryItem}
             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                     <label htmlFor={`expiry-${pantryItem.item}`} className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('pantryExpiryDate')}</label>
-                    <input type="date" id={`expiry-${pantryItem.item}`} value={pantryItem.expiryDate || ''} onChange={(e) => updatePantryItem(pantryItem.item, { expiryDate: e.target.value })} className="w-full bg-transparent p-1 rounded-md"/>
+                    <input 
+                        type={isExpiryDateFocused ? 'date' : 'text'}
+                        id={`expiry-${pantryItem.item}`} 
+                        value={isExpiryDateFocused ? pantryItem.expiryDate || '' : formattedExpiryDate} 
+                        onFocus={() => setIsExpiryDateFocused(true)}
+                        onBlur={() => setIsExpiryDateFocused(false)}
+                        onChange={(e) => updatePantryItem(pantryItem.item, { expiryDate: e.target.value })} 
+                        className="w-full bg-transparent p-1 rounded-md"
+                    />
                 </div>
                 <div>
                     <label htmlFor={`threshold-value-${pantryItem.item}`} className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('pantryLowStockThreshold')}</label>
@@ -227,8 +246,8 @@ const PantryView: React.FC = observer(() => {
                         </div>
                         {isNewCategory && (<input type="text" placeholder={t('newCategoryPrompt')} value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="p-2 rounded bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 w-full" autoFocus/>)}
                         <div className="flex justify-end gap-2">
-                            <button onClick={handleCancelAddItem} className="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold px-4 py-2 rounded-full hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">{t('cancel')}</button>
-                            <button onClick={handleAddItem} disabled={!newItem.item.trim() || !(isNewCategory ? newCategoryName.trim() : newItem.category)} className="bg-violet-600 text-white font-semibold px-4 py-2 rounded-full hover:bg-violet-700 transition-colors disabled:bg-violet-400 disabled:cursor-not-allowed">{t('save')}</button>
+                            <button onClick={handleCancelAddItem} className="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold px-4 py-2 rounded-full hover:bg-gray-300">{t('cancel')}</button>
+                            <button onClick={handleAddItem} disabled={!newItem.item.trim() || !(isNewCategory ? newCategoryName.trim() : newItem.category)} className="bg-violet-600 text-white font-semibold px-4 py-2 rounded-full hover:bg-violet-700 disabled:bg-violet-400">{t('save')}</button>
                         </div>
                     </div>
                 ) : (
