@@ -4,7 +4,7 @@ import { patientStore } from '../../stores/PatientStore';
 import { nutritionistStore } from '../../stores/NutritionistStore';
 import { t } from '../../i18n';
 import { Patient, AssignedPlan } from '../../types';
-import { PlusCircleIcon, TrashIcon, CheckIcon, CloseIcon, EditIcon, DownloadIcon, ShareIcon, BodyIcon, ProgressIcon } from '../Icons';
+import { PlusCircleIcon, TrashIcon, CheckIcon, CloseIcon, EditIcon, DownloadIcon, ShareIcon, BodyIcon, ProgressIcon, SettingsIcon } from '../Icons';
 import SkeletonLoader from '../SkeletonLoader';
 import ConfirmationModal from '../ConfirmationModal';
 import AssignPlanModal from './AssignPlanModal';
@@ -14,6 +14,7 @@ import { authStore } from '../../stores/AuthStore';
 import { uiStore } from '../../stores/UIStore';
 import ShareLinkModal from '../ShareLinkModal';
 import BodyDataModal from './BodyDataModal';
+import PatientSettingsModal from './PatientSettingsModal';
 import PatientProgressModal from './PatientProgressModal';
 
 interface PatientManagementProps {
@@ -33,6 +34,7 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
     const [sharingPlan, setSharingPlan] = useState<AssignedPlan | null>(null);
     const [shareUrl, setShareUrl] = useState<string | null>(null);
     const [editingBodyDataPatient, setEditingBodyDataPatient] = useState<Patient | null>(null);
+    const [editingSettingsPatient, setEditingSettingsPatient] = useState<Patient | null>(null);
     const [viewingProgressPatient, setViewingProgressPatient] = useState<Patient | null>(null);
 
     const planMap = useMemo(() => new Map(nutritionistPlans.map(p => [p.id, p.name])), [nutritionistPlans]);
@@ -65,11 +67,14 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
     };
 
     const handleExportAssignedPlan = (plan: AssignedPlan) => {
+        const patient = patientStore.patients.find(p => p.id === plan.patientId);
         const dataToExport = {
             ...plan.planData,
             startDate: plan.startDate,
             endDate: plan.endDate,
-            showBodyMetricsInApp: patientStore.patients.find(p => p.id === plan.patientId)?.showBodyMetricsInApp,
+            showBodyMetricsInApp: patient?.showBodyMetricsInApp,
+            stepGoal: patient?.stepGoal,
+            hydrationGoalLiters: patient?.hydrationGoalLiters,
         };
         const jsonString = JSON.stringify(dataToExport, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
@@ -92,11 +97,14 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
             }
             setSharingPlan(plan);
             try {
+                const patient = patientStore.patients.find(p => p.id === plan.patientId);
                 const dataToExport = {
                     ...plan.planData,
                     startDate: plan.startDate,
                     endDate: plan.endDate,
-                    showBodyMetricsInApp: patientStore.patients.find(p => p.id === plan.patientId)?.showBodyMetricsInApp,
+                    showBodyMetricsInApp: patient?.showBodyMetricsInApp,
+                    stepGoal: patient?.stepGoal,
+                    hydrationGoalLiters: patient?.hydrationGoalLiters,
                 };
                 const driveUrl = await uploadAndShareFile(dataToExport, plan.planData.planName, authStore.accessToken);
                 const baseUrl = `${window.location.origin}`;
@@ -125,9 +133,10 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
 
     return (
         <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg max-w-4xl mx-auto">
-            {assigningPlanPatient && <AssignPlanModal patient={assigningPlanPatient} onClose={() => setAssigningPlanPatient(null)} onAssign={() => setAssigningPlanPatient(null)} />}
-            {shareUrl && <ShareLinkModal url={shareUrl} onClose={() => setShareUrl(null)} />}
-            {deletingPatient && (
+             {assigningPlanPatient && <AssignPlanModal patient={assigningPlanPatient} onClose={() => setAssigningPlanPatient(null)} onAssign={() => setAssigningPlanPatient(null)} />}
+             {shareUrl && <ShareLinkModal url={shareUrl} onClose={() => setShareUrl(null)} />}
+             {editingSettingsPatient && <PatientSettingsModal patient={editingSettingsPatient} onClose={() => setEditingSettingsPatient(null)} />}
+             {deletingPatient && (
                 <ConfirmationModal isOpen={!!deletingPatient} onClose={() => setDeletingPatient(null)} onConfirm={() => { deletePatient(deletingPatient!.id!); setDeletingPatient(null); }} title={t('deletePatientConfirmationTitle')}>
                     <p>{t('deletePatientConfirmationMessage')}</p>
                 </ConfirmationModal>
@@ -194,6 +203,7 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
                                 <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
                                     <button onClick={() => setViewingProgressPatient(patient)} className="text-sm bg-teal-500 text-white font-semibold px-3 py-1.5 rounded-full hover:bg-teal-600 flex items-center gap-1.5"><ProgressIcon /> {t('tabProgress')}</button>
                                     <button onClick={() => setEditingBodyDataPatient(patient)} className="text-sm bg-indigo-500 text-white font-semibold px-3 py-1.5 rounded-full hover:bg-indigo-600 flex items-center gap-1.5"><BodyIcon /> {t('bodyDataButton')}</button>
+                                    <button onClick={() => setEditingSettingsPatient(patient)} className="text-sm bg-gray-500 text-white font-semibold px-3 py-1.5 rounded-full hover:bg-gray-600 flex items-center gap-1.5"><SettingsIcon /> {t('settingsButton')}</button>
                                     <button onClick={() => onCreatePlanForPatient(patient)} className="text-sm bg-blue-500 text-white font-semibold px-3 py-1.5 rounded-full hover:bg-blue-600">{t('createPersonalizedPlan')}</button>
                                     <button onClick={() => setAssigningPlanPatient(patient)} className="text-sm bg-green-500 text-white font-semibold px-3 py-1.5 rounded-full hover:bg-green-600">{t('assignExistingPlan')}</button>
                                     <button onClick={() => setDeletingPatient(patient)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-gray-900 rounded-full"><TrashIcon /></button>

@@ -147,6 +147,10 @@ const translations = {
     updateButton: "Aggiorna",
     deleteRecordConfirmationTitle: "Conferma Eliminazione Rilevazione",
     deleteRecordConfirmationMessage: "Sei sicuro di voler eliminare questa rilevazione?",
+    settingsButton: "Impostazioni",
+    patientSettingsModalTitle: "Impostazioni per {name}",
+    patientStepGoalLabel: "Obiettivo Passi Giornaliero (default)",
+    patientHydrationGoalLabel: "Obiettivo Idratazione (Litri, default)",
 
 
     // SetPlanDatesModal.tsx
@@ -604,6 +608,10 @@ const translations = {
     updateButton: "Update",
     deleteRecordConfirmationTitle: "Confirm Record Deletion",
     deleteRecordConfirmationMessage: "Are you sure you want to delete this record?",
+    settingsButton: "Settings",
+    patientSettingsModalTitle: "Settings for {name}",
+    patientStepGoalLabel: "Daily Step Goal (default)",
+    patientHydrationGoalLabel: "Hydration Goal (Liters, default)",
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Set Plan Duration",

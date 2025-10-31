@@ -204,6 +204,8 @@ export interface Patient {
   creationDate: string; // ISO string
   bodyMetrics?: BodyMetrics;
   showBodyMetricsInApp?: boolean;
+  stepGoal?: number;
+  hydrationGoalLiters?: number;
 }
 
 export interface AssignedPlan {
