@@ -40,8 +40,7 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
     const [deletingRecord, setDeletingRecord] = useState<ProgressRecord | null>(null);
     const [editingRecord, setEditingRecord] = useState<ProgressRecord | null>(null);
 
-    const [fatUnit, setFatUnit] = useState<'kg' | '%'>('%');
-    const [waterUnit, setWaterUnit] = useState<'liters' | '%'>('%');
+    const [unitMode, setUnitMode] = useState<'absolute' | 'percentage'>('percentage');
 
     const fetchHistory = async () => {
         const historyData = await patientStore.getProgressHistoryForPatient(patient.id!);
@@ -54,16 +53,6 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
             fetchHistory();
         }
     }, [patient.id]);
-
-    useEffect(() => {
-        const { weightKg, bodyFatKg, leanMassKg } = bodyMetrics;
-        if (weightKg !== undefined && bodyFatKg !== undefined) {
-            const newLeanMass = parseFloat((weightKg - bodyFatKg).toFixed(2));
-            if (newLeanMass !== leanMassKg) {
-                setBodyMetrics(prev => ({ ...prev, leanMassKg: newLeanMass }));
-            }
-        }
-    }, [bodyMetrics.weightKg, bodyMetrics.bodyFatKg]);
 
     const formattedDate = useMemo(() => {
         if (!date) return '';
@@ -78,76 +67,132 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
     const handleMetricChange = (metric: keyof BodyMetrics, value: string) => {
         const numericValue = value === '' ? undefined : parseFloat(value.replace(',', '.'));
         setBodyMetrics(prev => {
-            const newState = { ...prev, [metric]: numericValue };
-            if (metric === 'leanMassKg' && newState.weightKg !== undefined && numericValue !== undefined) {
-                newState.bodyFatKg = parseFloat((newState.weightKg - numericValue).toFixed(2));
+            const newState = { ...prev };
+            newState[metric] = numericValue;
+            
+            // When weight changes, recalculate everything
+            if (metric === 'weightKg') {
+                if (newState.bodyFatKg !== undefined) {
+                    newState.bodyFatPercentage = numericValue !== undefined ? parseFloat(((newState.bodyFatKg / numericValue) * 100).toFixed(1)) : undefined;
+                }
+                if (newState.bodyWaterLiters !== undefined) {
+                    newState.bodyWaterPercentage = numericValue !== undefined ? parseFloat(((newState.bodyWaterLiters / numericValue) * 100).toFixed(1)) : undefined;
+                }
             }
+            
+            // Recalculate lean mass from weight and fat mass
+            if (newState.weightKg !== undefined && newState.bodyFatKg !== undefined) {
+                newState.leanMassKg = parseFloat((newState.weightKg - newState.bodyFatKg).toFixed(2));
+            } else {
+                newState.leanMassKg = undefined;
+            }
+            
             return newState;
         });
     };
 
     const handleFatChange = (valueStr: string) => {
         const numericValue = valueStr === '' ? undefined : parseFloat(valueStr.replace(',', '.'));
-        if (numericValue === undefined) {
-            setBodyMetrics(p => ({ ...p, bodyFatKg: undefined }));
-            return;
-        }
 
-        if (fatUnit === '%') {
-            if (bodyMetrics.weightKg) {
-                const kgValue = (numericValue / 100) * bodyMetrics.weightKg;
-                setBodyMetrics(p => ({ ...p, bodyFatKg: parseFloat(kgValue.toFixed(2)) }));
+        setBodyMetrics(prev => {
+            const newState = { ...prev };
+            if (unitMode === 'percentage') {
+                newState.bodyFatPercentage = numericValue;
+                if (newState.weightKg !== undefined && numericValue !== undefined) {
+                    newState.bodyFatKg = parseFloat(((numericValue / 100) * newState.weightKg).toFixed(2));
+                }
+            } else { // absolute
+                newState.bodyFatKg = numericValue;
+                if (newState.weightKg !== undefined && numericValue !== undefined) {
+                    newState.bodyFatPercentage = parseFloat(((numericValue / newState.weightKg) * 100).toFixed(1));
+                }
             }
-        } else {
-            setBodyMetrics(p => ({ ...p, bodyFatKg: numericValue }));
-        }
+            // Recalculate lean mass
+            if (newState.weightKg !== undefined && newState.bodyFatKg !== undefined) {
+                newState.leanMassKg = parseFloat((newState.weightKg - newState.bodyFatKg).toFixed(2));
+            } else {
+                newState.leanMassKg = undefined;
+            }
+            return newState;
+        });
     };
     
+    const handleLeanMassChange = (valueStr: string) => {
+        const numericValue = valueStr === '' ? undefined : parseFloat(valueStr.replace(',', '.'));
+    
+        setBodyMetrics(prev => {
+            const newState = { ...prev };
+            if (unitMode === 'percentage') {
+                if (newState.weightKg !== undefined && numericValue !== undefined) {
+                    newState.leanMassKg = parseFloat(((numericValue / 100) * newState.weightKg).toFixed(2));
+                }
+            } else { // absolute
+                newState.leanMassKg = numericValue;
+            }
+            // Recalculate fat mass from lean mass and weight
+            if (newState.weightKg !== undefined && newState.leanMassKg !== undefined) {
+                newState.bodyFatKg = parseFloat((newState.weightKg - newState.leanMassKg).toFixed(2));
+                newState.bodyFatPercentage = parseFloat(((newState.bodyFatKg / newState.weightKg) * 100).toFixed(1));
+            } else {
+                newState.bodyFatKg = undefined;
+                newState.bodyFatPercentage = undefined;
+            }
+            return newState;
+        });
+    };
+
     const handleWaterChange = (valueStr: string) => {
         const numericValue = valueStr === '' ? undefined : parseFloat(valueStr.replace(',', '.'));
-        if (numericValue === undefined) {
-            setBodyMetrics(p => ({ ...p, bodyWaterLiters: undefined }));
-            return;
-        }
-
-        if (waterUnit === '%') {
-            if (bodyMetrics.weightKg) {
-                const literValue = (numericValue / 100) * bodyMetrics.weightKg;
-                setBodyMetrics(p => ({ ...p, bodyWaterLiters: parseFloat(literValue.toFixed(2)) }));
+        setBodyMetrics(prev => {
+            const newState = { ...prev };
+            if (unitMode === 'percentage') {
+                newState.bodyWaterPercentage = numericValue;
+                if (newState.weightKg !== undefined && numericValue !== undefined) {
+                    newState.bodyWaterLiters = parseFloat(((numericValue / 100) * newState.weightKg).toFixed(2));
+                }
+            } else { // 'absolute' mode ('liters')
+                newState.bodyWaterLiters = numericValue;
+                if (newState.weightKg !== undefined && numericValue !== undefined) {
+                    newState.bodyWaterPercentage = parseFloat(((numericValue / newState.weightKg) * 100).toFixed(1));
+                }
             }
-        } else {
-            setBodyMetrics(p => ({ ...p, bodyWaterLiters: numericValue }));
-        }
+            return newState;
+        });
     };
 
     const displayValues = useMemo(() => {
-        const { weightKg, bodyFatKg, bodyWaterLiters } = bodyMetrics;
+        const { weightKg, leanMassKg, bodyFatPercentage, bodyFatKg, bodyWaterPercentage, bodyWaterLiters } = bodyMetrics;
+        
         let fat = '';
-        if (fatUnit === '%' && weightKg && bodyFatKg != null) {
-            fat = ((bodyFatKg / weightKg) * 100).toFixed(1);
-        } else if (fatUnit === 'kg' && bodyFatKg != null) {
-            fat = String(bodyFatKg);
+        if (unitMode === 'percentage') {
+            fat = bodyFatPercentage === undefined ? '' : String(bodyFatPercentage);
+        } else { // absolute
+            fat = bodyFatKg === undefined ? '' : String(bodyFatKg);
         }
 
-        let water = '';
-        if (waterUnit === '%' && weightKg && bodyWaterLiters != null) {
-            water = ((bodyWaterLiters / weightKg) * 100).toFixed(1);
-        } else if (waterUnit === 'liters' && bodyWaterLiters != null) {
-            water = String(bodyWaterLiters);
+        let leanMass = '';
+        if (unitMode === 'percentage') {
+            if (weightKg && leanMassKg != null && weightKg > 0) {
+                leanMass = ((leanMassKg / weightKg) * 100).toFixed(1);
+            }
+        } else { // absolute
+            leanMass = leanMassKg === undefined ? '' : String(leanMassKg);
         }
-        return { fat, water };
-    }, [bodyMetrics, fatUnit, waterUnit]);
+    
+        let water = '';
+        if (unitMode === 'percentage') {
+            water = bodyWaterPercentage === undefined ? '' : String(bodyWaterPercentage);
+        } else { // absolute (liters)
+            water = bodyWaterLiters === undefined ? '' : String(bodyWaterLiters);
+        }
+        return { fat, water, leanMass };
+    }, [bodyMetrics, unitMode]);
 
 
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            const metricsToSave: BodyMetrics = {
-                ...bodyMetrics,
-                bodyFatPercentage: (bodyMetrics.weightKg && bodyMetrics.bodyFatKg != null) ? (bodyMetrics.bodyFatKg / bodyMetrics.weightKg) * 100 : undefined,
-                bodyWaterPercentage: (bodyMetrics.weightKg && bodyMetrics.bodyWaterLiters != null) ? (bodyMetrics.bodyWaterLiters / bodyMetrics.weightKg) * 100 : undefined,
-            };
-            await patientStore.savePatientProgress(patient.id!, date, metricsToSave, editingRecord?.id);
+            await patientStore.savePatientProgress(patient.id!, date, bodyMetrics, editingRecord?.id);
 
             if (patient.showBodyMetricsInApp !== showInApp) {
                 await patientStore.updatePatient(patient.id!, { showBodyMetricsInApp: showInApp });
@@ -180,6 +225,8 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
             bodyFatKg: record.bodyFatKg,
             bodyWaterLiters: record.bodyWaterLiters,
             leanMassKg: record.leanMassKg,
+            bodyFatPercentage: record.bodyFatPercentage,
+            bodyWaterPercentage: record.bodyWaterPercentage,
         });
         setActiveTab('form');
     };
@@ -231,44 +278,31 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
                 {activeTab === 'form' ? (
                     <div className="overflow-y-auto p-8">
                         <div className="space-y-6">
-                            <div>
-                                <label htmlFor="metric-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Data Rilevamento</label>
-                                <input
-                                    type={isDateFocused ? 'date' : 'text'}
-                                    id="metric-date"
-                                    value={isDateFocused ? date : formattedDate}
-                                    onFocus={() => setIsDateFocused(true)}
-                                    onBlur={() => setIsDateFocused(false)}
-                                    onChange={e => setDate(e.target.value)}
-                                    className="mt-1 block w-full sm:w-1/2 p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md"
-                                />
+                            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                                <div>
+                                    <label htmlFor="metric-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Data Rilevamento</label>
+                                    <input
+                                        type={isDateFocused ? 'date' : 'text'}
+                                        id="metric-date"
+                                        value={isDateFocused ? date : formattedDate}
+                                        onFocus={() => setIsDateFocused(true)}
+                                        onBlur={() => setIsDateFocused(false)}
+                                        onChange={e => setDate(e.target.value)}
+                                        className="mt-1 block w-full p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2 self-end">
+                                    <span className="text-sm font-medium uppercase text-gray-600 dark:text-gray-400">{t('unitKg')}/{t('unitLiters')}</span>
+                                    <Switch checked={unitMode === 'percentage'} onChange={c => setUnitMode(c ? 'percentage' : 'absolute')} />
+                                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">%</span>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <MetricInput label={t('weight')} unit={t('unitKg')} value={bodyMetrics.weightKg === undefined ? '' : String(bodyMetrics.weightKg)} onChange={v => handleMetricChange('weightKg', v)} />
                                 <MetricInput label={t('height')} unit={t('unitCm')} value={bodyMetrics.heightCm === undefined ? '' : String(bodyMetrics.heightCm)} onChange={v => handleMetricChange('heightCm', v)} />
-                                <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('bodyFat')}</label>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs font-medium uppercase">{t('unitKg')}</span>
-                                            <Switch checked={fatUnit === '%'} onChange={c => setFatUnit(c ? '%' : 'kg')} />
-                                            <span className="text-xs font-medium">%</span>
-                                        </div>
-                                    </div>
-                                    <MetricInput label="" unit={fatUnit === '%' ? '%' : 'kg'} value={displayValues.fat} onChange={handleFatChange} />
-                                </div>
-                                <MetricInput label={t('leanMass')} unit={t('unitKg')} value={bodyMetrics.leanMassKg === undefined ? '' : String(bodyMetrics.leanMassKg)} onChange={v => handleMetricChange('leanMassKg', v)} />
-                                <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('bodyWater')}</label>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs font-medium uppercase">{t('unitLiters')}</span>
-                                            <Switch checked={waterUnit === '%'} onChange={c => setWaterUnit(c ? '%' : 'liters')} />
-                                            <span className="text-xs font-medium">%</span>
-                                        </div>
-                                    </div>
-                                    <MetricInput label="" unit={waterUnit === '%' ? '%' : 'L'} value={displayValues.water} onChange={handleWaterChange} />
-                                </div>
+                                <MetricInput label={t('bodyFat')} unit={unitMode === 'percentage' ? '%' : t('unitKg')} value={displayValues.fat} onChange={handleFatChange} />
+                                <MetricInput label={t('leanMass')} unit={unitMode === 'percentage' ? '%' : t('unitKg')} value={displayValues.leanMass} onChange={handleLeanMassChange} />
+                                <MetricInput label={t('bodyWater')} unit={unitMode === 'percentage' ? '%' : t('unitLiters')} value={displayValues.water} onChange={handleWaterChange} />
                             </div>
                             <div className="flex items-center p-4 bg-slate-50 dark:bg-gray-700/50 rounded-lg">
                                 <input id="show-metrics-toggle" type="checkbox" checked={showInApp} onChange={e => setShowInApp(e.target.checked)} className="h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500"/>
@@ -278,6 +312,11 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
                     </div>
                 ) : (
                     <div className="overflow-y-auto p-8">
+                         <div className="flex justify-end items-center gap-2 mb-4">
+                            <span className="text-sm font-medium uppercase text-gray-600 dark:text-gray-400">{t('unitKg')}/{t('unitLiters')}</span>
+                            <Switch checked={unitMode === 'percentage'} onChange={c => setUnitMode(c ? 'percentage' : 'absolute')} />
+                            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">%</span>
+                        </div>
                         {history.length > 0 ? (
                              <div className="relative overflow-x-auto shadow-md sm:rounded-lg">
                                 <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
@@ -285,28 +324,65 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
                                         <tr>
                                             <th scope="col" className="px-6 py-3">{t('dateColumn')}</th>
                                             <th scope="col" className="px-6 py-3 text-right">{t('weight')} ({t('unitKg')})</th>
-                                            <th scope="col" className="px-6 py-3 text-right">{t('bodyFat')} ({t('unitKg')})</th>
-                                            <th scope="col" className="px-6 py-3 text-right">{t('leanMass')} ({t('unitKg')})</th>
-                                            <th scope="col" className="px-6 py-3 text-right">{t('bodyWater')} ({t('unitLiters')})</th>
+                                            <th scope="col" className="px-6 py-3 text-right">{t('bodyFat')} ({unitMode === 'percentage' ? '%' : t('unitKg')})</th>
+                                            <th scope="col" className="px-6 py-3 text-right">{t('leanMass')} ({unitMode === 'percentage' ? '%' : t('unitKg')})</th>
+                                            <th scope="col" className="px-6 py-3 text-right">{t('bodyWater')} ({unitMode === 'percentage' ? '%' : t('unitLiters')})</th>
                                             <th scope="col" className="px-6 py-3 text-right">{t('actionsColumnHeader')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {history.map(record => (
-                                            <tr key={record.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 group">
-                                                <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">{formatHistoryDate(record.date)}</th>
-                                                <td className="px-6 py-4 text-right">{record.weightKg?.toFixed(1) ?? '-'}</td>
-                                                <td className="px-6 py-4 text-right">{record.bodyFatKg?.toFixed(1) ?? '-'}</td>
-                                                <td className="px-6 py-4 text-right">{record.leanMassKg?.toFixed(1) ?? '-'}</td>
-                                                <td className="px-6 py-4 text-right">{record.bodyWaterLiters?.toFixed(1) ?? '-'}</td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => handleEdit(record)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400" title={t('editItemTitle')}><EditIcon /></button>
-                                                        <button onClick={() => setDeletingRecord(record)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400" title={t('deleteItemTitle')}><TrashIcon /></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {history.map(record => {
+                                            const { weightKg } = record;
+
+                                            let bodyFatDisplay: string = '-';
+                                            if (unitMode === 'percentage') {
+                                                const value = record.bodyFatPercentage ?? (weightKg && record.bodyFatKg != null ? (record.bodyFatKg / weightKg) * 100 : null);
+                                                if (value != null) bodyFatDisplay = value.toFixed(1);
+                                            } else {
+                                                const value = record.bodyFatKg ?? (weightKg && record.bodyFatPercentage != null ? (record.bodyFatPercentage / 100) * weightKg : null);
+                                                if (value != null) bodyFatDisplay = value.toFixed(1);
+                                            }
+                                
+                                            let leanMassDisplay: string = '-';
+                                            if (unitMode === 'percentage') {
+                                                if (record.leanMassKg != null && weightKg != null && weightKg > 0) {
+                                                    leanMassDisplay = ((record.leanMassKg / weightKg) * 100).toFixed(1);
+                                                } else {
+                                                    const fatPercentage = record.bodyFatPercentage ?? (weightKg && record.bodyFatKg != null ? (record.bodyFatKg / weightKg) * 100 : null);
+                                                    if (fatPercentage != null) {
+                                                        leanMassDisplay = (100 - fatPercentage).toFixed(1);
+                                                    }
+                                                }
+                                            } else {
+                                                const value = record.leanMassKg ?? (weightKg != null && record.bodyFatKg != null ? weightKg - record.bodyFatKg : null);
+                                                if (value != null) leanMassDisplay = value.toFixed(1);
+                                            }
+
+                                            let bodyWaterDisplay: string = '-';
+                                            if (unitMode === 'percentage') {
+                                                const value = record.bodyWaterPercentage ?? (weightKg && record.bodyWaterLiters != null ? (record.bodyWaterLiters / weightKg) * 100 : null);
+                                                if (value != null) bodyWaterDisplay = value.toFixed(1);
+                                            } else {
+                                                const value = record.bodyWaterLiters ?? (weightKg && record.bodyWaterPercentage != null ? (record.bodyWaterPercentage / 100) * weightKg : null);
+                                                if (value != null) bodyWaterDisplay = value.toFixed(1);
+                                            }
+
+                                            return (
+                                                <tr key={record.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 group">
+                                                    <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">{formatHistoryDate(record.date)}</th>
+                                                    <td className="px-6 py-4 text-right">{record.weightKg?.toFixed(1) ?? '-'}</td>
+                                                    <td className="px-6 py-4 text-right">{bodyFatDisplay}</td>
+                                                    <td className="px-6 py-4 text-right">{leanMassDisplay}</td>
+                                                    <td className="px-6 py-4 text-right">{bodyWaterDisplay}</td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button onClick={() => handleEdit(record)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400" title={t('editItemTitle')}><EditIcon /></button>
+                                                            <button onClick={() => setDeletingRecord(record)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400" title={t('deleteItemTitle')}><TrashIcon /></button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
