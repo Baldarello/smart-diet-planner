@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { nutritionistStore } from '../../stores/NutritionistStore';
-import { Patient } from '../../types';
+import { Patient, AssignedPlan } from '../../types';
 import { t } from '../../i18n';
 import { CloseIcon } from '../Icons';
 import { patientStore } from '../../stores/PatientStore';
@@ -12,6 +12,20 @@ interface AssignPlanModalProps {
     onAssign: (planId: number) => void;
 }
 
+const OverlapError: React.FC<{ plans: AssignedPlan[] }> = ({ plans }) => (
+    <div>
+        <p className="font-semibold mb-2">La data selezionata si sovrappone con i seguenti piani:</p>
+        <ul className="list-disc list-inside space-y-1 text-sm">
+            {plans.map(p => (
+                <li key={p.id}>
+                    <strong>{p.planData.planName}</strong>: {p.startDate} - {p.endDate}
+                </li>
+            ))}
+        </ul>
+    </div>
+);
+
+
 const AssignPlanModal: React.FC<AssignPlanModalProps> = observer(({ patient, onClose, onAssign }) => {
     const { plans } = nutritionistStore;
     const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
@@ -21,7 +35,7 @@ const AssignPlanModal: React.FC<AssignPlanModalProps> = observer(({ patient, onC
         nextMonth.setMonth(nextMonth.getMonth() + 1);
         return nextMonth.toISOString().split('T')[0];
     });
-    const [error, setError] = useState('');
+    const [error, setError] = useState<React.ReactNode>('');
 
     const handleAssign = async () => {
         if (selectedPlanId === null) return;
@@ -33,8 +47,13 @@ const AssignPlanModal: React.FC<AssignPlanModalProps> = observer(({ patient, onC
         }
     
         try {
-            await patientStore.assignPlanToPatient(patient.id!, selectedPlanId, startDate, endDate);
-            onClose();
+            const overlappingPlans = await patientStore.assignPlanToPatient(patient.id!, selectedPlanId, startDate, endDate);
+            if (overlappingPlans && overlappingPlans.length > 0) {
+                setError(<OverlapError plans={overlappingPlans} />);
+            } else {
+                onAssign(selectedPlanId);
+                onClose();
+            }
         } catch (e) {
             if (e instanceof Error) {
                 setError(e.message);
@@ -63,7 +82,7 @@ const AssignPlanModal: React.FC<AssignPlanModalProps> = observer(({ patient, onC
                         <input type="date" id="end-date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)} className="w-full mt-1 p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-violet-500 focus:border-violet-500" />
                     </div>
                 </div>
-                {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+                {error && <div className="text-red-500 text-sm mb-4 bg-red-50 dark:bg-red-900/20 p-3 rounded-md">{error}</div>}
                 
                 <div className="max-h-64 overflow-y-auto space-y-2 border-y dark:border-gray-700 py-2">
                     {plans.map(plan => (

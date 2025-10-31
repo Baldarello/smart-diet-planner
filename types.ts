@@ -211,7 +211,7 @@ export interface Patient {
 export interface AssignedPlan {
     id?: number;
     patientId: number;
-    planTemplateId: number;
+    planTemplateId?: number;
     startDate: string; // YYYY-MM-DD
     endDate: string; // YYYY-MM-DD
     planData: PlanCreationData;

@@ -116,6 +116,19 @@ const DayNutritionSummaryDisplay: React.FC<{ summary: NutritionInfo | undefined 
     );
 };
 
+const OverlapError: React.FC<{ plans: AssignedPlan[] }> = ({ plans }) => (
+    <div>
+        <p className="font-semibold mb-2">La data selezionata si sovrappone con i seguenti piani:</p>
+        <ul className="list-disc list-inside space-y-1 text-sm bg-red-50 dark:bg-red-900/30 p-3 rounded-md">
+            {plans.map(p => (
+                <li key={p.id}>
+                    <strong>{p.planData.planName}</strong>: {p.startDate} - {p.endDate}
+                </li>
+            ))}
+        </ul>
+    </div>
+);
+
 
 const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCancel, onPlanSaved, planToEdit, patientForPlan, onDirtyStateChange }) => {
     const [planData, setPlanData] = useState<FormDayPlan[]>(createInitialPlan());
@@ -123,6 +136,10 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
     const [isLoading, setIsLoading] = useState(false);
     const [dailySummaries, setDailySummaries] = useState<NutritionInfo[]>([]);
     const debouncedPlanData = useDebounce(planData, 500);
+    
+    const isForPatient = !!patientForPlan || (!!planToEdit && 'patientId' in planToEdit);
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
 
     // Autocomplete state
     const [activeAutocomplete, setActiveAutocomplete] = useState<{ dayIndex: number; mealIndex: number; itemIndex: number } | null>(null);
@@ -174,6 +191,19 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                     });
                 }
             });
+        }
+        
+        if (planToEdit && 'patientId' in planToEdit) {
+            const assignedPlan = planToEdit as AssignedPlan;
+            setStartDate(assignedPlan.startDate);
+            setEndDate(assignedPlan.endDate);
+        } else if (patientForPlan) {
+            const today = new Date().toISOString().split('T')[0];
+            const nextMonth = new Date();
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            const nextMonthStr = nextMonth.toISOString().split('T')[0];
+            setStartDate(today);
+            setEndDate(nextMonthStr);
         }
         
         setPlanName(initialName);
@@ -520,6 +550,30 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
+
+        if (isForPatient) {
+            if (!startDate || !endDate || new Date(endDate) <= new Date(startDate)) {
+                uiStore.showInfoModal(t('errorOccurred'), t('dateValidationError'));
+                setIsLoading(false);
+                return;
+            }
+
+            const patientId = patientForPlan?.id || (planToEdit as AssignedPlan).patientId;
+            const excludePlanId = (planToEdit && 'patientId' in planToEdit) ? planToEdit.id : undefined;
+
+            const overlappingPlans = patientStore.getOverlappingPlans(patientId, startDate, endDate, excludePlanId);
+
+            if (overlappingPlans.length > 0) {
+                uiStore.showInfoModal(
+                    "Conflitto Date",
+                    <OverlapError plans={overlappingPlans} />
+                );
+                setIsLoading(false);
+                return;
+            }
+        }
+
+
         try {
             const finalData = await generateAndProcessPlan();
             if (!finalData) {
@@ -527,14 +581,16 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                 return;
             }
 
-            if (planToEdit && 'patientId' in planToEdit) { // It's an AssignedPlan
-                // Fix: Corrected the method name from 'updateAssignedPlan' to 'updateAssignedPlanData'
-                await patientStore.updateAssignedPlanData(planToEdit.id!, finalData);
+            if (planToEdit && 'patientId' in planToEdit) { // Editing AssignedPlan
+                await patientStore.updateAssignedPlanData(planToEdit.id!, finalData, startDate, endDate);
                 onPlanSaved(planToEdit.id);
-            } else if (planToEdit && 'creationDate' in planToEdit) { // It's a NutritionistPlan (template)
+            } else if (patientForPlan) { // Creating new AssignedPlan
+                await patientStore.createAndAssignPlan(patientForPlan.id!, finalData, startDate, endDate);
+                onPlanSaved();
+            } else if (planToEdit && 'creationDate' in planToEdit) { // Editing Template
                 await nutritionistStore.updatePlan(planToEdit.id!, finalData);
                 onPlanSaved(planToEdit.id);
-            } else {
+            } else { // Creating new Template
                 const newPlanId = await nutritionistStore.addPlan(finalData);
                 onPlanSaved(newPlanId as number);
             }
@@ -568,6 +624,35 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                         required
                     />
                 </div>
+
+                {isForPatient && (
+                    <div className="mb-6 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="start-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('startDateLabel')}</label>
+                            <input
+                                id="start-date"
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="w-full mt-1 p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="end-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('endDateLabel')}</label>
+                            <input
+                                id="end-date"
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                min={startDate}
+                                className="w-full mt-1 p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md"
+                                required
+                            />
+                        </div>
+                    </div>
+                )}
+                
                 {planData.map((day, dayIndex) => (
                     <details key={day.day} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm transition-all duration-300 group">
                         <summary className="font-semibold text-lg text-violet-700 dark:text-violet-400 cursor-pointer list-none flex items-center p-4">

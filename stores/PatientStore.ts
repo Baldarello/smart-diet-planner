@@ -82,30 +82,35 @@ class PatientStore {
         }
     }
     
-    async assignPlanToPatient(patientId: number, planTemplateId: number, startDate: string, endDate: string) {
+    getOverlappingPlans(patientId: number, startDate: string, endDate: string, excludePlanId?: number): AssignedPlan[] {
+        const existingAssignments = this.assignedPlans.filter(p => p.patientId === patientId && p.id !== excludePlanId);
+        const newStart = new Date(startDate);
+        newStart.setHours(0, 0, 0, 0);
+        const newEnd = new Date(endDate);
+        newEnd.setHours(0, 0, 0, 0);
+
+        return existingAssignments.filter(plan => {
+            const oldStart = new Date(plan.startDate);
+            oldStart.setHours(0, 0, 0, 0);
+            const oldEnd = new Date(plan.endDate);
+            oldEnd.setHours(0, 0, 0, 0);
+            // Overlap condition: (StartA <= EndB) and (EndA >= StartB)
+            return (newStart <= oldEnd) && (newEnd >= oldStart);
+        });
+    }
+
+    async assignPlanToPatient(patientId: number, planTemplateId: number, startDate: string, endDate: string): Promise<AssignedPlan[] | void> {
         try {
-            // Overlap validation
-            const existingAssignments = this.assignedPlans.filter(p => p.patientId === patientId);
-            const newStart = new Date(startDate);
-            const newEnd = new Date(endDate);
-
-            const isOverlap = existingAssignments.some(plan => {
-                const oldStart = new Date(plan.startDate);
-                const oldEnd = new Date(plan.endDate);
-                return (newStart <= oldEnd) && (newEnd >= oldStart);
-            });
-
-            if (isOverlap) {
-                throw new Error("The selected date range overlaps with an existing plan for this patient.");
+            const overlappingPlans = this.getOverlappingPlans(patientId, startDate, endDate);
+            if (overlappingPlans.length > 0) {
+                return overlappingPlans;
             }
             
-            // Get template
             const planTemplate = nutritionistStore.plans.find(p => p.id === planTemplateId);
             if (!planTemplate) {
                 throw new Error("Plan template not found.");
             }
 
-            // Create a deep copy for personalization
             const planDataCopy = JSON.parse(JSON.stringify(planTemplate.planData));
 
             const newAssignment: Omit<AssignedPlan, 'id'> = {
@@ -120,8 +125,19 @@ class PatientStore {
             await this.loadAssignedPlans();
         } catch (e) {
             console.error(`Failed to assign plan ${planTemplateId} to patient ${patientId}`, e);
-            throw e; // re-throw to be caught by the UI
+            throw e;
         }
+    }
+    
+    async createAndAssignPlan(patientId: number, planData: PlanCreationData, startDate: string, endDate: string) {
+        const newAssignment: Omit<AssignedPlan, 'id'> = {
+            patientId,
+            startDate,
+            endDate,
+            planData,
+        };
+        await db.assignedPlans.add(newAssignment as AssignedPlan);
+        await this.loadAssignedPlans();
     }
     
     async unassignPlan(assignmentId: number) {
@@ -133,30 +149,24 @@ class PatientStore {
         }
     }
 
-    async updateAssignedPlanData(assignmentId: number, planData: PlanCreationData) {
+    async updateAssignedPlanData(assignmentId: number, planData: PlanCreationData, startDate: string, endDate: string) {
         try {
             const assignment = await db.assignedPlans.get(assignmentId);
             if (assignment) {
-                 // Only update the planData part of the assignment
-                const updatedPlanData = {
-                    ...assignment.planData,
-                    ...planData
-                };
-                await db.assignedPlans.update(assignmentId, { planData: updatedPlanData });
+                 const updates: Partial<AssignedPlan> = {
+                     planData: {
+                         ...assignment.planData,
+                         ...planData
+                     },
+                     startDate,
+                     endDate
+                 };
+                 
+                await db.assignedPlans.update(assignmentId, updates);
                 await this.loadAssignedPlans();
             }
         } catch (e) {
             console.error(`Failed to update assigned plan ${assignmentId}`, e);
-            throw e;
-        }
-    }
-
-    async updateAssignedPlanDates(assignmentId: number, startDate: string, endDate: string) {
-        try {
-            await db.assignedPlans.update(assignmentId, { startDate, endDate });
-            await this.loadAssignedPlans();
-        } catch (e) {
-            console.error(`Failed to update dates for assigned plan ${assignmentId}`, e);
             throw e;
         }
     }
