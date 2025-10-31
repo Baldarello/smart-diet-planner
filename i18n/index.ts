@@ -375,6 +375,7 @@ const translations = {
     unitKg: "kg",
     unitCm: "cm",
     unitPercent: "%",
+    unitLiters: "L",
     
     // Progress View
     progressTitle: "I Tuoi Progressi",
@@ -383,10 +384,14 @@ const translations = {
     last30Days: "Ultimi 30 Giorni",
     last90Days: "Ultimi 90 Giorni",
     allTimeRange: "Tutto",
+    weightChartTitle: "Andamento Peso",
+    bodyCompositionChartTitle: "Andamento Massa Grassa e Magra",
+    // Fix: Add missing translation key
     weightAndFatChartTitle: "Andamento Peso e Massa Grassa",
+    bodyWaterChartTitle: "Andamento Acqua Corporea",
     adherenceChartTitle: "Aderenza al Piano Pasti",
     calorieIntakeChartTitle: "Introito Calorico (Pianificato vs. Effettivo)",
-    hydrationChartTitle: "Andamento Idratazione e Acqua Corporea",
+    hydrationChartTitle: "Andamento Idratazione",
     stepsChartTitle: "Andamento Passi e Calorie Bruciate",
     cheatMealChartTitle: "Andamento Sgarri",
     noProgressDataTitle: "Nessun dato sui progressi ancora",
@@ -826,6 +831,7 @@ const translations = {
     unitKg: "kg",
     unitCm: "cm",
     unitPercent: "%",
+    unitLiters: "L",
     
     // Progress View
     progressTitle: "Your Progress",
@@ -834,10 +840,14 @@ const translations = {
     last30Days: "Last 30 Days",
     last90Days: "Last 90 Days",
     allTimeRange: "All",
-    weightAndFatChartTitle: "Weight & Body Fat Trend",
+    weightChartTitle: "Weight Trend",
+    bodyCompositionChartTitle: "Body Fat & Lean Mass Trend",
+    // Fix: Add missing translation key
+    weightAndFatChartTitle: "Weight and Fat Trend",
+    bodyWaterChartTitle: "Body Water Trend",
     adherenceChartTitle: "Meal Plan Adherence",
     calorieIntakeChartTitle: "Calorie Intake (Planned vs. Actual)",
-    hydrationChartTitle: "Hydration & Body Water Trend",
+    hydrationChartTitle: "Hydration Trend",
     stepsChartTitle: "Steps & Calories Burned Trend",
     cheatMealChartTitle: "Cheat Meals Trend",
     noProgressDataTitle: "No progress data yet",

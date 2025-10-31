@@ -6,6 +6,7 @@ import ProgressChart from './ProgressChart';
 import { ProgressRecord, DailyLog } from '../types';
 import { ProgressIcon, RefreshIcon } from './Icons';
 import { db } from '../services/db';
+import Switch from './Switch';
 
 type DateRange = 7 | 30 | 90;
 
@@ -13,6 +14,7 @@ const ProgressView: React.FC = observer(() => {
     const { progressHistory, locale, recalculateAllProgress, recalculatingProgress, showMacros, showCheatMealButton } = mealPlanStore;
     const [dateRange, setDateRange] = useState<DateRange>(30);
     const [cheatMealData, setCheatMealData] = useState<(number | null)[]>([]);
+    const [unitMode, setUnitMode] = useState<'absolute' | 'percentage'>('absolute');
 
     const formatDateForChart = (dateStr: string) => {
         const date = new Date(dateStr);
@@ -61,6 +63,48 @@ const ProgressView: React.FC = observer(() => {
         fetchCheatMeals();
     }, [filteredData]);
 
+    const chartData = useMemo(() => {
+        const labels = filteredData.map(d => formatDateForChart(d.date));
+        const weight = filteredData.map(d => d.weightKg);
+        const waterIntake = filteredData.map(d => d.waterIntakeMl);
+
+        const fatMass = filteredData.map(d => {
+            if (unitMode === 'percentage') {
+                return d.bodyFatPercentage ?? (d.weightKg && d.bodyFatKg ? (d.bodyFatKg / d.weightKg) * 100 : null);
+            }
+            return d.bodyFatKg;
+        });
+    
+        const leanMass = filteredData.map(d => {
+            if (unitMode === 'percentage') {
+                return d.weightKg && d.leanMassKg ? (d.leanMassKg / d.weightKg) * 100 : null;
+            }
+            return d.leanMassKg;
+        });
+    
+        const bodyWater = filteredData.map(d => {
+            if (unitMode === 'percentage') {
+                return d.bodyWaterPercentage ?? (d.weightKg && d.bodyWaterLiters ? (d.bodyWaterLiters / d.weightKg) * 100 : null);
+            }
+            return d.bodyWaterLiters;
+        });
+
+        return {
+            labels,
+            weight,
+            fatMass,
+            leanMass,
+            bodyWater,
+            waterIntake,
+            adherence: filteredData.map(d => d.adherence),
+            plannedCalories: filteredData.map(d => d.plannedCalories),
+            actualCalories: filteredData.map(d => d.actualCalories),
+            steps: filteredData.map(d => d.stepsTaken),
+            caloriesBurned: filteredData.map(d => d.estimatedCaloriesBurned),
+            cheatMeals: cheatMealData,
+        };
+    }, [filteredData, locale, cheatMealData, unitMode]);
+
 
     if (progressHistory.length < 2) {
         return (
@@ -73,20 +117,6 @@ const ProgressView: React.FC = observer(() => {
             </div>
         );
     }
-
-    const chartData = {
-        labels: filteredData.map(d => formatDateForChart(d.date)),
-        weight: filteredData.map(d => d.weightKg),
-        fat: filteredData.map(d => d.bodyFatPercentage),
-        adherence: filteredData.map(d => d.adherence),
-        plannedCalories: filteredData.map(d => d.plannedCalories),
-        actualCalories: filteredData.map(d => d.actualCalories),
-        waterIntake: filteredData.map(d => d.waterIntakeMl),
-        bodyWater: filteredData.map(d => d.bodyWaterPercentage),
-        steps: filteredData.map(d => d.stepsTaken),
-        caloriesBurned: filteredData.map(d => d.estimatedCaloriesBurned),
-        cheatMeals: cheatMealData,
-    };
     
     const hasData = (data: (number | null | undefined)[]) => data.some(d => d != null && d > 0);
 
@@ -110,25 +140,22 @@ const ProgressView: React.FC = observer(() => {
                             ))}
                         </div>
                     </div>
-                    {/* <button
-                        onClick={() => recalculateAllProgress()}
-                        disabled={recalculatingProgress}
-                        className="flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-violet-600 text-white hover:bg-violet-700 transition-colors disabled:bg-violet-400 disabled:opacity-75 disabled:cursor-wait text-sm font-semibold shadow-md w-full sm:w-auto"
-                        title={t('recalculateProgressTitle')}
-                    >
-                        {recalculatingProgress
-                            ? <div className="animate-spin h-5 w-5 border-b-2 border-white rounded-full"></div>
-                            : <RefreshIcon className="h-5 w-5" />
-                        }
-                        <span>{recalculatingProgress ? t('recalculatingProgressButtonTextLoading') : t('recalculateProgressButtonText')}</span>
-                    </button>*/}
                 </div>
+            </div>
+
+            <div className="flex justify-end items-center gap-2 mb-6">
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('unitKg')}/{t('unitLiters')}</span>
+                <Switch
+                    checked={unitMode === 'percentage'}
+                    onChange={checked => setUnitMode(checked ? 'percentage' : 'absolute')}
+                />
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('unitPercent')}</span>
             </div>
 
             <div className="space-y-8">
                 {hasData(chartData.weight) && (
                      <div>
-                        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('weightAndFatChartTitle')}</h3>
+                        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('weightChartTitle')}</h3>
                         <ProgressChart
                             type="line"
                             labels={chartData.labels}
@@ -139,12 +166,48 @@ const ProgressView: React.FC = observer(() => {
                                     color: 'rgba(139, 92, 246, 1)',
                                     unit: t('unitKg'),
                                 },
-                                ...(hasData(chartData.fat) ? [{
+                            ]}
+                        />
+                    </div>
+                )}
+
+                {(hasData(chartData.fatMass) || hasData(chartData.leanMass)) && (
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('bodyCompositionChartTitle')}</h3>
+                        <ProgressChart
+                            type="line"
+                            labels={chartData.labels}
+                            datasets={[
+                                ...(hasData(chartData.fatMass) ? [{
                                     label: t('bodyFat'),
-                                    data: chartData.fat,
+                                    data: chartData.fatMass,
                                     color: 'rgba(236, 72, 153, 1)',
-                                    unit: t('unitPercent'),
+                                    unit: unitMode === 'absolute' ? t('unitKg') : t('unitPercent'),
+                                }] : []),
+                                ...(hasData(chartData.leanMass) ? [{
+                                    label: t('leanMass'),
+                                    data: chartData.leanMass,
+                                    color: 'rgba(14, 165, 233, 1)',
+                                    unit: unitMode === 'absolute' ? t('unitKg') : t('unitPercent'),
                                 }] : [])
+                            ]}
+                        />
+                    </div>
+                )}
+
+                {hasData(chartData.bodyWater) && (
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('bodyWaterChartTitle')}</h3>
+                        <ProgressChart
+                            type="line"
+                            labels={chartData.labels}
+                            datasets={[
+                                {
+                                    label: t('bodyWater'),
+                                    data: chartData.bodyWater,
+                                    color: 'rgba(20, 184, 166, 1)',
+                                    unit: unitMode === 'absolute' ? t('unitLiters') : t('unitPercent'),
+                                }
                             ]}
                         />
                     </div>
@@ -187,12 +250,6 @@ const ProgressView: React.FC = observer(() => {
                                     color: 'rgba(59, 130, 246, 1)',
                                     unit: t('hydrationUnitMl'),
                                 },
-                                ...(hasData(chartData.bodyWater) ? [{
-                                    label: t('bodyWater'),
-                                    data: chartData.bodyWater,
-                                    color: 'rgba(20, 184, 166, 1)',
-                                    unit: t('unitPercent'),
-                                }] : [])
                             ]}
                         />
                     </div>
