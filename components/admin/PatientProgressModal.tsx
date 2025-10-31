@@ -31,8 +31,12 @@ const PatientProgressModal: React.FC<PatientProgressModalProps> = observer(({ pa
     }, [patient.id]);
 
     const formatDateForChart = (dateStr: string) => {
-        const [year, month, day] = dateStr.split('-');
-        return `${day}/${month}`;
+        try {
+            const [year, month, day] = dateStr.split('-');
+            return `${day}/${month}`;
+        } catch {
+            return dateStr;
+        }
     };
 
     const filteredData = useMemo(() => {

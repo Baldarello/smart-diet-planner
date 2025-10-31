@@ -140,6 +140,13 @@ const translations = {
     bodyDataButton: "Dati Corporei",
     bodyDataModalTitle: "Dati Corporei per {name}",
     showBodyMetricsInAppLabel: "Mostra sezione Dati Corporei nell'app del paziente",
+    historyTab: "Storico",
+    formTab: "Inserisci Dati",
+    noHistoryData: "Nessun dato storico trovato.",
+    dateColumn: "Data",
+    updateButton: "Aggiorna",
+    deleteRecordConfirmationTitle: "Conferma Eliminazione Rilevazione",
+    deleteRecordConfirmationMessage: "Sei sicuro di voler eliminare questa rilevazione?",
 
 
     // SetPlanDatesModal.tsx
@@ -585,6 +592,13 @@ const translations = {
     bodyDataButton: "Body Data",
     bodyDataModalTitle: "Body Data for {name}",
     showBodyMetricsInAppLabel: "Show Body Metrics section in patient's app",
+    historyTab: "History",
+    formTab: "Enter Data",
+    noHistoryData: "No history data found.",
+    dateColumn: "Date",
+    updateButton: "Update",
+    deleteRecordConfirmationTitle: "Confirm Record Deletion",
+    deleteRecordConfirmationMessage: "Are you sure you want to delete this record?",
 
     // SetPlanDatesModal.tsx
     setPlanDatesTitle: "Set Plan Duration",
