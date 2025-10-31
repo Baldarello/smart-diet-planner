@@ -6,7 +6,7 @@ import { patientStore } from '../../stores/PatientStore';
 import { CloseIcon } from '../Icons';
 import ProgressChart from '../ProgressChart';
 import SkeletonLoader from '../SkeletonLoader';
-import { mealPlanStore } from '../../stores/MealPlanStore';
+import Switch from '../Switch';
 
 interface PatientProgressModalProps {
     patient: Patient;
@@ -19,6 +19,7 @@ const PatientProgressModal: React.FC<PatientProgressModalProps> = observer(({ pa
     const [progressHistory, setProgressHistory] = useState<ProgressRecord[]>([]);
     const [status, setStatus] = useState<'loading' | 'ready' | 'empty'>('loading');
     const [dateRange, setDateRange] = useState<DateRange>(30);
+    const [unitMode, setUnitMode] = useState<'absolute' | 'percentage'>('absolute');
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -42,25 +43,90 @@ const PatientProgressModal: React.FC<PatientProgressModalProps> = observer(({ pa
     const filteredData = useMemo(() => {
         if (dateRange === 'all' || progressHistory.length < 2) return progressHistory;
         
-        // Find the most recent date in the history
-        const lastDateStr = progressHistory[progressHistory.length - 1].date;
+        const lastDateStr = progressHistory.length > 0 ? progressHistory[progressHistory.length - 1].date : new Date().toLocaleDateString('en-CA');
         const endDate = new Date(lastDateStr);
         
         const startDate = new Date(endDate);
-        startDate.setDate(endDate.getDate() - dateRange + 1); // +1 to include the last day in the count
+        startDate.setDate(endDate.getDate() - dateRange + 1);
         
         const startDateStr = startDate.toLocaleDateString('en-CA');
         
         return progressHistory.filter(record => record.date >= startDateStr && record.date <= lastDateStr);
     }, [progressHistory, dateRange]);
 
-    const chartData = {
-        labels: filteredData.map(d => formatDateForChart(d.date)),
-        weight: filteredData.map(d => d.weightKg),
-        fat: filteredData.map(d => d.bodyFatPercentage),
-    };
+    const chartData = useMemo(() => {
+        const labels = filteredData.map(d => formatDateForChart(d.date));
+        const weight = filteredData.map(d => d.weightKg);
+
+        const fatMass = filteredData.map(d => {
+            const weightKg = d.weightKg;
+            if (!weightKg) return null;
+
+            if (unitMode === 'percentage') {
+                if (d.bodyFatPercentage != null) return d.bodyFatPercentage;
+                if (d.bodyFatKg != null) return (d.bodyFatKg / weightKg) * 100;
+                return null;
+            } else { // absolute
+                if (d.bodyFatKg != null) return d.bodyFatKg;
+                if (d.bodyFatPercentage != null) return (d.bodyFatPercentage / 100) * weightKg;
+                return null;
+            }
+        });
+
+        const leanMass = filteredData.map(d => {
+            const weightKg = d.weightKg;
+            if (!weightKg) return null;
+
+            let leanMassKg: number | null = null;
+            if (d.leanMassKg != null) {
+                leanMassKg = d.leanMassKg;
+            } else {
+                let bodyFatKg: number | null = null;
+                if (d.bodyFatKg != null) {
+                    bodyFatKg = d.bodyFatKg;
+                } else if (d.bodyFatPercentage != null) {
+                    bodyFatKg = (d.bodyFatPercentage / 100) * weightKg;
+                }
+                if (bodyFatKg != null) {
+                    leanMassKg = weightKg - bodyFatKg;
+                }
+            }
+            if (leanMassKg == null) return null;
+
+            if (unitMode === 'percentage') {
+                return (leanMassKg / weightKg) * 100;
+            } else { // absolute
+                return leanMassKg;
+            }
+        });
+
+        const bodyWater = filteredData.map(d => {
+            const weightKg = d.weightKg;
+            if (!weightKg) return null;
+
+            if (unitMode === 'percentage') {
+                if (d.bodyWaterPercentage != null) return d.bodyWaterPercentage;
+                if (d.bodyWaterLiters != null) return (d.bodyWaterLiters / weightKg) * 100;
+                return null;
+            } else { // absolute (Liters)
+                if (d.bodyWaterLiters != null) return d.bodyWaterLiters;
+                if (d.bodyWaterPercentage != null) return (d.bodyWaterPercentage / 100) * weightKg;
+                return null;
+            }
+        });
+
+        return {
+            labels,
+            weight,
+            fatMass,
+            leanMass,
+            bodyWater,
+        };
+    }, [filteredData, unitMode]);
+
 
     const hasData = (data: (number | null | undefined)[]) => data.some(d => d != null && !isNaN(d as number));
+    const hasAnyChartData = hasData(chartData.weight) || hasData(chartData.fatMass) || hasData(chartData.leanMass) || hasData(chartData.bodyWater);
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4" onClick={onClose}>
@@ -81,7 +147,7 @@ const PatientProgressModal: React.FC<PatientProgressModalProps> = observer(({ pa
                     )}
                     {status === 'ready' && (
                         <>
-                            <div className="flex justify-center">
+                            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                                 <div className="bg-gray-200 dark:bg-gray-700 rounded-full p-1 flex items-center">
                                     {( [7, 30, 90] as DateRange[]).map(range => (
                                         <button
@@ -100,29 +166,72 @@ const PatientProgressModal: React.FC<PatientProgressModalProps> = observer(({ pa
                                         {t('allTimeRange')}
                                     </button>
                                 </div>
-                            </div>
-                            {hasData(chartData.weight) || hasData(chartData.fat) ? (
-                                <div>
-                                    <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('weightAndFatChartTitle')}</h3>
-                                    <ProgressChart
-                                        type="line"
-                                        labels={chartData.labels}
-                                        datasets={[
-                                            ...(hasData(chartData.weight) ? [{
-                                                label: t('weight'),
-                                                data: chartData.weight,
-                                                color: 'rgba(139, 92, 246, 1)',
-                                                unit: t('unitKg'),
-                                            }] : []),
-                                            ...(hasData(chartData.fat) ? [{
-                                                label: t('bodyFat'),
-                                                data: chartData.fat,
-                                                color: 'rgba(236, 72, 153, 1)',
-                                                unit: t('unitPercent'),
-                                            }] : [])
-                                        ]}
+                                <div className="flex justify-end items-center gap-2">
+                                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('unitKg')}/{t('unitLiters')}</span>
+                                    <Switch
+                                        checked={unitMode === 'percentage'}
+                                        onChange={checked => setUnitMode(checked ? 'percentage' : 'absolute')}
                                     />
+                                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('unitPercent')}</span>
                                 </div>
+                            </div>
+                            
+                            {hasAnyChartData ? (
+                                <>
+                                    {hasData(chartData.weight) && (
+                                        <div>
+                                            <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('weightChartTitle')}</h3>
+                                            <ProgressChart
+                                                type="line"
+                                                labels={chartData.labels}
+                                                datasets={[{
+                                                    label: t('weight'),
+                                                    data: chartData.weight,
+                                                    color: 'rgba(139, 92, 246, 1)',
+                                                    unit: t('unitKg'),
+                                                }]}
+                                            />
+                                        </div>
+                                    )}
+                                    {(hasData(chartData.fatMass) || hasData(chartData.leanMass)) && (
+                                        <div>
+                                            <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('bodyCompositionChartTitle')}</h3>
+                                            <ProgressChart
+                                                type="line"
+                                                labels={chartData.labels}
+                                                datasets={[
+                                                    ...(hasData(chartData.fatMass) ? [{
+                                                        label: t('bodyFat'),
+                                                        data: chartData.fatMass,
+                                                        color: 'rgba(236, 72, 153, 1)',
+                                                        unit: unitMode === 'absolute' ? t('unitKg') : t('unitPercent'),
+                                                    }] : []),
+                                                    ...(hasData(chartData.leanMass) ? [{
+                                                        label: t('leanMass'),
+                                                        data: chartData.leanMass,
+                                                        color: 'rgba(14, 165, 233, 1)',
+                                                        unit: unitMode === 'absolute' ? t('unitKg') : t('unitPercent'),
+                                                    }] : [])
+                                                ]}
+                                            />
+                                        </div>
+                                    )}
+                                    {hasData(chartData.bodyWater) && (
+                                        <div>
+                                            <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('bodyWaterChartTitle')}</h3>
+                                            <ProgressChart
+                                                type="line"
+                                                labels={chartData.labels}
+                                                datasets={[{
+                                                    label: t('bodyWater'),
+                                                    data: chartData.bodyWater,
+                                                    color: 'rgba(20, 184, 166, 1)',
+                                                    unit: unitMode === 'absolute' ? t('unitLiters') : t('unitPercent'),
+                                                }]}
+                                            />
+                                        </div>
+                                    )}
+                                </>
                             ) : (
                                 <div className="text-center py-16">
                                     <p className="text-lg font-semibold text-gray-500 dark:text-gray-400">No data available in the selected date range.</p>
