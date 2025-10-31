@@ -2,6 +2,7 @@ import React from 'react';
 import { NutritionistPlan, AssignedPlan, DayPlan } from '../../types';
 import { t } from '../../i18n';
 import { CloseIcon, DownloadIcon } from '../Icons';
+import { pdfSettingsStore } from '../../stores/PdfSettingsStore';
 
 interface DownloadPlanModalProps {
     plan: NutritionistPlan | AssignedPlan;
@@ -42,15 +43,32 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
             weeklyPlan = plan.planData.weeklyPlan;
         }
         
+        const { settings } = pdfSettingsStore;
+        const { logo, headerText, footerText } = settings;
+
         let html = `
             <html>
             <head>
                 <title>Piano Nutrizionale - ${planName}</title>
                 <style>
                     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; }
-                    @media print { body { -webkit-print-color-adjust: exact; } }
+                    @media print { 
+                        body { -webkit-print-color-adjust: exact; } 
+                        @page {
+                            margin: 40px;
+                            @bottom-center {
+                                content: "${footerText.replace(/"/g, "'").replace(/\n/g, '\\A ')}";
+                                font-size: 9pt;
+                                color: #666;
+                                white-space: pre;
+                            }
+                        }
+                    }
                     .page-container { width: 100%; max-width: 800px; margin: 0 auto; padding: 20px; }
-                    h1 { color: #8b5cf6; border-bottom: 2px solid #8b5cf6; padding-bottom: 10px; }
+                    .header { text-align: center; margin-bottom: 20px; }
+                    .logo { max-height: 80px; margin-bottom: 10px; }
+                    .header-text { white-space: pre-wrap; color: #555; }
+                    h1 { color: #8b5cf6; border-bottom: 2px solid #8b5cf6; padding-bottom: 10px; text-align: center; }
                     h2 { color: #6d28d9; margin-top: 30px; border-bottom: 1px solid #ddd; padding-bottom: 5px;}
                     h3 { color: #333; margin-top: 20px; margin-bottom: 10px; font-weight: 600; }
                     ul { list-style-type: none; padding-left: 0; }
@@ -60,6 +78,10 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
             </head>
             <body>
                 <div class="page-container">
+                    <div class="header">
+                        ${logo ? `<img src="${logo}" alt="Logo" class="logo"/>` : ''}
+                        ${headerText ? `<div class="header-text">${headerText.replace(/\n/g, '<br>')}</div>` : ''}
+                    </div>
                     <h1>${planName}</h1>`;
         
         weeklyPlan.forEach(day => {
