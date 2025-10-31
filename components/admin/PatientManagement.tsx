@@ -4,7 +4,7 @@ import { patientStore } from '../../stores/PatientStore';
 import { nutritionistStore } from '../../stores/NutritionistStore';
 import { t } from '../../i18n';
 import { Patient, AssignedPlan } from '../../types';
-import { PlusCircleIcon, TrashIcon, CheckIcon, CloseIcon, EditIcon, DownloadIcon, ShareIcon, BodyIcon } from '../Icons';
+import { PlusCircleIcon, TrashIcon, CheckIcon, CloseIcon, EditIcon, DownloadIcon, ShareIcon, BodyIcon, ProgressIcon } from '../Icons';
 import SkeletonLoader from '../SkeletonLoader';
 import ConfirmationModal from '../ConfirmationModal';
 import AssignPlanModal from './AssignPlanModal';
@@ -14,6 +14,7 @@ import { authStore } from '../../stores/AuthStore';
 import { uiStore } from '../../stores/UIStore';
 import ShareLinkModal from '../ShareLinkModal';
 import BodyDataModal from './BodyDataModal';
+import PatientProgressModal from './PatientProgressModal';
 
 interface PatientManagementProps {
     onCreatePlanForPatient: (patient: Patient) => void;
@@ -32,6 +33,7 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
     const [sharingPlan, setSharingPlan] = useState<AssignedPlan | null>(null);
     const [shareUrl, setShareUrl] = useState<string | null>(null);
     const [editingBodyDataPatient, setEditingBodyDataPatient] = useState<Patient | null>(null);
+    const [viewingProgressPatient, setViewingProgressPatient] = useState<Patient | null>(null);
 
     const planMap = useMemo(() => new Map(nutritionistPlans.map(p => [p.id, p.name])), [nutritionistPlans]);
 
@@ -136,6 +138,7 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
                 </ConfirmationModal>
             )}
              {editingBodyDataPatient && <BodyDataModal patient={editingBodyDataPatient} onClose={() => setEditingBodyDataPatient(null)} />}
+             {viewingProgressPatient && <PatientProgressModal patient={viewingProgressPatient} onClose={() => setViewingProgressPatient(null)} />}
 
             <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-6">{t('managePatientsTab')}</h3>
             
@@ -189,6 +192,7 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
+                                    <button onClick={() => setViewingProgressPatient(patient)} className="text-sm bg-teal-500 text-white font-semibold px-3 py-1.5 rounded-full hover:bg-teal-600 flex items-center gap-1.5"><ProgressIcon /> {t('tabProgress')}</button>
                                     <button onClick={() => setEditingBodyDataPatient(patient)} className="text-sm bg-indigo-500 text-white font-semibold px-3 py-1.5 rounded-full hover:bg-indigo-600 flex items-center gap-1.5"><BodyIcon /> {t('bodyDataButton')}</button>
                                     <button onClick={() => onCreatePlanForPatient(patient)} className="text-sm bg-blue-500 text-white font-semibold px-3 py-1.5 rounded-full hover:bg-blue-600">{t('createPersonalizedPlan')}</button>
                                     <button onClick={() => setAssigningPlanPatient(patient)} className="text-sm bg-green-500 text-white font-semibold px-3 py-1.5 rounded-full hover:bg-green-600">{t('assignExistingPlan')}</button>

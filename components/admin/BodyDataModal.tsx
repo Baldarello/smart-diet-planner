@@ -12,7 +12,8 @@ interface BodyDataModalProps {
 
 const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose }) => {
     const [bodyMetrics, setBodyMetrics] = useState<BodyMetrics>(patient.bodyMetrics || {});
-    const [showInApp, setShowInApp] = useState(patient.showBodyMetricsInApp || false);
+    const [showInApp, setShowInApp] = useState(patient.showBodyMetricsInApp ?? true);
+    const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
     const [isSaving, setIsSaving] = useState(false);
 
     const handleMetricChange = (metric: keyof BodyMetrics, value: string) => {
@@ -23,10 +24,14 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            await patientStore.updatePatient(patient.id!, {
-                bodyMetrics,
-                showBodyMetricsInApp: showInApp
-            });
+            await patientStore.savePatientProgress(patient.id!, date, bodyMetrics);
+
+            // Only update the patient entity if the 'showInApp' setting has changed
+            if (patient.showBodyMetricsInApp !== showInApp) {
+                await patientStore.updatePatient(patient.id!, {
+                    showBodyMetricsInApp: showInApp
+                });
+            }
             onClose();
         } catch (error) {
             console.error("Failed to save body data", error);
@@ -62,6 +67,16 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
                 </header>
                 
                 <div className="space-y-6">
+                    <div>
+                        <label htmlFor="metric-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Data Rilevamento</label>
+                        <input
+                            type="date"
+                            id="metric-date"
+                            value={date}
+                            onChange={e => setDate(e.target.value)}
+                            className="mt-1 block w-full sm:w-1/2 p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md"
+                        />
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <MetricInput label={t('weight')} unit={t('unitKg')} value={bodyMetrics.weightKg} onChange={v => handleMetricChange('weightKg', v)} />
                         <MetricInput label={t('height')} unit={t('unitCm')} value={bodyMetrics.heightCm} onChange={v => handleMetricChange('heightCm', v)} />

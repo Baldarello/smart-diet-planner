@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { db } from '../services/db';
-import { Patient, AssignedPlan, PlanCreationData } from '../types';
+import { Patient, AssignedPlan, PlanCreationData, ProgressRecord, BodyMetrics } from '../types';
 import { nutritionistStore } from './NutritionistStore';
 
 class PatientStore {
@@ -158,6 +158,53 @@ class PatientStore {
         } catch (e) {
             console.error(`Failed to update dates for assigned plan ${assignmentId}`, e);
             throw e;
+        }
+    }
+
+    async savePatientProgress(patientId: number, date: string, metrics: BodyMetrics) {
+        try {
+            let record = await db.progressHistory
+                .where({ patientId: patientId, date: date })
+                .first();
+
+            if (!record) {
+                record = {
+                    patientId,
+                    date,
+                    adherence: 0,
+                    plannedCalories: 0,
+                    actualCalories: 0,
+                    stepsTaken: 0,
+                    waterIntakeMl: 0,
+                };
+            }
+
+            const updatedRecord: ProgressRecord = {
+                ...record,
+                weightKg: metrics.weightKg,
+                bodyFatPercentage: metrics.bodyFatPercentage,
+                leanMassKg: metrics.leanMassKg,
+                bodyWaterPercentage: metrics.bodyWaterPercentage,
+            };
+
+            await db.progressHistory.put(updatedRecord);
+
+            // Also update the patient's latest bodyMetrics as a snapshot
+            await this.updatePatient(patientId, { bodyMetrics: metrics });
+        } catch (error) {
+            console.error(`Failed to save progress for patient ${patientId} on ${date}`, error);
+            throw error;
+        }
+    }
+    
+    async getProgressHistoryForPatient(patientId: number): Promise<ProgressRecord[]> {
+        try {
+            return await db.progressHistory
+                .where('patientId').equals(patientId)
+                .sortBy('date');
+        } catch (error) {
+            console.error(`Failed to get progress history for patient ${patientId}`, error);
+            return [];
         }
     }
 }
