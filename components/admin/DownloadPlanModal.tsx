@@ -44,7 +44,7 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
         }
         
         const { settings } = pdfSettingsStore;
-        const { logo, headerText, footerText, primaryColor, fontFamily, baseFontSize, showPageNumbers } = settings;
+        const { logo, headerText, footerText, primaryColor, fontFamily, fontSizeH1, fontSizeH2, fontSizeH3, fontSizeBody, lineHeight, showPageNumbers } = settings;
 
         let mainContentHtml = `<h1>${planName}</h1>`;
         weeklyPlan.forEach(day => {
@@ -75,9 +75,9 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
                 <style>
                     body { 
                         font-family: ${fontFamily === 'Serif' ? 'Georgia, serif' : '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'}; 
-                        line-height: 1.6; 
+                        line-height: ${lineHeight}; 
                         color: #333;
-                        font-size: ${baseFontSize}px;
+                        font-size: ${fontSizeBody}px;
                         counter-reset: page;
                     }
                     @media print { 
@@ -96,9 +96,9 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
                     .page-number::before { counter-increment: page; content: "Pag. " counter(page); }
                     
                     h1, h2 { color: ${primaryColor}; }
-                    h1 { border-bottom: 2px solid ${primaryColor}; padding-bottom: 10px; text-align: center; font-size: 2.2em; margin-bottom: 20px;}
-                    h2 { margin-top: 30px; border-bottom: 1px solid #ddd; padding-bottom: 5px; font-size: 1.8em;}
-                    h3 { color: #333; margin-top: 20px; margin-bottom: 10px; font-weight: 600; font-size: 1.4em;}
+                    h1 { border-bottom: 2px solid ${primaryColor}; padding-bottom: 10px; text-align: center; font-size: ${fontSizeH1}px; margin-bottom: 20px;}
+                    h2 { margin-top: 30px; border-bottom: 1px solid #ddd; padding-bottom: 5px; font-size: ${fontSizeH2}px;}
+                    h3 { color: #333; margin-top: 20px; margin-bottom: 10px; font-weight: 600; font-size: ${fontSizeH3}px;}
                     ul { list-style-type: none; padding-left: 0; }
                     li { background-color: #f9fafb; border-left: 3px solid ${primaryColor}; opacity: 0.8; padding: 8px 12px; margin-bottom: 5px; border-radius: 4px; }
                     p { margin-top: 5px; }
