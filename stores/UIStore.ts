@@ -11,6 +11,8 @@ class UIStore {
     confirmationModalMessage: React.ReactNode = null;
     confirmationModalOnConfirm: () => void = () => {};
 
+    achievementsModalIsOpen = false;
+
     constructor() {
         makeAutoObservable(this, {
             infoModalMessage: observable.ref,
@@ -53,6 +55,14 @@ class UIStore {
                 this.confirmationModalOnConfirm = () => {};
             }
         }, 300);
+    }
+
+    showAchievementsModal() {
+        this.achievementsModalIsOpen = true;
+    }
+
+    hideAchievementsModal() {
+        this.achievementsModalIsOpen = false;
     }
 }
 
