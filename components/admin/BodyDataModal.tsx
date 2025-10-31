@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { Patient, BodyMetrics } from '../../types';
 import { t } from '../../i18n';
@@ -10,11 +10,39 @@ interface BodyDataModalProps {
     onClose: () => void;
 }
 
+const MetricInput: React.FC<{ label: string; unit: string; value: number | undefined; onChange: (value: string) => void; }> = 
+({ label, unit, value, onChange }) => (
+    <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
+        <div className="mt-1 flex items-center">
+            <input
+                type="text"
+                inputMode="decimal"
+                value={value === undefined ? '' : String(value)}
+                onChange={e => onChange(e.target.value)}
+                className="flex-grow p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-violet-500 focus:border-violet-500"
+            />
+            <span className="ml-2 font-semibold text-gray-500 dark:text-gray-400">{unit}</span>
+        </div>
+    </div>
+);
+
 const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose }) => {
     const [bodyMetrics, setBodyMetrics] = useState<BodyMetrics>(patient.bodyMetrics || {});
     const [showInApp, setShowInApp] = useState(patient.showBodyMetricsInApp ?? true);
     const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
     const [isSaving, setIsSaving] = useState(false);
+    const [isDateFocused, setIsDateFocused] = useState(false);
+
+    const formattedDate = useMemo(() => {
+        if (!date) return '';
+        try {
+            const [year, month, day] = date.split('-');
+            return `${day}/${month}/${year}`;
+        } catch (e) {
+            return date; // fallback for wrong format
+        }
+    }, [date]);
 
     const handleMetricChange = (metric: keyof BodyMetrics, value: string) => {
         const numericValue = value === '' ? undefined : parseFloat(value.replace(',', '.'));
@@ -41,23 +69,6 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
         }
     };
 
-    const MetricInput: React.FC<{ label: string; unit: string; value: number | undefined; onChange: (value: string) => void; }> = 
-    ({ label, unit, value, onChange }) => (
-        <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
-            <div className="mt-1 flex items-center">
-                <input
-                    type="text"
-                    inputMode="decimal"
-                    value={value === undefined ? '' : String(value)}
-                    onChange={e => onChange(e.target.value)}
-                    className="flex-grow p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-violet-500 focus:border-violet-500"
-                />
-                <span className="ml-2 font-semibold text-gray-500 dark:text-gray-400">{unit}</span>
-            </div>
-        </div>
-    );
-
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4" onClick={onClose}>
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-xl p-8 animate-slide-in-up" onClick={e => e.stopPropagation()}>
@@ -70,9 +81,11 @@ const BodyDataModal: React.FC<BodyDataModalProps> = observer(({ patient, onClose
                     <div>
                         <label htmlFor="metric-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Data Rilevamento</label>
                         <input
-                            type="date"
+                            type={isDateFocused ? 'date' : 'text'}
                             id="metric-date"
-                            value={date}
+                            value={isDateFocused ? date : formattedDate}
+                            onFocus={() => setIsDateFocused(true)}
+                            onBlur={() => setIsDateFocused(false)}
                             onChange={e => setDate(e.target.value)}
                             className="mt-1 block w-full sm:w-1/2 p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md"
                         />

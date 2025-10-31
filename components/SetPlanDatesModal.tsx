@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
@@ -14,6 +14,28 @@ const SetPlanDatesModal: React.FC = observer(() => {
     const [startDate, setStartDate] = useState(today);
     const [endDate, setEndDate] = useState(nextMonthStr);
     const [error, setError] = useState('');
+    const [isStartDateFocused, setIsStartDateFocused] = useState(false);
+    const [isEndDateFocused, setIsEndDateFocused] = useState(false);
+
+    const formattedStartDate = useMemo(() => {
+        if (!startDate) return '';
+        try {
+            const [year, month, day] = startDate.split('-');
+            return `${day}/${month}/${year}`;
+        } catch(e) {
+            return startDate;
+        }
+    }, [startDate]);
+
+    const formattedEndDate = useMemo(() => {
+        if (!endDate) return '';
+        try {
+            const [year, month, day] = endDate.split('-');
+            return `${day}/${month}/${year}`;
+        } catch(e) {
+            return endDate;
+        }
+    }, [endDate]);
 
     const handleSubmit = async () => {
         if (new Date(endDate) <= new Date(startDate)) {
@@ -39,9 +61,11 @@ const SetPlanDatesModal: React.FC = observer(() => {
                     <div>
                         <label htmlFor="start-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('startDateLabel')}</label>
                         <input
-                            type="date"
+                            type={isStartDateFocused ? 'date' : 'text'}
                             id="start-date"
-                            value={startDate}
+                            value={isStartDateFocused ? startDate : formattedStartDate}
+                            onFocus={() => setIsStartDateFocused(true)}
+                            onBlur={() => setIsStartDateFocused(false)}
                             onChange={(e) => setStartDate(e.target.value)}
                             {...commonInputProps}
                         />
@@ -49,9 +73,11 @@ const SetPlanDatesModal: React.FC = observer(() => {
                      <div>
                         <label htmlFor="end-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('endDateLabel')}</label>
                         <input
-                            type="date"
+                            type={isEndDateFocused ? 'date' : 'text'}
                             id="end-date"
-                            value={endDate}
+                            value={isEndDateFocused ? endDate : formattedEndDate}
+                            onFocus={() => setIsEndDateFocused(true)}
+                            onBlur={() => setIsEndDateFocused(false)}
                             onChange={(e) => setEndDate(e.target.value)}
                             min={startDate}
                             {...commonInputProps}

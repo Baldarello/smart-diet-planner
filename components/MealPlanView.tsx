@@ -26,6 +26,16 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
         className: "mt-1 block w-full px-3 py-2 bg-slate-100 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-transparent focus:border-transparent sm:text-sm appearance-none cursor-not-allowed"
     };
 
+    const formatDate = (dateString: string | null): string => {
+        if (!dateString) return '';
+        try {
+            const [year, month, day] = dateString.split('-');
+            return `${day}/${month}/${year}`;
+        } catch(e) {
+            return dateString;
+        }
+    };
+
     return (
         <div className="grid grid-cols-1 gap-6 max-w-4xl mx-auto">
             {isMasterPlanView && (
@@ -33,19 +43,18 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                      <div>
                         <label htmlFor="start-date-editor" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('startDateLabel')}</label>
                         <input
-                            type="date"
+                            type="text"
                             id="start-date-editor"
-                            value={mealPlanStore.startDate || ''}
+                            value={formatDate(mealPlanStore.startDate)}
                             {...commonInputProps}
                         />
                     </div>
                     <div>
                         <label htmlFor="end-date-editor" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('endDateLabel')}</label>
                         <input
-                            type="date"
+                            type="text"
                             id="end-date-editor"
-                            value={mealPlanStore.endDate || ''}
-                            min={mealPlanStore.startDate || ''}
+                            value={formatDate(mealPlanStore.endDate)}
                             {...commonInputProps}
                         />
                     </div>

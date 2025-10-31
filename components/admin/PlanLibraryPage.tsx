@@ -179,7 +179,7 @@ const PlanLibraryPage: React.FC<PlanLibraryPageProps> = observer(({ onEdit, onVi
                                 />
                                 <div className="min-w-0">
                                     <p id={`plan-name-${plan.id}`} className="font-bold text-lg text-gray-800 dark:text-gray-200 truncate">{plan.name}</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('createdOn')} {new Date(plan.creationDate).toLocaleDateString()}</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('createdOn')} {new Date(plan.creationDate).toLocaleDateString('en-GB')}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 self-end sm:self-center flex-wrap justify-end">
