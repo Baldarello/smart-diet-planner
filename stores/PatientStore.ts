@@ -197,11 +197,14 @@ class PatientStore {
             await db.progressHistory.put(recordToPut);
     
             // Also update the patient's latest bodyMetrics as a snapshot
-            const latestPatientMetrics = {
+            // Fix: Include percentage-based properties when updating the patient's latest metrics to prevent data loss.
+            const latestPatientMetrics: BodyMetrics = {
                 weightKg: metrics.weightKg,
                 heightCm: metrics.heightCm,
+                bodyFatKg: metrics.bodyFatKg,
                 bodyFatPercentage: metrics.bodyFatPercentage,
                 leanMassKg: metrics.leanMassKg,
+                bodyWaterLiters: metrics.bodyWaterLiters,
                 bodyWaterPercentage: metrics.bodyWaterPercentage,
             };
             await this.updatePatient(patientId, { bodyMetrics: latestPatientMetrics });

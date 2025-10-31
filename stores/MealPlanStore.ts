@@ -249,6 +249,8 @@ export class MealPlanStore {
     hydrationGoalLiters = 3;
     stepGoal = 6000;
     bodyMetrics: BodyMetrics = {}; // Holds the LATEST known body metrics for carry-over
+    bodyFatUnit: 'kg' | '%' = 'kg';
+    bodyWaterUnit: 'liters' | '%' = 'liters';
     hydrationSnackbar: HydrationSnackbarInfo | null = null;
     progressHistory: ProgressRecord[] = [];
     earnedAchievements: string[] = [];
@@ -424,6 +426,8 @@ export class MealPlanStore {
                     this.showMacros = data.showMacros ?? false;
                     this.showCheatMealButton = data.showCheatMealButton ?? false;
                     this.showBodyMetricsInApp = data.showBodyMetricsInApp ?? true; // Default to true for existing users
+                    this.bodyFatUnit = data.bodyFatUnit || 'kg';
+                    this.bodyWaterUnit = data.bodyWaterUnit || 'liters';
 
                     if (data.sentNotifications) {
                         this.sentNotifications = new Map(data.sentNotifications);
@@ -540,8 +544,8 @@ export class MealPlanStore {
         const daysToGenerate = 90;
         const DAY_KEYWORDS_FOR_MOCK = ['LUNEDI', 'MARTEDI', 'MERCOLEDI', 'GIOVEDI', 'VENERDI', 'SABATO', 'DOMENICA'];
         let currentWeight = 85;
-        let currentBodyFat = 25;
-        let currentBodyWater = 55;
+        let currentBodyFatPercent = 25;
+        let currentBodyWaterPercent = 55;
 
         for (let i = daysToGenerate - 1; i >= 0; i--) {
             const date = new Date(today);
@@ -552,8 +556,8 @@ export class MealPlanStore {
             if (date.getDay() === 0 || date.getDay() === 6) {
                 currentWeight += (Math.random() * 0.3 - 0.1);
             }
-            currentBodyFat -= (Math.random() * 0.05);
-            currentBodyWater += (Math.random() * 0.04);
+            currentBodyFatPercent -= (Math.random() * 0.05);
+            currentBodyWaterPercent += (Math.random() * 0.04);
 
             let adherence: number;
             let waterIntakeMl: number;
@@ -580,9 +584,9 @@ export class MealPlanStore {
 
             const activityHours = 1 + Math.random() * 1.5;
             const weightKg = parseFloat(currentWeight.toFixed(2));
-            const bodyFatPercentage = parseFloat(currentBodyFat.toFixed(2));
-            const bodyWaterPercentage = parseFloat(currentBodyWater.toFixed(2));
-            const leanMassKg = parseFloat((weightKg * (1 - bodyFatPercentage / 100)).toFixed(2));
+            const bodyFatKg = parseFloat((weightKg * (currentBodyFatPercent / 100)).toFixed(2));
+            const bodyWaterLiters = parseFloat((weightKg * (currentBodyWaterPercent / 100)).toFixed(2));
+            const leanMassKg = parseFloat((weightKg - bodyFatKg).toFixed(2));
 
             const record: ProgressRecord = {
                 date: dateStr,
@@ -590,11 +594,11 @@ export class MealPlanStore {
                 plannedCalories: Math.round(plannedCalories),
                 actualCalories: Math.round(actualCalories),
                 weightKg: weightKg,
-                bodyFatPercentage: bodyFatPercentage,
+                bodyFatKg: bodyFatKg,
                 leanMassKg: leanMassKg,
                 stepsTaken: Math.round(stepsTaken),
                 waterIntakeMl: Math.round(waterIntakeMl),
-                bodyWaterPercentage: bodyWaterPercentage,
+                bodyWaterLiters: bodyWaterLiters,
                 activityHours: parseFloat(activityHours.toFixed(2)),
                 estimatedCaloriesBurned: calculateCaloriesBurned(stepsTaken, activityHours, weightKg) ?? 0,
             };
@@ -654,8 +658,8 @@ export class MealPlanStore {
         const DAY_KEYWORDS_FOR_MOCK = ['LUNEDI', 'MARTEDI', 'MERCOLEDI', 'GIOVEDI', 'VENERDI', 'SABATO', 'DOMENICA'];
 
         let currentWeight = 85;
-        let currentBodyFat = 25;
-        let currentBodyWater = 55;
+        let currentBodyFatPercent = 25;
+        let currentBodyWaterPercent = 55;
 
         for (let i = daysToGenerate - 1; i >= 0; i--) {
             const date = new Date(today);
@@ -667,8 +671,8 @@ export class MealPlanStore {
             if (date.getDay() === 0 || date.getDay() === 6) { // Weekend fluctuation
                 currentWeight += (Math.random() * 0.3 - 0.1);
             }
-            currentBodyFat -= (Math.random() * 0.05);
-            currentBodyWater += (Math.random() * 0.04);
+            currentBodyFatPercent -= (Math.random() * 0.05);
+            currentBodyWaterPercent += (Math.random() * 0.04);
 
             let adherence: number;
             let waterIntakeMl: number;
@@ -687,9 +691,9 @@ export class MealPlanStore {
             const stepsTaken = 4000 + Math.random() * 8000;
             const activityHours = 1 + Math.random() * 1.5;
             const weightKg = parseFloat(currentWeight.toFixed(2));
-            const bodyFatPercentage = parseFloat(currentBodyFat.toFixed(2));
-            const bodyWaterPercentage = parseFloat(currentBodyWater.toFixed(2));
-            const leanMassKg = parseFloat((weightKg * (1 - bodyFatPercentage / 100)).toFixed(2));
+            const bodyFatKg = parseFloat((weightKg * currentBodyFatPercent / 100).toFixed(2));
+            const bodyWaterLiters = parseFloat((weightKg * currentBodyWaterPercent / 100).toFixed(2));
+            const leanMassKg = parseFloat((weightKg - bodyFatKg).toFixed(2));
 
             const record: ProgressRecord = {
                 date: dateStr,
@@ -697,11 +701,11 @@ export class MealPlanStore {
                 plannedCalories: Math.round(plannedCalories),
                 actualCalories: Math.round(actualCalories),
                 weightKg: weightKg,
-                bodyFatPercentage: bodyFatPercentage,
+                bodyFatKg: bodyFatKg,
                 leanMassKg: leanMassKg,
                 stepsTaken: Math.round(stepsTaken),
                 waterIntakeMl: Math.round(waterIntakeMl),
-                bodyWaterPercentage: bodyWaterPercentage,
+                bodyWaterLiters: bodyWaterLiters,
                 activityHours: parseFloat(activityHours.toFixed(2)),
                 estimatedCaloriesBurned: calculateCaloriesBurned(stepsTaken, activityHours, weightKg) ?? 0,
             };
@@ -746,6 +750,14 @@ export class MealPlanStore {
         }
     }
 
+    setBodyFatUnit = (unit: 'kg' | '%') => {
+        this.bodyFatUnit = unit;
+        this.saveToDB();
+    }
+    setBodyWaterUnit = (unit: 'liters' | '%') => {
+        this.bodyWaterUnit = unit;
+        this.saveToDB();
+    }
     setShowMacros = (show: boolean) => {
         this.showMacros = show;
         this.saveToDB();
@@ -917,7 +929,8 @@ export class MealPlanStore {
             this.currentDayProgress = updatedProgress;
         });
 
-        if (['weightKg', 'bodyFatPercentage', 'leanMassKg', 'bodyWaterPercentage'].includes(field)) {
+        // Fix: Include percentage-based properties to ensure they are persisted correctly.
+        if (['weightKg', 'bodyFatKg', 'leanMassKg', 'bodyWaterLiters', 'bodyFatPercentage', 'bodyWaterPercentage'].includes(field)) {
             this.setBodyMetric(field as keyof BodyMetrics, value);
         }
 
@@ -1149,6 +1162,8 @@ export class MealPlanStore {
                 showMacros: this.showMacros,
                 showCheatMealButton: this.showCheatMealButton,
                 showBodyMetricsInApp: this.showBodyMetricsInApp,
+                bodyFatUnit: this.bodyFatUnit,
+                bodyWaterUnit: this.bodyWaterUnit,
             };
             await db.appState.put({key: 'dietPlanData', value: dataToSave as StoredState});
         } catch (error) {
@@ -1740,11 +1755,14 @@ export class MealPlanStore {
             } else {
                 const latestRecord = await db.progressHistory.where('date').below(dateStr).last();
                 // Use store's bodyMetrics as a fallback to ensure the absolute latest data is always considered.
+                // Fix: Include percentage-based properties to ensure they are carried over to new records.
                 const newRecord: ProgressRecord = {
                     date: dateStr, adherence: 0, plannedCalories: 0, actualCalories: 0, stepsTaken: 0, waterIntakeMl: 0,
                     weightKg: latestRecord?.weightKg ?? this.bodyMetrics.weightKg,
+                    bodyFatKg: latestRecord?.bodyFatKg ?? this.bodyMetrics.bodyFatKg,
                     bodyFatPercentage: latestRecord?.bodyFatPercentage ?? this.bodyMetrics.bodyFatPercentage,
                     leanMassKg: latestRecord?.leanMassKg ?? this.bodyMetrics.leanMassKg,
+                    bodyWaterLiters: latestRecord?.bodyWaterLiters ?? this.bodyMetrics.bodyWaterLiters,
                     bodyWaterPercentage: latestRecord?.bodyWaterPercentage ?? this.bodyMetrics.bodyWaterPercentage,
                     activityHours: 1,
                     estimatedCaloriesBurned: 0

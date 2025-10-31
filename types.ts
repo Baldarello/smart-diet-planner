@@ -4,6 +4,8 @@
 
 
 
+
+
 export interface NutritionInfo {
   carbs: number;
   protein: number;
@@ -87,8 +89,11 @@ export interface HydrationSnackbarInfo {
 export interface BodyMetrics {
   weightKg?: number;
   heightCm?: number;
+  bodyFatKg?: number;
+  // Fix: Add optional percentage properties to align with their usage in components.
   bodyFatPercentage?: number;
   leanMassKg?: number;
+  bodyWaterLiters?: number;
   bodyWaterPercentage?: number;
 }
 
@@ -102,10 +107,13 @@ export interface ProgressRecord {
   weightKg?: number;
   // Fix: Add optional 'heightCm' property to align with data being saved in PatientStore and accessed in BodyDataModal.
   heightCm?: number;
+  bodyFatKg?: number;
+  // Fix: Add optional percentage properties to align with their usage in components.
   bodyFatPercentage?: number;
   leanMassKg?: number;
   stepsTaken: number;
   waterIntakeMl: number;
+  bodyWaterLiters?: number;
   bodyWaterPercentage?: number;
   activityHours?: number;
   estimatedCaloriesBurned?: number;
@@ -143,6 +151,8 @@ export interface StoredState {
     showMacros?: boolean;
     showCheatMealButton?: boolean;
     showBodyMetricsInApp?: boolean;
+    bodyFatUnit?: 'kg' | '%';
+    bodyWaterUnit?: 'liters' | '%';
 }
 
 export interface SyncedData {

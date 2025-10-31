@@ -375,6 +375,7 @@ const translations = {
     unitKg: "kg",
     unitCm: "cm",
     unitPercent: "%",
+    unitLiters: "L",
     
     // Progress View
     progressTitle: "I Tuoi Progressi",
@@ -826,6 +827,7 @@ const translations = {
     unitKg: "kg",
     unitCm: "cm",
     unitPercent: "%",
+    unitLiters: "L",
     
     // Progress View
     progressTitle: "Your Progress",
