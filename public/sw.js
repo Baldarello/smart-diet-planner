@@ -2,6 +2,7 @@ const CACHE_NAME = 'diet-planner-cache-v2';
 const urlsToCache = [
   '/',
   'index.html',
+  '404.html',
   'manifest.json',
   'icon-192x192.png',
   'icon-512x512.png'
