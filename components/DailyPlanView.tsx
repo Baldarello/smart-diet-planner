@@ -167,7 +167,7 @@ const DailyPlanView: React.FC = observer(() => {
                                         </div>
                                     </details>
                                 )}
-                                <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} isEditable={true} showCheckbox={true} />
+                                <MealItemChecklist items={meal.items} dayIndex={dayIndex} mealIndex={meal.originalIndex} mealIsDone={meal.done} isEditable={false} showCheckbox={true} />
                             </>
                         )}
                         {mealPlanStore.showMacros && !meal.cheat && <NutritionInfoDisplay nutrition={meal.nutrition} dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
