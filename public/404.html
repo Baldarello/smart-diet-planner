@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LifePulse - Redirecting...</title>
+  <script>
+    (function() {
+      // The full path that was originally requested.
+      const redirectPath = window.location.pathname + window.location.search + window.location.hash;
+      
+      // Store it in sessionStorage to be picked up by the main app.
+      sessionStorage.setItem('redirect', redirectPath);
+      
+      // Redirect to the root of the site, where index.html is located.
+      window.location.replace('/');
+    })();
+  </script>
+</head>
+<body>
+  <p>If you are not redirected automatically, please <a href="/">click here</a>.</p>
+</body>
+</html>
