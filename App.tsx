@@ -287,19 +287,11 @@ const MainAppLayout: React.FC = observer(() => {
 
                     {renderSimulateButton()}
 
-                    {store.status === AppStatus.SUCCESS && store.currentPlanId ? (
+                    {store.status === AppStatus.SUCCESS && store.currentPlanId && (
                         <div className="py-6">
                             <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('navigation')}</h3>
                             <div className="flex flex-col space-y-1">
                                 {planSpecificTabs.map(renderTab)}
-                            </div>
-                        </div>
-                    ) : (
-                         <div className="py-6">
-                            <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('navigation')}</h3>
-                            <div className="flex flex-col space-y-1">
-                                {renderTab({ id: 'upload', icon: <UploadIcon />, label: t('uploadNew') })}
-                                {renderTab({ id: 'archive', icon: <ArchiveIcon />, label: t('tabArchive') })}
                             </div>
                         </div>
                     )}
