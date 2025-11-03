@@ -89,6 +89,17 @@ export function splitQuantityAndName(description: string): { quantity: string | 
 
     if (match) {
         let quantity = match[1].trim();
+        
+        // Check if quantity is a number followed by letters without a space.
+        const quantityMatch = quantity.match(/^(\d+[\.,]?\d*)([a-zA-ZÀ-ú\/]+)$/);
+        if (quantityMatch) {
+            const unitPart = quantityMatch[2];
+            // Add a space if the unit is not a standard short abbreviation (e.g. g, kg, ml)
+            if (unitPart.length > 2) {
+                quantity = `${quantityMatch[1]} ${unitPart}`;
+            }
+        }
+        
         let name = match[2].trim();
         
         if (name.toLowerCase().startsWith('di ')) {
