@@ -450,7 +450,6 @@ export class MealPlanStore {
                     }
                 } else {
                     this.status = AppStatus.INITIAL;
-                    this._generateAndInjectMockData();
                 }
             });
         } catch (error) {
