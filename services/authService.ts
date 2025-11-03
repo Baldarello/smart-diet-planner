@@ -102,8 +102,9 @@ export const handleSignIn = () => {
     
     // now tokenClient might be set if GSI script was loaded.
     if (tokenClient) {
-        // Use 'popup' to ensure a better user experience on subsequent sign-ins.
-        tokenClient.requestAccessToken({ prompt: 'popup' });
+        // The GSI library handles the prompt UX. Overriding with `prompt: 'popup'` is incorrect and causes an error.
+        // Removing the parameter fixes the "invalid_request" issue.
+        tokenClient.requestAccessToken();
     } else {
         // This might happen if GSI script is not loaded yet.
         // The user might need to click again.

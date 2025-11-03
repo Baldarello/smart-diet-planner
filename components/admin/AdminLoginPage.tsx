@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { t } from '../../i18n';
-import { ViewIcon, ViewOffIcon } from '../Icons';
+import { ViewIcon, ViewOffIcon, ArrowLeftIcon } from '../Icons';
 
 interface AdminLoginPageProps {
     onLoginSuccess: () => void;
@@ -21,11 +21,23 @@ const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess }) => {
             setError(t('invalidCredentialsError'));
         }
     };
+    
+    const handleGoBack = () => {
+        window.history.pushState({}, '', '/');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+    };
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-gray-900 p-4">
             <div className="w-full max-w-md">
-                <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-8">
+                <div className="relative bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-8">
+                    <button
+                        onClick={handleGoBack}
+                        className="absolute top-4 left-4 p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
+                        aria-label="Go back to home"
+                    >
+                        <ArrowLeftIcon />
+                    </button>
                     <h1 className="text-2xl font-bold text-center text-gray-800 dark:text-gray-200 mb-2">{t('adminLoginTitle')}</h1>
                      <p className="text-center text-gray-500 dark:text-gray-400 mb-6">{t('mainTitle')}</p>
                     <form onSubmit={handleLogin} className="space-y-6">
