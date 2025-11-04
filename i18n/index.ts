@@ -158,6 +158,11 @@ const translations = {
     downloadAsJson: "Scarica JSON",
     downloadAsPdf: "Scarica PDF",
     pdfSettingsTab: "Impostazioni PDF",
+    syncStatusIdle: "Inattivo",
+    syncStatusSyncing: "Sincronizzo...",
+    syncStatusSynced: "Sincronizzato",
+    syncStatusError: "Sincronizzazione Fallita",
+    syncLastSync: "Ultima sinc: {time}",
 
     // Homepage
     homeTitle: "LifePulse: Il Tuo Assistente Intelligente per la Dieta",
@@ -646,6 +651,11 @@ const translations = {
     downloadAsJson: "Download JSON",
     downloadAsPdf: "Download PDF",
     pdfSettingsTab: "PDF Settings",
+    syncStatusIdle: "Idle",
+    syncStatusSyncing: "Syncing...",
+    syncStatusSynced: "Synced",
+    syncStatusError: "Sync Failed",
+    syncLastSync: "Last sync: {time}",
 
     // Homepage
     homeTitle: "LifePulse: Your Intelligent Diet Companion",

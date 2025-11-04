@@ -6,7 +6,6 @@ const DRIVE_API_URL = 'https://www.googleapis.com/drive/v3/files';
 const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
 const BACKUP_FILE_PREFIX = 'lifepulse_backup_';
 const NUTRITIONIST_BACKUP_PREFIX = 'lifepulse_nutritionist_backup_';
-const FOLDER = 'appDataFolder'; // Special, hidden folder for app data
 const MAX_BACKUPS_TO_KEEP = 5;
 
 export interface DriveFile {
@@ -20,10 +19,33 @@ const createHeaders = (accessToken: string) => ({
     'Authorization': `Bearer ${accessToken}`,
 });
 
-const listBackupFilesGeneric = async (accessToken: string, prefix: string): Promise<DriveFile[]> => {
+export async function getOrCreateFolderId(accessToken: string, name: string, parentId: string = 'root'): Promise<string> {
+    const headers = createHeaders(accessToken);
+    // Search for folder first
+    const q = `mimeType='application/vnd.google-apps.folder' and name='${name}' and '${parentId}' in parents and trashed=false`;
+    const searchResponse = await fetch(`${DRIVE_API_URL}?q=${encodeURIComponent(q)}&fields=files(id)`, { headers });
+    if (!searchResponse.ok) throw new Error(`Failed to search for folder '${name}'.`);
+    const searchData = await searchResponse.json();
+    if (searchData.files && searchData.files.length > 0) {
+        return searchData.files[0].id;
+    }
+
+    // Create folder if not found
+    const metadata = { name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] };
+    const createResponse = await fetch(DRIVE_API_URL, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(metadata)
+    });
+    if (!createResponse.ok) throw new Error(`Failed to create folder '${name}'.`);
+    const createData = await createResponse.json();
+    return createData.id;
+}
+
+
+const listBackupFilesGeneric = async (accessToken: string, prefix: string, parentFolderId: string): Promise<DriveFile[]> => {
     const params = new URLSearchParams({
-        q: `name contains '${prefix}' and trashed=false`,
-        spaces: FOLDER,
+        q: `name contains '${prefix}' and '${parentFolderId}' in parents and trashed=false`,
         fields: 'files(id, name, createdTime)',
         orderBy: 'createdTime desc',
     });
@@ -38,9 +60,9 @@ const listBackupFilesGeneric = async (accessToken: string, prefix: string): Prom
     return data.files;
 };
 
-const deleteOldBackupsGeneric = async (accessToken: string, prefix: string) => {
+const deleteOldBackupsGeneric = async (accessToken: string, prefix: string, parentFolderId: string) => {
     try {
-        const files = await listBackupFilesGeneric(accessToken, prefix);
+        const files = await listBackupFilesGeneric(accessToken, prefix, parentFolderId);
         if (files.length <= MAX_BACKUPS_TO_KEEP) {
             return;
         }
@@ -57,8 +79,8 @@ const deleteOldBackupsGeneric = async (accessToken: string, prefix: string) => {
 };
 
 // Patient-specific functions
-export const findLatestBackupFile = async (accessToken: string): Promise<DriveFile | null> => {
-    const files = await listBackupFilesGeneric(accessToken, BACKUP_FILE_PREFIX);
+export const findLatestBackupFile = async (accessToken: string, parentFolderId: string): Promise<DriveFile | null> => {
+    const files = await listBackupFilesGeneric(accessToken, BACKUP_FILE_PREFIX, parentFolderId);
     return files.length > 0 ? files[0] : null;
 };
 export const readBackupFile = async (accessToken: string, fileId: string): Promise<SyncedData> => {
@@ -66,21 +88,21 @@ export const readBackupFile = async (accessToken: string, fileId: string): Promi
     if (!response.ok) throw new Error('Failed to read backup file.');
     return response.json();
 };
-export async function writeBackupFile(data: SyncedData, accessToken: string): Promise<void> {
+export async function writeBackupFile(data: SyncedData, accessToken: string, parentFolderId: string): Promise<void> {
     const filename = `${BACKUP_FILE_PREFIX}${Date.now()}.json`;
-    const metadata = { name: filename, mimeType: 'application/json', parents: [FOLDER] };
+    const metadata = { name: filename, mimeType: 'application/json', parents: [parentFolderId] };
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     form.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
     const url = `${DRIVE_UPLOAD_URL}?uploadType=multipart&fields=id,name`;
     const response = await fetch(url, { method: 'POST', headers: createHeaders(accessToken), body: form });
     if (!response.ok) throw new Error('Failed to create backup file.');
-    await deleteOldBackupsGeneric(accessToken, BACKUP_FILE_PREFIX);
+    await deleteOldBackupsGeneric(accessToken, BACKUP_FILE_PREFIX, parentFolderId);
 }
 
 // Nutritionist-specific functions
-export const findLatestNutritionistBackupFile = async (accessToken: string): Promise<DriveFile | null> => {
-    const files = await listBackupFilesGeneric(accessToken, NUTRITIONIST_BACKUP_PREFIX);
+export const findLatestNutritionistBackupFile = async (accessToken: string, parentFolderId: string): Promise<DriveFile | null> => {
+    const files = await listBackupFilesGeneric(accessToken, NUTRITIONIST_BACKUP_PREFIX, parentFolderId);
     return files.length > 0 ? files[0] : null;
 };
 export const readNutritionistBackupFile = async (accessToken: string, fileId: string): Promise<NutritionistSyncedData> => {
@@ -88,16 +110,16 @@ export const readNutritionistBackupFile = async (accessToken: string, fileId: st
     if (!response.ok) throw new Error('Failed to read nutritionist backup file.');
     return response.json();
 };
-export async function writeNutritionistBackupFile(data: NutritionistSyncedData, accessToken: string): Promise<void> {
+export async function writeNutritionistBackupFile(data: NutritionistSyncedData, accessToken: string, parentFolderId: string): Promise<void> {
     const filename = `${NUTRITIONIST_BACKUP_PREFIX}${Date.now()}.json`;
-    const metadata = { name: filename, mimeType: 'application/json', parents: [FOLDER] };
+    const metadata = { name: filename, mimeType: 'application/json', parents: [parentFolderId] };
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     form.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
     const url = `${DRIVE_UPLOAD_URL}?uploadType=multipart&fields=id,name`;
     const response = await fetch(url, { method: 'POST', headers: createHeaders(accessToken), body: form });
     if (!response.ok) throw new Error('Failed to create nutritionist backup file.');
-    await deleteOldBackupsGeneric(accessToken, NUTRITIONIST_BACKUP_PREFIX);
+    await deleteOldBackupsGeneric(accessToken, NUTRITIONIST_BACKUP_PREFIX, parentFolderId);
 }
 
 

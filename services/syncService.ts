@@ -1,12 +1,13 @@
 import { runInAction } from 'mobx';
 import { db } from './db';
-import { findLatestBackupFile, readBackupFile, writeBackupFile, findLatestNutritionistBackupFile, readNutritionistBackupFile, writeNutritionistBackupFile } from './driveService';
+import { findLatestBackupFile, readBackupFile, writeBackupFile, findLatestNutritionistBackupFile, readNutritionistBackupFile, writeNutritionistBackupFile, getOrCreateFolderId } from './driveService';
 import { SyncedData, Ingredient, NutritionistPlan, Recipe, Patient, AssignedPlan } from '../types';
 import { PdfSettings, pdfSettingsStore } from '../stores/PdfSettingsStore';
 import { ingredientStore } from '../stores/IngredientStore';
 import { nutritionistStore } from '../stores/NutritionistStore';
 import { recipeStore } from '../stores/RecipeStore';
 import { patientStore } from '../stores/PatientStore';
+import { syncStore } from '../stores/SyncStore';
 
 import Dexie from 'dexie';
 
@@ -20,11 +21,52 @@ export interface NutritionistSyncedData {
     lastModified: number;
 }
 
+export async function uploadNutritionistData(accessToken: string) {
+    if (syncStore.status === 'syncing') return;
+
+    syncStore.setStatus('syncing');
+    try {
+        const lifePulseFolderId = await getOrCreateFolderId(accessToken, 'LifePulse');
+        const nutritionistFolderId = await getOrCreateFolderId(accessToken, 'Nutritionist', lifePulseFolderId);
+
+        const ingredients = await db.ingredients.toArray();
+        const nutritionistPlans = await db.nutritionistPlans.toArray();
+        const recipes = await db.recipes.toArray();
+        const patients = await db.patients.toArray();
+        const assignedPlans = await db.assignedPlans.toArray();
+        const pdfSettings = pdfSettingsStore.settings;
+        const lastModified = Date.now();
+
+        const dataToSave: NutritionistSyncedData = {
+            ingredients,
+            nutritionistPlans,
+            recipes,
+            patients,
+            assignedPlans,
+            pdfSettings,
+            lastModified,
+        };
+        
+        await writeNutritionistBackupFile(dataToSave, accessToken, nutritionistFolderId);
+        await db.syncState.put({ key: 'nutritionist', lastModified });
+        
+        console.log("Local nutritionist data successfully uploaded to Google Drive.");
+        syncStore.setStatus('synced');
+    } catch (error) {
+        console.error("Error during nutritionist data upload:", error);
+        syncStore.setStatus('error', error instanceof Error ? error.message : String(error));
+    }
+}
+
 export async function syncNutritionistData(accessToken: string) {
     console.log("Starting nutritionist data sync...");
+    syncStore.setStatus('syncing');
 
     try {
-        const latestBackupFile = await findLatestNutritionistBackupFile(accessToken);
+        const lifePulseFolderId = await getOrCreateFolderId(accessToken, 'LifePulse');
+        const nutritionistFolderId = await getOrCreateFolderId(accessToken, 'Nutritionist', lifePulseFolderId);
+        const latestBackupFile = await findLatestNutritionistBackupFile(accessToken, nutritionistFolderId);
+
         let remoteData: NutritionistSyncedData | null = null;
         if (latestBackupFile) {
             remoteData = await readNutritionistBackupFile(accessToken, latestBackupFile.id);
@@ -78,14 +120,15 @@ export async function syncNutritionistData(accessToken: string) {
                 lastModified: localTimestamp,
             };
 
-            await writeNutritionistBackupFile(dataToSave, accessToken);
+            await writeNutritionistBackupFile(dataToSave, accessToken, nutritionistFolderId);
             console.log("Local nutritionist data successfully uploaded to Google Drive.");
         } else {
             console.log("Local and remote nutritionist data are in sync.");
         }
-
+        syncStore.setStatus('synced');
     } catch (error) {
         console.error("Error during nutritionist Google Drive sync:", error);
+        syncStore.setStatus('error', error instanceof Error ? error.message : String(error));
     } finally {
         // Reload stores to reflect any synced changes
         await Promise.all([
@@ -113,7 +156,10 @@ export async function syncWithDrive(accessToken: string) {
 
     runInAction(() => { mealPlanStore.status = AppStatus.SYNCING });
     try {
-        const latestBackupFile = await findLatestBackupFile(accessToken);
+        const lifePulseFolderId = await getOrCreateFolderId(accessToken, 'LifePulse');
+        const patientFolderId = await getOrCreateFolderId(accessToken, 'Patient', lifePulseFolderId);
+        const latestBackupFile = await findLatestBackupFile(accessToken, patientFolderId);
+
         let remoteData: SyncedData | null = null;
         if (latestBackupFile) {
             remoteData = await readBackupFile(accessToken, latestBackupFile.id);
@@ -155,7 +201,7 @@ export async function syncWithDrive(accessToken: string) {
             const progressHistory = await db.progressHistory.toArray();
             const dailyLogs = await db.dailyLogs.toArray();
             const dataToSave: SyncedData = { appState: localData.value, progressHistory, dailyLogs };
-            await writeBackupFile(dataToSave, accessToken);
+            await writeBackupFile(dataToSave, accessToken, patientFolderId);
             console.log("Local data successfully uploaded to Google Drive.");
         } else {
             console.log("Local and remote data are in sync. No action needed.");
