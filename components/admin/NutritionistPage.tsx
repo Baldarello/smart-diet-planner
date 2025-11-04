@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { observer } from 'mobx-react-lite';
 import ManualPlanEntryForm from './ManualPlanEntryForm';
 import IngredientsManagement from './IngredientsManagement';
 import PlanLibraryPage from './PlanLibraryPage';
@@ -11,6 +12,7 @@ import PatientManagement from './PatientManagement';
 import { patientStore } from '../../stores/PatientStore';
 import { uiStore } from '../../stores/UIStore';
 import PdfSettingsPage from './PdfSettingsPage';
+import SyncStatusIndicator from './SyncStatusIndicator';
 
 interface NutritionistPageProps {
     onLogout: () => void;
@@ -18,7 +20,7 @@ interface NutritionistPageProps {
 
 type NutritionistTab = 'plan' | 'patients' | 'library' | 'ingredients' | 'recipes' | 'pdfSettings';
 
-const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
+const NutritionistPage: React.FC<NutritionistPageProps> = observer(({ onLogout }) => {
     const [activeTab, setActiveTab] = useState<NutritionistTab>('patients');
     const [planToEdit, setPlanToEdit] = useState<NutritionistPlan | AssignedPlan | null>(null);
     const [viewingPlan, setViewingPlan] = useState<NutritionistPlan | null>(null);
@@ -107,9 +109,12 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
             <header className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-10">
                  <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
                     <h1 className="text-xl font-bold text-gray-800 dark:text-gray-200">{t('nutritionistPortalTitle')}</h1>
-                    <button onClick={onLogout} className="bg-red-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-600 transition-colors shadow-sm">
-                        {t('logoutButton')}
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <SyncStatusIndicator />
+                        <button onClick={onLogout} className="bg-red-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-600 transition-colors shadow-sm">
+                            {t('logoutButton')}
+                        </button>
+                    </div>
                 </div>
                 <nav className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mb-px">
                     <div className="flex border-b border-gray-200 dark:border-gray-700">
@@ -141,6 +146,6 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
             {viewingPlan && <ViewPlanModal plan={viewingPlan} onClose={() => setViewingPlan(null)} />}
         </div>
     );
-};
+});
 
 export default NutritionistPage;

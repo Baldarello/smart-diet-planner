@@ -60,3 +60,4 @@ export { default as DownloadPlanModal } from './admin/DownloadPlanModal';
 export { default as PdfSettingsPage } from './admin/PdfSettingsPage';
 export { default as PdfPreview } from './admin/PdfPreview';
 export { default as RangeSlider } from './admin/RangeSlider';
+export { default as SyncStatusIndicator } from './admin/SyncStatusIndicator';
