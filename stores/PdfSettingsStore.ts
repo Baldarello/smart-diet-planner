@@ -1,4 +1,5 @@
 import { makeAutoObservable, runInAction } from 'mobx';
+import { db } from '../services/db';
 
 export interface PdfSettings {
     logo: string | null; // base64 string
@@ -70,6 +71,14 @@ class PdfSettingsStore {
     saveSettings(newSettings: Partial<PdfSettings>) {
         runInAction(() => {
             this.settings = { ...this.settings, ...newSettings };
+        });
+        localStorage.setItem(PDF_SETTINGS_KEY, JSON.stringify(this.settings));
+        db.syncState.put({ key: 'nutritionist', lastModified: Date.now() }).catch(e => console.error("Failed to update sync state from PDF settings", e));
+    }
+    
+    loadSettingsFromObject(settingsObject: PdfSettings) {
+        runInAction(() => {
+            this.settings = settingsObject;
         });
         localStorage.setItem(PDF_SETTINGS_KEY, JSON.stringify(this.settings));
     }

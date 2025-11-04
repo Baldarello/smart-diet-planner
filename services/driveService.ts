@@ -1,8 +1,11 @@
 import { SyncedData } from '../types';
+import { NutritionistSyncedData } from './syncService';
+
 
 const DRIVE_API_URL = 'https://www.googleapis.com/drive/v3/files';
 const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
 const BACKUP_FILE_PREFIX = 'lifepulse_backup_';
+const NUTRITIONIST_BACKUP_PREFIX = 'lifepulse_nutritionist_backup_';
 const FOLDER = 'appDataFolder'; // Special, hidden folder for app data
 const MAX_BACKUPS_TO_KEEP = 5;
 
@@ -17,68 +20,31 @@ const createHeaders = (accessToken: string) => ({
     'Authorization': `Bearer ${accessToken}`,
 });
 
-/**
- * Finds the latest backup file in the appDataFolder.
- * @param accessToken The user's OAuth2 access token.
- * @returns The latest backup file or null if not found.
- */
-export const findLatestBackupFile = async (accessToken: string): Promise<DriveFile | null> => {
+const listBackupFilesGeneric = async (accessToken: string, prefix: string): Promise<DriveFile[]> => {
     const params = new URLSearchParams({
-        q: `name contains '${BACKUP_FILE_PREFIX}' and trashed=false`,
+        q: `name contains '${prefix}' and trashed=false`,
         spaces: FOLDER,
         fields: 'files(id, name, createdTime)',
-        orderBy: 'createdTime desc', // Get the newest first
-        pageSize: '1',
+        orderBy: 'createdTime desc',
     });
     const response = await fetch(`${DRIVE_API_URL}?${params}`, {
         headers: createHeaders(accessToken),
     });
     if (!response.ok) {
-        console.error("Drive API Error (find latest file):", await response.json());
-        throw new Error('Failed to search for backup file.');
-    }
-
-    const data = await response.json();
-    return data.files.length > 0 ? data.files[0] : null;
-};
-
-/**
- * Lists all backup files for cleanup purposes.
- * @param accessToken The user's OAuth2 access token.
- * @returns An array of backup files, sorted from newest to oldest.
- */
-export const listBackupFiles = async (accessToken: string): Promise<DriveFile[]> => {
-    const params = new URLSearchParams({
-        q: `name contains '${BACKUP_FILE_PREFIX}' and trashed=false`,
-        spaces: FOLDER,
-        fields: 'files(id, name, createdTime)',
-        orderBy: 'createdTime desc', // Newest first
-    });
-    const response = await fetch(`${DRIVE_API_URL}?${params}`, {
-        headers: createHeaders(accessToken),
-    });
-     if (!response.ok) {
-        console.error("Drive API Error (list files):", await response.json());
-        throw new Error('Failed to list backup files.');
+        console.error(`Drive API Error (list files with prefix ${prefix}):`, await response.json());
+        throw new Error(`Failed to list backup files with prefix ${prefix}.`);
     }
     const data = await response.json();
     return data.files;
 };
 
-/**
- * Deletes old backups, keeping only the most recent ones defined by MAX_BACKUPS_TO_KEEP.
- * @param accessToken The user's OAuth2 access token.
- */
-export const deleteOldBackups = async (accessToken: string) => {
+const deleteOldBackupsGeneric = async (accessToken: string, prefix: string) => {
     try {
-        const files = await listBackupFiles(accessToken);
+        const files = await listBackupFilesGeneric(accessToken, prefix);
         if (files.length <= MAX_BACKUPS_TO_KEEP) {
-            console.log("Backup cleanup: No old backups to delete.");
             return;
         }
         const filesToDelete = files.slice(MAX_BACKUPS_TO_KEEP);
-        console.log(`Backup cleanup: Deleting ${filesToDelete.length} old backups.`);
-        
         for (const file of filesToDelete) {
             await fetch(`${DRIVE_API_URL}/${file.id}?supportsAllDrives=true`, {
                 method: 'DELETE',
@@ -86,67 +52,54 @@ export const deleteOldBackups = async (accessToken: string) => {
             });
         }
     } catch (error) {
-        console.error("Failed during backup cleanup:", error);
-        // Don't throw, as cleanup is not a critical failure.
+        console.error(`Failed during backup cleanup for prefix ${prefix}:`, error);
     }
 };
 
-/**
- * Reads the content of a specific backup file from Google Drive.
- * @param accessToken The user's OAuth2 access token.
- * @param fileId The ID of the file to read.
- * @returns The synced data from the file.
- */
+// Patient-specific functions
+export const findLatestBackupFile = async (accessToken: string): Promise<DriveFile | null> => {
+    const files = await listBackupFilesGeneric(accessToken, BACKUP_FILE_PREFIX);
+    return files.length > 0 ? files[0] : null;
+};
 export const readBackupFile = async (accessToken: string, fileId: string): Promise<SyncedData> => {
-    const response = await fetch(`${DRIVE_API_URL}/${fileId}?alt=media`, {
-        headers: createHeaders(accessToken),
-    });
-    if (!response.ok) {
-        console.error("Drive API Error (read file):", await response.json());
-        throw new Error('Failed to read backup file.');
-    }
+    const response = await fetch(`${DRIVE_API_URL}/${fileId}?alt=media`, { headers: createHeaders(accessToken) });
+    if (!response.ok) throw new Error('Failed to read backup file.');
     return response.json();
 };
-
-/**
- * Creates a new, timestamped backup file in the appDataFolder and cleans up old backups.
- * @param data The application state to save.
- * @param accessToken The user's OAuth2 access token.
- */
 export async function writeBackupFile(data: SyncedData, accessToken: string): Promise<void> {
-    const timestamp = Date.now();
-    const filename = `${BACKUP_FILE_PREFIX}${timestamp}.json`;
-    
-    const metadata = {
-        name: filename,
-        mimeType: 'application/json',
-        parents: [FOLDER],
-    };
-
+    const filename = `${BACKUP_FILE_PREFIX}${Date.now()}.json`;
+    const metadata = { name: filename, mimeType: 'application/json', parents: [FOLDER] };
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     form.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
-    
-    const url = new URL(DRIVE_UPLOAD_URL);
-    url.searchParams.set('uploadType', 'multipart');
-    url.searchParams.set('fields', 'id, name');
-
-    const response = await fetch(url.toString(), {
-        method: 'POST',
-        headers: createHeaders(accessToken),
-        body: form,
-    });
-    
-    if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Google Drive API Error (write file):", errorData);
-        throw new Error(`Failed to create backup file.`);
-    }
-
-    console.log('State successfully saved to new backup file in Google Drive.');
-
-    await deleteOldBackups(accessToken);
+    const url = `${DRIVE_UPLOAD_URL}?uploadType=multipart&fields=id,name`;
+    const response = await fetch(url, { method: 'POST', headers: createHeaders(accessToken), body: form });
+    if (!response.ok) throw new Error('Failed to create backup file.');
+    await deleteOldBackupsGeneric(accessToken, BACKUP_FILE_PREFIX);
 }
+
+// Nutritionist-specific functions
+export const findLatestNutritionistBackupFile = async (accessToken: string): Promise<DriveFile | null> => {
+    const files = await listBackupFilesGeneric(accessToken, NUTRITIONIST_BACKUP_PREFIX);
+    return files.length > 0 ? files[0] : null;
+};
+export const readNutritionistBackupFile = async (accessToken: string, fileId: string): Promise<NutritionistSyncedData> => {
+    const response = await fetch(`${DRIVE_API_URL}/${fileId}?alt=media`, { headers: createHeaders(accessToken) });
+    if (!response.ok) throw new Error('Failed to read nutritionist backup file.');
+    return response.json();
+};
+export async function writeNutritionistBackupFile(data: NutritionistSyncedData, accessToken: string): Promise<void> {
+    const filename = `${NUTRITIONIST_BACKUP_PREFIX}${Date.now()}.json`;
+    const metadata = { name: filename, mimeType: 'application/json', parents: [FOLDER] };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    const url = `${DRIVE_UPLOAD_URL}?uploadType=multipart&fields=id,name`;
+    const response = await fetch(url, { method: 'POST', headers: createHeaders(accessToken), body: form });
+    if (!response.ok) throw new Error('Failed to create nutritionist backup file.');
+    await deleteOldBackupsGeneric(accessToken, NUTRITIONIST_BACKUP_PREFIX);
+}
+
 
 /**
  * Uploads a file for public sharing, used by nutritionists to share plans.

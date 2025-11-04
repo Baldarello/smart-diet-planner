@@ -28,7 +28,8 @@ const PdfPreview: React.FC<PdfPreviewProps> = ({ settings }) => {
              {googleFonts.includes(settings.fontFamily) && (
                 <>
                     <link rel="preconnect" href="https://fonts.googleapis.com" />
-                    <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
+                    {/* Fix: Changed invalid `crossOrigin="true"` to a valid empty string, which enables CORS for the preconnect link. */}
+                    <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
                     <link href={`https://fonts.googleapis.com/css2?family=${settings.fontFamily.replace(' ', '+')}:wght@400;700&display=swap`} rel="stylesheet" />
                 </>
             )}

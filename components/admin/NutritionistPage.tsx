@@ -5,7 +5,7 @@ import PlanLibraryPage from './PlanLibraryPage';
 import ViewPlanModal from './ViewPlanModal';
 import RecipesManagement from './RecipesManagement';
 import { t } from '../../i18n';
-import { initGoogleAuth } from '../../services/authService';
+import { initGoogleAuth, handleSignOut } from '../../services/authService';
 import { NutritionistPlan, Patient, AssignedPlan } from '../../types';
 import PatientManagement from './PatientManagement';
 import { patientStore } from '../../stores/PatientStore';
@@ -36,10 +36,6 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
             setCreatingPlanForPatient(null);
         }
     }, [activeTab]);
-
-    const handleLogout = () => {
-        onLogout();
-    };
     
     const handleEditPlan = (plan: NutritionistPlan) => {
         setPlanToEdit(plan);
@@ -111,7 +107,7 @@ const NutritionistPage: React.FC<NutritionistPageProps> = ({ onLogout }) => {
             <header className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-10">
                  <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
                     <h1 className="text-xl font-bold text-gray-800 dark:text-gray-200">{t('nutritionistPortalTitle')}</h1>
-                    <button onClick={handleLogout} className="bg-red-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-600 transition-colors shadow-sm">
+                    <button onClick={onLogout} className="bg-red-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-600 transition-colors shadow-sm">
                         {t('logoutButton')}
                     </button>
                 </div>

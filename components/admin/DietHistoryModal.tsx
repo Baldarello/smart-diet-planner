@@ -5,6 +5,7 @@ import { CloseIcon, EditIcon, DownloadIcon, ShareIcon } from '../Icons';
 
 interface DietHistoryModalProps {
     patient: Patient;
+    plans: AssignedPlan[];
     onClose: () => void;
     onEdit: (plan: AssignedPlan) => void;
     onDownload: (plan: AssignedPlan) => void;

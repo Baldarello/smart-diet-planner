@@ -4,6 +4,7 @@ import { tokenClient } from '../services/authService';
 
 const ACCESS_TOKEN_KEY = 'google_access_token';
 const USER_PROFILE_KEY = 'google_user_profile';
+const LOGIN_MODE_KEY = 'app_login_mode';
 
 export class AuthStore {
     isLoggedIn = false;
@@ -11,6 +12,7 @@ export class AuthStore {
     accessToken: string | null = null;
     status: 'INITIAL' | 'LOGGED_IN' | 'LOGGED_OUT' | 'ERROR' = 'INITIAL';
     loginRedirectAction: (() => Promise<void>) | null = null;
+    loginMode: 'user' | 'nutritionist' | null = null;
 
     constructor() {
         makeAutoObservable(this, {}, { autoBind: true });
@@ -20,6 +22,11 @@ export class AuthStore {
         try {
             const token = localStorage.getItem(ACCESS_TOKEN_KEY);
             const profileStr = localStorage.getItem(USER_PROFILE_KEY);
+            const mode = localStorage.getItem(LOGIN_MODE_KEY) as 'user' | 'nutritionist' | null;
+            
+            runInAction(() => {
+                this.loginMode = mode;
+            });
 
             if (token && profileStr) {
                 // Validate token by fetching user info
@@ -67,6 +74,9 @@ export class AuthStore {
 
         localStorage.setItem(ACCESS_TOKEN_KEY, token);
         localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
+        if (this.loginMode) {
+            localStorage.setItem(LOGIN_MODE_KEY, this.loginMode);
+        }
     }
 
     setLoggedOut = () => {
@@ -74,9 +84,16 @@ export class AuthStore {
         this.accessToken = null;
         this.isLoggedIn = false;
         this.status = 'LOGGED_OUT';
+        this.loginMode = null;
 
         localStorage.removeItem(ACCESS_TOKEN_KEY);
         localStorage.removeItem(USER_PROFILE_KEY);
+        localStorage.removeItem(LOGIN_MODE_KEY);
+    }
+    
+    setLoginMode = (mode: 'user' | 'nutritionist') => {
+        this.loginMode = mode;
+        localStorage.setItem(LOGIN_MODE_KEY, mode);
     }
 
     setLoginRedirectAction = (action: () => Promise<void>) => {

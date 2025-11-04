@@ -1,8 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import observable from 'dexie-observable';
 import { StoredState, ProgressRecord, SyncedData, DailyLog, Ingredient, NutritionistPlan, Recipe, Patient, AssignedPlan } from '../types';
-import { authStore } from '../stores/AuthStore';
-import { writeBackupFile } from './driveService';
 
 // Define the structure of the object we are storing.
 // This is based on MealPlanStore.saveToDB
@@ -14,6 +12,11 @@ export interface AppState {
   value: StoredState;
 }
 
+export interface SyncState {
+    key: 'nutritionist';
+    lastModified: number;
+}
+
 export class MySubClassedDexie extends Dexie {
   appState!: Table<AppState, string>;
   progressHistory!: Table<ProgressRecord, number>; // Primary key is 'id'
@@ -23,6 +26,7 @@ export class MySubClassedDexie extends Dexie {
   recipes!: Table<Recipe, number>;
   patients!: Table<Patient, number>;
   assignedPlans!: Table<AssignedPlan, number>;
+  syncState!: Table<SyncState, string>;
 
   constructor() {
     super('dietPlanDatabase', { addons: [observable] });
@@ -66,55 +70,11 @@ export class MySubClassedDexie extends Dexie {
     (this as Dexie).version(11).stores({
       progressHistory: '++id, date, patientId, [patientId+date]'
     });
+
+    (this as Dexie).version(12).stores({
+        syncState: 'key',
+    });
   }
 }
 
 export const db = new MySubClassedDexie();
-
-interface DexieObservableChange {
-  table: string;
-  type: 1 | 2 | 3; // 1-create, 2-update, 3-delete
-  key: any;
-  obj?: any;
-  oldObj?: any;
-}
-
-let syncTimeout: number | undefined;
-
-const debounceSync = (callback: () => void, delay: number) => {
-    clearTimeout(syncTimeout);
-    syncTimeout = window.setTimeout(callback, delay);
-};
-
-async function handleDatabaseChangeForSync(changes: DexieObservableChange[]) {
-    if (!authStore.isLoggedIn || !authStore.accessToken) {
-        console.log("User not logged in, skipping sync.");
-        return;
-    }
-    
-    const isAppStateChange = changes.some(c => c.table === 'appState' && c.key === 'dietPlanData');
-    const isProgressChange = changes.some(c => c.table === 'progressHistory');
-    const isDailyLogChange = changes.some(c => c.table === 'dailyLogs');
-
-
-    if (isAppStateChange || isProgressChange || isDailyLogChange) {
-        debounceSync(async () => {
-            console.log('Database state changed. Debouncing sync with Google Drive.');
-            try {
-                const appState = await db.appState.get('dietPlanData');
-                const progressHistory = await db.progressHistory.toArray();
-                const dailyLogs = await db.dailyLogs.toArray();
-
-                if (appState && authStore.accessToken) {
-                    const dataToSave: SyncedData = { appState: appState.value, progressHistory, dailyLogs };
-                    await writeBackupFile(dataToSave, authStore.accessToken);
-                    console.log('Successfully synced state to Google Drive.');
-                }
-            } catch (error) {
-                console.error('Failed to sync state to Google Drive:', error);
-            }
-        }, 5000);
-    }
-}
-
-(db as any).on('changes', handleDatabaseChangeForSync);
