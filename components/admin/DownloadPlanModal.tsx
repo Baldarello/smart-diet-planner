@@ -12,11 +12,9 @@ interface DownloadPlanModalProps {
 const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) => {
     
     const handleJsonDownload = () => {
-        const planData = 'planData' in plan ? plan.planData : {
-            planName: plan.name,
-            weeklyPlan: plan.planData.weeklyPlan,
-            shoppingList: plan.planData.shoppingList,
-        };
+        // Fix: The original ternary operator was incorrect as both types have `planData`.
+        // This is simplified to correctly use `plan.planData`, which is of the correct type for both union members.
+        const planData = plan.planData;
         const jsonString = JSON.stringify(planData, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);

@@ -1,6 +1,6 @@
 import { authStore } from '../stores/AuthStore';
 import { UserProfile } from '../types';
-import { syncWithDrive } from './syncService';
+import { syncWithDrive, syncNutritionistData } from './syncService';
 
 // Define google types globally as they come from a script tag
 declare global {
@@ -68,11 +68,16 @@ export const initGoogleAuth = () => {
 
                         authStore.setLoggedIn(userProfile, accessToken);
                         
-                        if (authStore.loginRedirectAction) {
-                            await authStore.loginRedirectAction();
-                            authStore.clearLoginRedirectAction();
+                        // Sync based on login mode
+                        if (authStore.loginMode === 'nutritionist') {
+                            await syncNutritionistData(accessToken);
                         } else {
-                            await syncWithDrive(accessToken);
+                             if (authStore.loginRedirectAction) {
+                                await authStore.loginRedirectAction();
+                                authStore.clearLoginRedirectAction();
+                            } else {
+                                await syncWithDrive(accessToken);
+                            }
                         }
 
                     } catch (error) {
@@ -95,6 +100,10 @@ export const initGoogleAuth = () => {
 };
 
 export const handleSignIn = () => {
+    if (!authStore.loginMode) {
+        authStore.setLoginMode('user');
+    }
+    
     if (!tokenClient) {
         console.warn("Google Auth not initialized. Attempting to initialize for sign-in.");
         initGoogleAuth();

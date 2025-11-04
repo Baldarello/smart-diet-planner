@@ -5,7 +5,8 @@ import { authStore } from './stores/AuthStore';
 import { uiStore } from './stores/UIStore';
 import { t, setI18nLocaleGetter } from './i18n';
 import { syncWithDrive } from './services/syncService';
-import { initGoogleAuth } from './services/authService';
+import { initGoogleAuth, handleSignOut } from './services/authService';
+import { setupDbListeners } from './services/dbListeners';
 
 import Loader from './components/Loader';
 import ErrorMessage from './components/ErrorMessage';
@@ -92,11 +93,17 @@ const MainAppLayout: React.FC = observer(() => {
 
     useEffect(() => {
         const initializeApp = async () => {
+            setupDbListeners();
             initGoogleAuth(); // Centralized initialization
             const restoredToken = await authStore.init();
             if (restoredToken) {
-                // This will sync and then call mealPlanStore.init() inside its finally block
-                await syncWithDrive(restoredToken);
+                if (authStore.loginMode === 'user') {
+                    // This will sync and then call mealPlanStore.init() inside its finally block
+                    await syncWithDrive(restoredToken);
+                } else {
+                    // For nutritionist, sync is handled on login, just init store
+                    await mealPlanStore.init();
+                }
             } else {
                 // No session, just init the meal plan store with local data (or none)
                 await mealPlanStore.init();
@@ -391,10 +398,6 @@ const MainAppLayout: React.FC = observer(() => {
 });
 
 const App: React.FC = observer(() => {
-    const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(
-        () => sessionStorage.getItem('isAdminAuthenticated') === 'true'
-    );
-    
     const getPathFromUrl = () => window.location.pathname.replace(/^\//, '').split('/')[0] || 'dashboard';
     const [currentPath, setCurrentPath] = useState(getPathFromUrl());
 
@@ -434,28 +437,42 @@ const App: React.FC = observer(() => {
     }, []);
 
     const handleAdminLogin = () => {
-        sessionStorage.setItem('isAdminAuthenticated', 'true');
-        setIsAdminAuthenticated(true);
         window.history.pushState({}, '', '/nutritionist');
         window.dispatchEvent(new PopStateEvent('popstate'));
     };
 
     const handleAdminLogout = () => {
-        sessionStorage.removeItem('isAdminAuthenticated');
-        setIsAdminAuthenticated(false);
+        handleSignOut();
         window.history.pushState({}, '', '/admin');
         window.dispatchEvent(new PopStateEvent('popstate'));
+    };
+    
+    const RenderRedirect = ({ to }: { to: string }) => {
+        useEffect(() => {
+            window.history.replaceState({}, '', to);
+            window.dispatchEvent(new PopStateEvent('popstate'));
+        }, [to]);
+        return null;
     };
 
     const renderPage = () => {
         switch (currentPath) {
             case 'admin':
+                if (authStore.isLoggedIn && authStore.loginMode === 'nutritionist') {
+                    return <RenderRedirect to="/nutritionist" />;
+                }
                 return <AdminLoginPage onLoginSuccess={handleAdminLogin} />;
             case 'nutritionist':
-                return isAdminAuthenticated ? <NutritionistPage onLogout={handleAdminLogout} /> : <NotFoundPage />;
+                if (authStore.isLoggedIn && authStore.loginMode === 'nutritionist') {
+                    return <NutritionistPage onLogout={handleAdminLogout} />;
+                }
+                return <RenderRedirect to="/admin" />;
             case '404':
                 return <NotFoundPage />;
             default:
+                if (authStore.loginMode === 'nutritionist') {
+                    return <RenderRedirect to="/nutritionist" />;
+                }
                 return <MainAppLayout />;
         }
     };
