@@ -1,24 +1,79 @@
 import { runInAction } from 'mobx';
 import { db } from './db';
-import { findLatestBackupFile, readBackupFile, writeBackupFile, findLatestNutritionistBackupFile, readNutritionistBackupFile, writeNutritionistBackupFile, getOrCreateFolderId } from './driveService';
-import { SyncedData, Ingredient, NutritionistPlan, Recipe, Patient, AssignedPlan } from '../types';
-import { PdfSettings, pdfSettingsStore } from '../stores/PdfSettingsStore';
+import { findLatestBackupFile, readBackupFile, writeBackupFile, getOrCreateFolderId, uploadOrUpdateFileByName, listFiles, readFile, readFileByName, deleteFile, deleteFolder } from './driveService';
+import { SyncedData } from '../types';
+import { pdfSettingsStore } from '../stores/PdfSettingsStore';
 import { ingredientStore } from '../stores/IngredientStore';
 import { nutritionistStore } from '../stores/NutritionistStore';
 import { recipeStore } from '../stores/RecipeStore';
 import { patientStore } from '../stores/PatientStore';
 import { syncStore } from '../stores/SyncStore';
-
 import Dexie from 'dexie';
 
-export interface NutritionistSyncedData {
-    ingredients: Ingredient[];
-    nutritionistPlans: NutritionistPlan[];
-    recipes: Recipe[];
-    patients: Patient[];
-    assignedPlans: AssignedPlan[];
-    pdfSettings: PdfSettings;
-    lastModified: number;
+const SYNC_STATE_FILENAME = 'sync_state.json';
+const INGREDIENTS_FILENAME = 'ingredients.json';
+const PLAN_TEMPLATES_FILENAME = 'plan_templates.json';
+const RECIPES_FILENAME = 'recipes.json';
+const PATIENTS_FILENAME = 'patients.json';
+const PDF_SETTINGS_FILENAME = 'pdf_settings.json';
+
+async function downloadNutritionistData(accessToken: string, nutritionistFolderId: string) {
+    console.log("Downloading all nutritionist data from Drive...");
+
+    const [
+        ingredients,
+        nutritionistPlans,
+        recipes,
+        patients,
+        pdfSettings,
+        syncState,
+        remoteFolders
+    ] = await Promise.all([
+        readFileByName(accessToken, nutritionistFolderId, INGREDIENTS_FILENAME),
+        readFileByName(accessToken, nutritionistFolderId, PLAN_TEMPLATES_FILENAME),
+        readFileByName(accessToken, nutritionistFolderId, RECIPES_FILENAME),
+        readFileByName(accessToken, nutritionistFolderId, PATIENTS_FILENAME),
+        readFileByName(accessToken, nutritionistFolderId, PDF_SETTINGS_FILENAME),
+        readFileByName(accessToken, nutritionistFolderId, SYNC_STATE_FILENAME),
+        listFiles(accessToken, nutritionistFolderId, 'application/vnd.google-apps.folder')
+    ]);
+
+    const allAssignedPlans = [];
+    for (const folder of remoteFolders) {
+        if (folder.name.startsWith('patient_')) {
+            const planFiles = await listFiles(accessToken, folder.id);
+            for (const file of planFiles) {
+                const content = await readFile(accessToken, file.id);
+                if (content) allAssignedPlans.push(content);
+            }
+        }
+    }
+
+    // Fix: Cast 'db' to 'Dexie' and use array syntax for tables to resolve the 'transaction' method type error.
+    await (db as Dexie).transaction('rw', [db.ingredients, db.nutritionistPlans, db.recipes, db.patients, db.assignedPlans, db.syncState], async () => {
+        await Promise.all([
+            db.ingredients.clear(),
+            db.nutritionistPlans.clear(),
+            db.recipes.clear(),
+            db.patients.clear(),
+            db.assignedPlans.clear(),
+        ]);
+
+        if (ingredients?.length) await db.ingredients.bulkPut(ingredients);
+        if (nutritionistPlans?.length) await db.nutritionistPlans.bulkPut(nutritionistPlans);
+        if (recipes?.length) await db.recipes.bulkPut(recipes);
+        if (patients?.length) await db.patients.bulkPut(patients);
+        if (allAssignedPlans.length > 0) await db.assignedPlans.bulkPut(allAssignedPlans);
+    });
+
+    if (pdfSettings) {
+        pdfSettingsStore.loadSettingsFromObject(pdfSettings);
+    }
+    
+    if (syncState?.lastModified) {
+        await db.syncState.put({ key: 'nutritionist', lastModified: syncState.lastModified });
+    }
+    console.log("Local nutritionist database overwritten successfully.");
 }
 
 export async function uploadNutritionistData(accessToken: string) {
@@ -29,25 +84,58 @@ export async function uploadNutritionistData(accessToken: string) {
         const lifePulseFolderId = await getOrCreateFolderId(accessToken, 'LifePulse');
         const nutritionistFolderId = await getOrCreateFolderId(accessToken, 'Nutritionist', lifePulseFolderId);
 
-        const ingredients = await db.ingredients.toArray();
-        const nutritionistPlans = await db.nutritionistPlans.toArray();
-        const recipes = await db.recipes.toArray();
-        const patients = await db.patients.toArray();
-        const assignedPlans = await db.assignedPlans.toArray();
+        const [ingredients, plans, recipes, patients, assignedPlans] = await Promise.all([
+            db.ingredients.toArray(),
+            db.nutritionistPlans.toArray(),
+            db.recipes.toArray(),
+            db.patients.toArray(),
+            db.assignedPlans.toArray(),
+        ]);
         const pdfSettings = pdfSettingsStore.settings;
-        const lastModified = Date.now();
 
-        const dataToSave: NutritionistSyncedData = {
-            ingredients,
-            nutritionistPlans,
-            recipes,
-            patients,
-            assignedPlans,
-            pdfSettings,
-            lastModified,
-        };
+        await Promise.all([
+            uploadOrUpdateFileByName(accessToken, nutritionistFolderId, INGREDIENTS_FILENAME, ingredients),
+            uploadOrUpdateFileByName(accessToken, nutritionistFolderId, PLAN_TEMPLATES_FILENAME, plans),
+            uploadOrUpdateFileByName(accessToken, nutritionistFolderId, RECIPES_FILENAME, recipes),
+            uploadOrUpdateFileByName(accessToken, nutritionistFolderId, PATIENTS_FILENAME, patients),
+            uploadOrUpdateFileByName(accessToken, nutritionistFolderId, PDF_SETTINGS_FILENAME, pdfSettings),
+        ]);
+
+        const remoteFolders = await listFiles(accessToken, nutritionistFolderId, 'application/vnd.google-apps.folder');
+        const remotePatientFolderMap = new Map(remoteFolders.map(f => [f.name, f.id]));
+        const localPatientFolderNames = new Set();
+
+        for (const patient of patients) {
+            const folderName = `patient_${patient.id}_${patient.firstName}_${patient.lastName}`.replace(/[^a-zA-Z0-9_]/g, '_');
+            localPatientFolderNames.add(folderName);
+            const patientFolderId = await getOrCreateFolderId(accessToken, folderName, nutritionistFolderId);
+            
+            const localPlansForPatient = assignedPlans.filter(ap => ap.patientId === patient.id);
+            const remotePlanFiles = await listFiles(accessToken, patientFolderId);
+            const remotePlanFileMap = new Map(remotePlanFiles.map(f => [f.name, f.id]));
+            const localPlanFileNames = new Set();
+
+            for (const plan of localPlansForPatient) {
+                const fileName = `assigned_plan_${plan.id}.json`;
+                localPlanFileNames.add(fileName);
+                await uploadOrUpdateFileByName(accessToken, patientFolderId, fileName, plan);
+            }
+
+            for (const [remoteFileName, remoteFileId] of remotePlanFileMap.entries()) {
+                if (!localPlanFileNames.has(remoteFileName)) {
+                    await deleteFile(accessToken, remoteFileId);
+                }
+            }
+        }
+
+        for (const [remoteFolderName, remoteFolderId] of remotePatientFolderMap.entries()) {
+            if (!localPatientFolderNames.has(remoteFolderName)) {
+                await deleteFolder(accessToken, remoteFolderId);
+            }
+        }
         
-        await writeNutritionistBackupFile(dataToSave, accessToken, nutritionistFolderId);
+        const lastModified = Date.now();
+        await uploadOrUpdateFileByName(accessToken, nutritionistFolderId, SYNC_STATE_FILENAME, { lastModified });
         await db.syncState.put({ key: 'nutritionist', lastModified });
         
         console.log("Local nutritionist data successfully uploaded to Google Drive.");
@@ -65,63 +153,21 @@ export async function syncNutritionistData(accessToken: string) {
     try {
         const lifePulseFolderId = await getOrCreateFolderId(accessToken, 'LifePulse');
         const nutritionistFolderId = await getOrCreateFolderId(accessToken, 'Nutritionist', lifePulseFolderId);
-        const latestBackupFile = await findLatestNutritionistBackupFile(accessToken, nutritionistFolderId);
-
-        let remoteData: NutritionistSyncedData | null = null;
-        if (latestBackupFile) {
-            remoteData = await readNutritionistBackupFile(accessToken, latestBackupFile.id);
-        }
-
+        
+        const remoteSyncState = await readFileByName(accessToken, nutritionistFolderId, SYNC_STATE_FILENAME);
+        const remoteTimestamp = remoteSyncState?.lastModified || 0;
+        
         const localSyncState = await db.syncState.get('nutritionist');
         const localTimestamp = localSyncState?.lastModified || 0;
-        const remoteTimestamp = remoteData?.lastModified || 0;
 
         console.log(`Sync check: Remote timestamp=${remoteTimestamp}, Local timestamp=${localTimestamp}`);
 
-        if (remoteData && (!localSyncState || remoteTimestamp > localTimestamp)) {
+        if (remoteTimestamp > localTimestamp) {
             console.log("Remote nutritionist data is newer. Overwriting local database.");
-            const { ingredients, nutritionistPlans, recipes, patients, assignedPlans, pdfSettings, lastModified } = remoteData;
-            
-            // Fix: Cast `db` to `Dexie` and provide an explicit list of tables to fix the transaction type error.
-            await (db as Dexie).transaction('rw', [db.ingredients, db.nutritionistPlans, db.recipes, db.patients, db.assignedPlans, db.syncState], async () => {
-                const tablesToClear = [db.ingredients, db.nutritionistPlans, db.recipes, db.patients, db.assignedPlans];
-                for (const table of tablesToClear) {
-                    await table.clear();
-                }
-
-                if (ingredients?.length) await db.ingredients.bulkPut(ingredients);
-                if (nutritionistPlans?.length) await db.nutritionistPlans.bulkPut(nutritionistPlans);
-                if (recipes?.length) await db.recipes.bulkPut(recipes);
-                if (patients?.length) await db.patients.bulkPut(patients);
-                if (assignedPlans?.length) await db.assignedPlans.bulkPut(assignedPlans);
-            });
-            
-            pdfSettingsStore.loadSettingsFromObject(pdfSettings);
-            await db.syncState.put({ key: 'nutritionist', lastModified });
-            console.log("Local nutritionist database overwritten successfully.");
-            
-        } else if (!remoteData || localTimestamp > remoteTimestamp) {
+            await downloadNutritionistData(accessToken, nutritionistFolderId);
+        } else if (localTimestamp > remoteTimestamp || !remoteSyncState) {
             console.log("Local nutritionist data is newer or no remote backup exists. Uploading to Google Drive.");
-            
-            const ingredients = await db.ingredients.toArray();
-            const nutritionistPlans = await db.nutritionistPlans.toArray();
-            const recipes = await db.recipes.toArray();
-            const patients = await db.patients.toArray();
-            const assignedPlans = await db.assignedPlans.toArray();
-            const pdfSettings = pdfSettingsStore.settings;
-            
-            const dataToSave: NutritionistSyncedData = {
-                ingredients,
-                nutritionistPlans,
-                recipes,
-                patients,
-                assignedPlans,
-                pdfSettings,
-                lastModified: localTimestamp,
-            };
-
-            await writeNutritionistBackupFile(dataToSave, accessToken, nutritionistFolderId);
-            console.log("Local nutritionist data successfully uploaded to Google Drive.");
+            await uploadNutritionistData(accessToken);
         } else {
             console.log("Local and remote nutritionist data are in sync.");
         }
@@ -130,7 +176,6 @@ export async function syncNutritionistData(accessToken: string) {
         console.error("Error during nutritionist Google Drive sync:", error);
         syncStore.setStatus('error', error instanceof Error ? error.message : String(error));
     } finally {
-        // Reload stores to reflect any synced changes
         await Promise.all([
             ingredientStore.loadIngredients(),
             nutritionistStore.loadPlans(),
