@@ -34,6 +34,8 @@ import ConfirmationModal from './components/ConfirmationModal';
 import AchievementsModal from './components/AchievementsModal';
 import HomePage from './components/HomePage';
 
+import package from './package.json'
+
 import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, UploadIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon, ArrowLeftIcon, MenuIcon, AdminIcon } from './components/Icons';
 
 const MainAppContent: React.FC = observer(() => {
@@ -359,7 +361,7 @@ const MainAppLayout: React.FC = observer(() => {
                         
                         <div className="text-center">
                             <button onClick={() => store.navigateTo('dashboard')} className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600">{t('mainTitle')}</button>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">{t('mainSubtitle')}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">{t('mainSubtitle', { version: process.env.APP_VERSION })}</p>
                         </div>
 
                         <div className="justify-self-end">
