@@ -59,6 +59,6 @@ const AdminLoginPage: React.FC<AdminLoginPageProps> = observer(({ onLoginSuccess
             </div>
         </div>
     );
-};
+});
 
 export default AdminLoginPage;
