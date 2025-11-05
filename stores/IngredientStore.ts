@@ -11,7 +11,10 @@ class IngredientStore {
 
     constructor() {
         makeAutoObservable(this, {}, { autoBind: true });
-        this.loadIngredients();
+        this.loadIngredients().then(() => {
+            // After initial load, check if any data needs populating.
+            this.populateNutritionalData();
+        });
     }
 
     async loadIngredients() {
@@ -22,10 +25,6 @@ class IngredientStore {
                 this.ingredients = ingredientsFromDb;
                 this.status = 'ready';
             });
-            // After loading, trigger the population for missing data only if not already running
-            if (!this.isPopulating) {
-                this.populateNutritionalData();
-            }
         } catch (e) {
             console.error("Failed to load ingredients from DB", e);
             runInAction(() => {
@@ -61,53 +60,52 @@ class IngredientStore {
     }
 
     async populateNutritionalData() {
-        const ingredientsToUpdate = this.ingredients.filter(i => i.calories === undefined);
+        if (this.isPopulating) return;
 
+        const ingredientsToUpdate = this.ingredients.filter(i => i.calories === undefined);
         if (ingredientsToUpdate.length === 0) {
             return;
         }
 
-        runInAction(() => {
-            this.isPopulating = true;
-        });
+        runInAction(() => { this.isPopulating = true; });
         
-        console.log(`Found ${ingredientsToUpdate.length} ingredients needing nutritional data.`);
-        
-        const { getNutritionForIngredients } = await import('../services/geminiService');
-        
-        const ingredientNames = ingredientsToUpdate.map(i => i.name);
-        
-        const CHUNK_SIZE = 50;
-        for (let i = 0; i < ingredientNames.length; i += CHUNK_SIZE) {
-            const chunk = ingredientNames.slice(i, i + CHUNK_SIZE);
-            try {
-                const nutritionData = await getNutritionForIngredients(chunk);
-                
-                const updates: { key: number, changes: Partial<Ingredient> }[] = [];
-                for (const name in nutritionData) {
-                    const ingredient = ingredientsToUpdate.find(ing => ing.name === name);
-                    if (ingredient && ingredient.id) {
-                        updates.push({
-                            key: ingredient.id,
-                            changes: { ...nutritionData[name] }
-                        });
+        try {
+            console.log(`Found ${ingredientsToUpdate.length} ingredients needing nutritional data.`);
+            
+            const { getNutritionForIngredients } = await import('../services/geminiService');
+            const ingredientNames = ingredientsToUpdate.map(i => i.name);
+            const CHUNK_SIZE = 50;
+
+            for (let i = 0; i < ingredientNames.length; i += CHUNK_SIZE) {
+                const chunk = ingredientNames.slice(i, i + CHUNK_SIZE);
+                try {
+                    const nutritionData = await getNutritionForIngredients(chunk);
+                    const updates: { key: number; changes: Partial<Ingredient> }[] = [];
+                    for (const name in nutritionData) {
+                        const ingredient = ingredientsToUpdate.find(ing => ing.name === name);
+                        if (ingredient && ingredient.id) {
+                            updates.push({
+                                key: ingredient.id,
+                                changes: { ...nutritionData[name] }
+                            });
+                        }
                     }
+                    if (updates.length > 0) {
+                        await db.ingredients.bulkUpdate(updates);
+                        console.log(`Updated nutritional data for ${updates.length} ingredients.`);
+                    }
+                } catch (error) {
+                     console.error(`Failed to populate nutritional data for chunk ${i / CHUNK_SIZE}`, error);
+                     const { uiStore } = await import('../stores/UIStore');
+                     const { t } = await import('../i18n');
+                     uiStore.showInfoModal(t('errorOccurred'), `Failed to fetch nutritional data: ${error instanceof Error ? error.message : String(error)}`);
+                     break; // Exit the loop on error
                 }
-                
-                if (updates.length > 0) {
-                    await db.ingredients.bulkUpdate(updates);
-                    console.log(`Updated nutritional data for ${updates.length} ingredients.`);
-                }
-
-            } catch (error) {
-                console.error(`Failed to populate nutritional data for chunk ${i / CHUNK_SIZE}`, error);
             }
+        } finally {
+            runInAction(() => { this.isPopulating = false; });
+            await this.loadIngredients();
         }
-
-        runInAction(() => {
-            this.isPopulating = false;
-        });
-        await this.loadIngredients();
     }
 
     async bulkAddOrUpdateIngredients(ingredients: Omit<Ingredient, 'id'>[]) {
