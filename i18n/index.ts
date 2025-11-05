@@ -4,7 +4,7 @@ const translations = {
   it: {
     // App.tsx
     mainTitle: "LifePulse",
-    mainSubtitle: "Il tuo assistente intelligente per la pianificazione dei pasti.",
+    mainSubtitle: "Il tuo assistente intelligente per la pianificazione dei pasti. v{version}",
     changeDiet: "Nuovo Piano",
     changeDietTitle: "Crea o ripristina un piano",
     tabDashboard: "Dashboard",
@@ -496,7 +496,7 @@ const translations = {
   en: {
     // App.tsx
     mainTitle: "LifePulse",
-    mainSubtitle: "Your intelligent meal planning assistant.",
+    mainSubtitle: "Your intelligent meal planning assistant. v{version}",
     changeDiet: "New Plan",
     changeDietTitle: "Create or restore a plan",
     tabDashboard: "Dashboard",
