@@ -62,14 +62,16 @@ async function handleDatabaseChange(changes: DexieObservableChange[]) {
              // First, update the local timestamp immediately
             db.syncState.put({ key: 'nutritionist', lastModified: Date.now() }).catch(e => console.error("Failed to update sync state", e));
 
-            // Then, debounce the actual upload
-            debounceSync(async () => {
+            // Then, trigger the upload without debounce.
+            // An IIFE is used to handle the async operation without blocking.
+            (async () => {
                 if (authStore.accessToken) {
-                    console.log('Nutritionist DB changed. Debouncing sync upload to Google Drive.');
+                    console.log('Nutritionist DB changed. Triggering sync upload to Google Drive.');
                     const { uploadNutritionistData } = await import('../services/syncService');
-                    await uploadNutritionistData(authStore.accessToken);
+                    // The status check in uploadNutritionistData prevents concurrent syncs.
+                    uploadNutritionistData(authStore.accessToken);
                 }
-            }, 5000);
+            })();
         }
     }
 }
