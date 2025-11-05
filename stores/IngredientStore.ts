@@ -7,7 +7,6 @@ class IngredientStore {
     ingredients: Ingredient[] = [];
     status: 'loading' | 'ready' | 'error' = 'loading';
     isPopulating = false;
-    isPopulatingFromAI = false;
 
     constructor() {
         makeAutoObservable(this, {}, { autoBind: true });
@@ -28,32 +27,6 @@ class IngredientStore {
             console.error("Failed to load ingredients from DB", e);
             runInAction(() => {
                 this.status = 'error';
-            });
-        }
-    }
-
-    async populateFromAI() {
-        if (this.isPopulatingFromAI) return;
-    
-        runInAction(() => {
-            this.isPopulatingFromAI = true;
-        });
-    
-        try {
-            const { getCommonIngredients } = await import('../services/geminiService');
-            const commonIngredients = await getCommonIngredients();
-            
-            await this.bulkAddOrUpdateIngredients(commonIngredients);
-    
-            // After adding, trigger nutritional data population for any new items that need it
-            // No need to await this, it can run in the background
-            this.populateNutritionalData();
-        } catch (error) {
-            console.error("Failed to populate ingredients from AI", error);
-            // TODO: Set an error state in the store to be displayed in the UI
-        } finally {
-            runInAction(() => {
-                this.isPopulatingFromAI = false;
             });
         }
     }

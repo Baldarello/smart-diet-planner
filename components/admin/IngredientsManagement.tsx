@@ -3,7 +3,7 @@ import { observer } from 'mobx-react-lite';
 import { ingredientStore } from '../../stores/IngredientStore';
 import { uiStore } from '../../stores/UIStore';
 import { t } from '../../i18n';
-import { PlusCircleIcon, TrashIcon, EditIcon, CheckIcon, CloseIcon, RefreshIcon, UploadIcon, DownloadIcon } from '../Icons';
+import { PlusCircleIcon, TrashIcon, EditIcon, CheckIcon, CloseIcon, UploadIcon, DownloadIcon } from '../Icons';
 import SkeletonLoader from '../SkeletonLoader';
 import { Ingredient } from '../../types';
 
@@ -54,7 +54,7 @@ const SortableHeader: React.FC<{
 };
 
 const IngredientsManagement: React.FC = observer(() => {
-    const { ingredients, addIngredient, updateIngredient, deleteIngredient, status, isPopulating, populateNutritionalData, isPopulatingFromAI, populateFromAI } = ingredientStore;
+    const { ingredients, addIngredient, updateIngredient, deleteIngredient, status, isPopulating, populateNutritionalData } = ingredientStore;
     const [newItem, setNewItem] = useState('');
     const [editingItem, setEditingItem] = useState<EditingState | null>(null);
     const [filter, setFilter] = useState('');
@@ -311,9 +311,6 @@ const IngredientsManagement: React.FC = observer(() => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <div className="flex items-center gap-3">
                     <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{t('manageIngredientsTab')}</h3>
-                    <button onClick={populateFromAI} disabled={isPopulatingFromAI} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-wait" title={t('populateCommonIngredients')}>
-                        {isPopulatingFromAI ? <div className="animate-spin h-5 w-5 border-b-2 border-current rounded-full"></div> : <RefreshIcon className="h-5 w-5" />}
-                    </button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     {isPopulating && (<div className="flex items-center gap-2 text-sm text-violet-600 dark:text-violet-400 animate-pulse"><div className="animate-spin h-5 w-5 border-b-2 border-current rounded-full"></div><span>Updating...</span></div>)}
