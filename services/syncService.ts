@@ -154,7 +154,14 @@ export async function syncNutritionistData(accessToken: string) {
         const lifePulseFolderId = await getOrCreateFolderId(accessToken, 'LifePulse');
         const nutritionistFolderId = await getOrCreateFolderId(accessToken, 'Nutritionist', lifePulseFolderId);
         
-        const remoteSyncState = await readFileByName(accessToken, nutritionistFolderId, SYNC_STATE_FILENAME);
+        let remoteSyncState = null;
+        try {
+            remoteSyncState = await readFileByName(accessToken, nutritionistFolderId, SYNC_STATE_FILENAME);
+        } catch (error) {
+            console.warn("Could not fetch remote sync state due to an error. Proceeding as if no remote state exists.", error);
+            // remoteSyncState will remain null, which correctly signals that remote data is absent or inaccessible.
+        }
+
         const remoteTimestamp = remoteSyncState?.lastModified || 0;
         
         const localSyncState = await db.syncState.get('nutritionist');
@@ -166,8 +173,20 @@ export async function syncNutritionistData(accessToken: string) {
             console.log("Remote nutritionist data is newer. Overwriting local database.");
             await downloadNutritionistData(accessToken, nutritionistFolderId);
         } else if (localTimestamp > remoteTimestamp || !remoteSyncState) {
-            console.log("Local nutritionist data is newer or no remote backup exists. Uploading to Google Drive.");
-            await uploadNutritionistData(accessToken);
+            // Check if there is anything to upload before proceeding.
+            // This prevents uploading an empty DB on first login if there's no remote data.
+            const localDataExists = await db.ingredients.count() > 0 ||
+                                  await db.nutritionistPlans.count() > 0 ||
+                                  await db.recipes.count() > 0 ||
+                                  await db.patients.count() > 0 ||
+                                  await db.assignedPlans.count() > 0;
+
+            if (localTimestamp > remoteTimestamp || (!remoteSyncState && localDataExists)) {
+                console.log("Local nutritionist data is newer or no remote backup exists. Uploading to Google Drive.");
+                await uploadNutritionistData(accessToken);
+            } else {
+                 console.log("Local and remote data are in sync, or both are empty.");
+            }
         } else {
             console.log("Local and remote nutritionist data are in sync.");
         }
