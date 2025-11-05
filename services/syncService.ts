@@ -183,6 +183,7 @@ export async function syncNutritionistData(accessToken: string) {
 
             if (localTimestamp > remoteTimestamp || (!remoteSyncState && localDataExists)) {
                 console.log("Local nutritionist data is newer or no remote backup exists. Uploading to Google Drive.");
+                 syncStore.setStatus('synced');
                 await uploadNutritionistData(accessToken);
             } else {
                  console.log("Local and remote data are in sync, or both are empty.");
