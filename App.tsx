@@ -34,7 +34,6 @@ import ConfirmationModal from './components/ConfirmationModal';
 import AchievementsModal from './components/AchievementsModal';
 import HomePage from './components/HomePage';
 
-import package from './package.json'
 
 import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, UploadIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon, ArrowLeftIcon, MenuIcon, AdminIcon } from './components/Icons';
 
