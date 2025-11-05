@@ -9,6 +9,7 @@ export interface DriveFile {
     id: string;
     name: string;
     createdTime: string; // From Drive API
+    mimeType: string;
 }
 
 // Helper to create common headers
@@ -42,7 +43,7 @@ export async function getOrCreateFolderId(accessToken: string, name: string, par
 // Finds a file by name in a specific parent folder.
 export async function findFileByName(accessToken: string, parentId: string, name: string): Promise<DriveFile | null> {
     const q = `name = '${name}' and '${parentId}' in parents and trashed=false`;
-    const response = await fetch(`${DRIVE_API_URL}?q=${encodeURIComponent(q)}&fields=files(id, name, createdTime)`, { headers: createHeaders(accessToken) });
+    const response = await fetch(`${DRIVE_API_URL}?q=${encodeURIComponent(q)}&fields=files(id, name, createdTime, mimeType)`, { headers: createHeaders(accessToken) });
     if (!response.ok) throw new Error(`Failed to find file by name '${name}'.`);
     const data = await response.json();
     return data.files && data.files.length > 0 ? data.files[0] : null;
@@ -60,8 +61,8 @@ export async function uploadOrUpdateFile(accessToken: string, parentId: string, 
     form.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
 
     const url = fileId
-        ? `${DRIVE_UPLOAD_URL}/${fileId}?uploadType=multipart&supportsAllDrives=true`
-        : `${DRIVE_UPLOAD_URL}?uploadType=multipart&supportsAllDrives=true`;
+        ? `${DRIVE_UPLOAD_URL}/${fileId}?uploadType=multipart`
+        : `${DRIVE_UPLOAD_URL}?uploadType=multipart`;
     
     const method = fileId ? 'PATCH' : 'POST';
 
@@ -82,7 +83,7 @@ export async function uploadOrUpdateFileByName(accessToken: string, parentId: st
 
 
 export async function readFile(accessToken: string, fileId: string): Promise<any> {
-    const response = await fetch(`${DRIVE_API_URL}/${fileId}?alt=media&supportsAllDrives=true`, { headers: createHeaders(accessToken) });
+    const response = await fetch(`${DRIVE_API_URL}/${fileId}?alt=media`, { headers: createHeaders(accessToken) });
     if (!response.ok) {
         if (response.status === 404) return null;
         throw new Error(`Failed to read file ID ${fileId}.`);
@@ -106,7 +107,7 @@ export async function listFiles(accessToken: string, folderId: string, mimeType?
     }
     const params = new URLSearchParams({
         q,
-        fields: 'files(id, name, createdTime)',
+        fields: 'files(id, name, createdTime, mimeType)',
         orderBy: 'name',
         pageSize: '1000'
     });
@@ -117,7 +118,7 @@ export async function listFiles(accessToken: string, folderId: string, mimeType?
 }
 
 export async function deleteFile(accessToken: string, fileId: string): Promise<void> {
-    const response = await fetch(`${DRIVE_API_URL}/${fileId}?supportsAllDrives=true`, { method: 'DELETE', headers: createHeaders(accessToken) });
+    const response = await fetch(`${DRIVE_API_URL}/${fileId}`, { method: 'DELETE', headers: createHeaders(accessToken) });
     if (!response.ok && response.status !== 404) {
         throw new Error(`Failed to delete file ID ${fileId}.`);
     }
@@ -126,7 +127,7 @@ export async function deleteFile(accessToken: string, fileId: string): Promise<v
 export async function deleteFolder(accessToken: string, folderId: string): Promise<void> {
     const files = await listFiles(accessToken, folderId);
     for (const file of files) {
-        if (file.name.startsWith('patient_')) { // It's a folder
+        if (file.mimeType === 'application/vnd.google-apps.folder') {
             await deleteFolder(accessToken, file.id);
         } else {
             await deleteFile(accessToken, file.id);
@@ -140,7 +141,7 @@ export async function deleteFolder(accessToken: string, folderId: string): Promi
 export const listBackupFilesGeneric = async (accessToken: string, prefix: string, parentFolderId: string): Promise<DriveFile[]> => {
     const params = new URLSearchParams({
         q: `name contains '${prefix}' and '${parentFolderId}' in parents and trashed=false`,
-        fields: 'files(id, name, createdTime)',
+        fields: 'files(id, name, createdTime, mimeType)',
         orderBy: 'createdTime desc',
     });
     const response = await fetch(`${DRIVE_API_URL}?${params}`, {
@@ -162,7 +163,7 @@ const deleteOldBackupsGeneric = async (accessToken: string, prefix: string, pare
         }
         const filesToDelete = files.slice(MAX_BACKUPS_TO_KEEP);
         for (const file of filesToDelete) {
-            await fetch(`${DRIVE_API_URL}/${file.id}?supportsAllDrives=true`, {
+            await fetch(`${DRIVE_API_URL}/${file.id}`, {
                 method: 'DELETE',
                 headers: createHeaders(accessToken),
             });
@@ -199,22 +200,24 @@ export async function writeBackupFile(data: SyncedData, accessToken: string, par
  * @param data The plan data to upload.
  * @param planName The name of the plan, used for the filename.
  * @param accessToken The user's OAuth2 access token.
+ * @param parentId The ID of the folder to create the file in.
  * @returns The file ID of the created public file.
  */
-export async function uploadAndShareFile(data: object, planName: string, accessToken: string): Promise<string | null> {
+export async function uploadAndShareFile(data: object, planName: string, accessToken: string, parentId: string): Promise<string | null> {
     const safePlanName = planName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const fileName = `lifepulse-plan-${safePlanName}-${Date.now()}.json`;
 
     const metadata = {
         name: fileName,
         mimeType: 'application/json',
+        parents: [parentId],
     };
 
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     form.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
 
-    const uploadResponse = await fetch(`${DRIVE_UPLOAD_URL}?uploadType=multipart&fields=id&supportsAllDrives=true`, {
+    const uploadResponse = await fetch(`${DRIVE_UPLOAD_URL}?uploadType=multipart&fields=id`, {
         method: 'POST',
         headers: createHeaders(accessToken),
         body: form

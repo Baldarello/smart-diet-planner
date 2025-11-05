@@ -8,7 +8,7 @@ import { PlusCircleIcon, TrashIcon, CheckIcon, CloseIcon, EditIcon, DownloadIcon
 import SkeletonLoader from '../SkeletonLoader';
 import ConfirmationModal from '../ConfirmationModal';
 import AssignPlanModal from './AssignPlanModal';
-import { uploadAndShareFile } from '../../services/driveService';
+import { uploadAndShareFile, getOrCreateFolderId } from '../../services/driveService';
 import { handleSignIn } from '../../services/authService';
 import { authStore } from '../../stores/AuthStore';
 import { uiStore } from '../../stores/UIStore';
@@ -110,7 +110,9 @@ const PatientManagement: React.FC<PatientManagementProps> = observer(({ onCreate
                     stepGoal: patient?.stepGoal,
                     hydrationGoalLiters: patient?.hydrationGoalLiters,
                 };
-                const driveUrl = await uploadAndShareFile(dataToExport, plan.planData.planName, authStore.accessToken);
+                const lifePulseFolderId = await getOrCreateFolderId(authStore.accessToken, 'LifePulse');
+                const sharedFolderId = await getOrCreateFolderId(authStore.accessToken, 'Shared', lifePulseFolderId);
+                const driveUrl = await uploadAndShareFile(dataToExport, plan.planData.planName, authStore.accessToken, sharedFolderId);
                 const baseUrl = `${window.location.origin}`;
                 const url = `${baseUrl}/?plan_id=${encodeURIComponent(driveUrl!)}`;
 
