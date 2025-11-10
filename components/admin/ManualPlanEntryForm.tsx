@@ -1,3 +1,5 @@
+
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem, NutritionistPlan, NutritionInfo, Patient, AssignedPlan, PlanCreationData } from '../../types';
@@ -13,22 +15,23 @@ import { parseQuantity } from '../../utils/quantityParser';
 import { recipeStore } from '../../stores/RecipeStore';
 import LiveNutritionSummary from './LiveNutritionSummary';
 import { patientStore } from '../../stores/PatientStore';
+import SelectMealToCopyModal from './SelectMealToCopyModal'; // Import the new modal
 
 // New interfaces for form state
-interface FormMealItem {
+export interface FormMealItem {
   ingredientName: string;
   quantityValue: string;
   quantityUnit: string;
 }
 
 // Define more specific types for the form state to avoid using properties that aren't part of the form
-interface FormMeal extends Omit<Meal, 'items' | 'done' | 'nutrition' | 'actualNutrition' | 'cheat' | 'cheatMealDescription' | 'procedure'> {
+export interface FormMeal extends Omit<Meal, 'items' | 'done' | 'nutrition' | 'actualNutrition' | 'cheat' | 'cheatMealDescription' | 'procedure'> {
     items: FormMealItem[];
     procedure: string;
     isCheat?: boolean;
 }
   
-interface FormDayPlan extends Omit<DayPlan, 'meals'> {
+export interface FormDayPlan extends Omit<DayPlan, 'meals'> {
     meals: FormMeal[];
 }
 
@@ -146,6 +149,11 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
     const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
     const autocompleteRef = useRef<HTMLDivElement>(null);
     const initialPlanState = useRef<string | null>(null);
+
+    // Copy meal state
+    const [isSelectMealModalOpen, setIsSelectMealModalOpen] = useState(false);
+    const [currentMealToCopy, setCurrentMealToCopy] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
+
 
     useEffect(() => {
         // This effect runs when planToEdit or patientForPlan changes, setting the initial state of the form.
@@ -452,6 +460,38 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
         );
     };
 
+    const handleSelectMealToCopy = (copiedMealData: { title: string; procedure: string; time: string; items: FormMealItem[]; isCheat?: boolean; cheatMealDescription?: string }) => {
+        if (currentMealToCopy) {
+            const { dayIndex, mealIndex } = currentMealToCopy;
+            setPlanData(currentPlan =>
+                currentPlan.map((day, dIdx) => {
+                    if (dIdx !== dayIndex) return day;
+                    return {
+                        ...day,
+                        meals: day.meals.map((meal, mIdx) => {
+                            if (mIdx !== mealIndex) return meal;
+                            return {
+                                ...meal,
+                                title: copiedMealData.title,
+                                procedure: copiedMealData.procedure,
+                                time: copiedMealData.time,
+                                items: copiedMealData.items.length > 0 ? copiedMealData.items : [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }],
+                                isCheat: copiedMealData.isCheat,
+                                // Assuming cheatMealDescription is part of procedure if isCheat is true
+                            };
+                        })
+                    };
+                })
+            );
+            // Clear autocomplete suggestions in case they were active on the old items
+            setActiveAutocomplete(null);
+            setFilteredSuggestions([]);
+        }
+        setIsSelectMealModalOpen(false);
+        setCurrentMealToCopy(null);
+    };
+
+
     const generateAndProcessPlan = async (): Promise<PlanCreationData | null> => {
         // 1. Build a preliminary plan and aggregate ingredients for the shopping list
         const aggregatedIngredients = new Map<string, { totalValue: number; unit: string }>();
@@ -721,6 +761,26 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                                                 <CookieIcon />
                                                 <span className="hidden sm:inline">{meal.isCheat ? t('markAsRegularMeal') : t('markAsCheatMeal')}</span>
                                             </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setCurrentMealToCopy({ dayIndex, mealIndex });
+                                                    setIsSelectMealModalOpen(true);
+                                                }}
+                                                title={t('copyFromAnotherMeal')}
+                                                className="p-1.5 text-gray-500 hover:text-violet-600 dark:text-gray-400 dark:hover:text-violet-400"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v-5.438c0-.641-.117-1.265-.333-1.843s-.508-1.083-.87-1.54L10.5 4.72a2.912 2.912 0 00-4.076 0L2.738 7.662a2.912 2.912 0 00-4.076 0l-1.54 1.54c-.362.457-.597 1.05-.87 1.54s-.333 1.202-.333 1.843v5.438a3.75 3.75 0 003.75 3.75h1.5a3.75 3.75 0 003.75-3.75z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 10.5h1.5" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5h-1.5" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 14.25h1.5" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 14.25h-1.5" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5v1.5" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14.25v1.5" />
+                                                </svg>
+
+                                            </button>
                                             <input
                                                 type="time"
                                                 value={meal.time}
@@ -844,6 +904,15 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                     </button>
                 </div>
             </form>
+            {isSelectMealModalOpen && currentMealToCopy && (
+                <SelectMealToCopyModal
+                    isOpen={isSelectMealModalOpen}
+                    onClose={() => setIsSelectMealModalOpen(false)}
+                    planData={planData}
+                    currentMealContext={currentMealToCopy}
+                    onSelectMeal={handleSelectMealToCopy}
+                />
+            )}
         </div>
     );
 });

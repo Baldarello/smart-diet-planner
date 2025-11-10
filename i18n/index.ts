@@ -1,3 +1,4 @@
+
 import type { Locale } from '../types';
 
 const translations = {
@@ -219,6 +220,10 @@ const translations = {
     importSuccessTitle: "Importazione Completata",
     recipesImportSuccessMessage: "{count} ricette importate con successo.",
     recipesImportErrorMessage: "Errore durante l'importazione del file: {error}",
+    copyFromAnotherMeal: "Copia da un altro pasto",
+    selectMealToCopy: "Seleziona Pasto da Copiare",
+    noMealsToCopy: "Nessun altro pasto disponibile da copiare.",
+    noTitleAvailable: "Nessun titolo disponibile",
     
     // FileUpload.tsx
     clickToUpload: "Clicca per caricare",
@@ -360,7 +365,7 @@ const translations = {
     recalculateNutrition: "Ricalcola Nutrizione",
     recalculateNutritionTitle: "Ricalcola i valori nutrizionali per questo pasto",
     recalcModalTitle: "Conferma Ricalcolo",
-    recalcModalContent: "I valori nutrizionali sono stime generate da un'IA e potrebbero non essere scientificamente accurati. Sono intesi come linee guida. Vuoi procedere?",
+    recalcModalContent: "I valori nutrizionali sono stime generate da un'IA e potrebbero non essere scientificamente accurate. Sono intesi come linee guida. Vuoi procedere?",
     confirm: "Conferma",
     unsavedChangesTitle: "Modifiche non salvate",
     unsavedChangesMessage: "Hai delle modifiche non salvate. Sei sicuro di voler cambiare tab? Le modifiche andranno perse.",
@@ -711,6 +716,10 @@ const translations = {
     importSuccessTitle: "Import Successful",
     recipesImportSuccessMessage: "{count} recipes imported successfully.",
     recipesImportErrorMessage: "Error importing file: {error}",
+    copyFromAnotherMeal: "Copy from another meal",
+    selectMealToCopy: "Select Meal to Copy",
+    noMealsToCopy: "No other meals available to copy.",
+    noTitleAvailable: "No title available",
     
     // FileUpload.tsx
     clickToUpload: "Click to upload",
@@ -859,7 +868,7 @@ const translations = {
     actualIntakeTitle: "Actual Intake",
     recalculatingActuals: "Calculating actual intake...",
     recalculateActualsButton: "Calculate Actual Intake",
-    plannedShort: "Plan.",
+    plannedShort: "Planned",
     nutritionDisclaimer: "Values are AI estimates intended as a guideline, not as medical advice.",
     
     // Meal Modification
@@ -969,7 +978,7 @@ const translations = {
     achievementPerfectWeekAdherence: "Perfect Adherence Week",
     achievementPerfectWeekAdherenceDesc: "Maintain 90%+ adherence for 7 days.",
     achievementPerfectWeekHydration: "Perfect Hydration Week",
-    achievementPerfectWeekHydrationDesc: "Reach your hydration goal for 7 days.",
+    achievementPerfectHydrationWeekDesc: "Reach your hydration goal for 7 days.",
     achievementStepMarathon: "Step Marathoner",
     achievementStepMarathonDesc: "Reach a total of 250,000 steps.",
     achievementFirstMondayComplete: "Diets Start on Monday",
