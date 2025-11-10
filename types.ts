@@ -1,11 +1,4 @@
 
-
-
-
-
-
-
-
 export interface NutritionInfo {
   carbs: number;
   protein: number;
@@ -215,4 +208,14 @@ export interface AssignedPlan {
     startDate: string; // YYYY-MM-DD
     endDate: string; // YYYY-MM-DD
     planData: PlanCreationData;
+}
+
+export interface AuthData {
+  key: 'userAuth'; // Only one entry for the logged-in user
+  userProfile: UserProfile;
+  accessToken: string;
+  loginMode: 'user' | 'nutritionist';
+  lastLogin: number; // Timestamp of last successful login/refresh
+  // Fix: Added missing 'tokenExpirationTime' property to AuthData interface.
+  tokenExpirationTime?: number;
 }

@@ -468,7 +468,7 @@ export class MealPlanStore {
                 name: 'Mario Rossi',
                 email: 'mario.rossi@example.com',
                 picture: `https://api.dicebear.com/8.x/initials/svg?seed=Mario%20Rossi`,
-            }, 'simulated_token');
+            }, 'simulated_token', 3600); // Fix: Added 'expiresIn' argument with a default value.
 
             const planData = MOCK_MEAL_PLAN_DATA;
 
@@ -899,7 +899,8 @@ export class MealPlanStore {
         if (!this.currentDayProgress) return;
         try {
             const progressToSave = toJS(this.currentDayProgress);
-            await db.progressHistory.put(progressToSave, 'date');
+            // Fix: Removed 'date' as a second argument, as 'put' for auto-incrementing PK doesn't expect it.
+            await db.progressHistory.put(progressToSave);
             runInAction(() => {
                 const existingIndex = this.progressHistory.findIndex(p => p.date === progressToSave.date);
                 if (existingIndex > -1) {
@@ -1001,7 +1002,8 @@ export class MealPlanStore {
 
         const adherence = Math.round((totalDone / dayPlan.meals.length) * 100);
 
-        let record = await db.progressHistory.get(date);
+        // Fix: Use 'where().equals().first()' for index-based lookup instead of 'get()' which is for primary keys.
+        let record = await db.progressHistory.where('date').equals(date).first();
         if (!record) {
             const latestRecord = await db.progressHistory.where('date').below(date).last();
             record = {
@@ -1025,7 +1027,8 @@ export class MealPlanStore {
 
 
         try {
-            await db.progressHistory.put(record, 'date');
+            // Fix: Removed 'date' as a second argument, as 'put' for auto-incrementing PK doesn't expect it.
+            await db.progressHistory.put(record);
             runInAction(() => {
                 const existingIndex = this.progressHistory.findIndex(p => p.date === date);
                 if (existingIndex > -1) this.progressHistory[existingIndex] = record!;
@@ -1752,7 +1755,8 @@ export class MealPlanStore {
     async loadPlanForDate(dateStr: string) {
         // Load Progress Record for the day
         try {
-            const progressRecord = await db.progressHistory.get(dateStr);
+            // Fix: Use 'where().equals().first()' for index-based lookup instead of 'get()' which is for primary keys.
+            const progressRecord = await db.progressHistory.where('date').equals(dateStr).first();
             if (progressRecord) {
                 runInAction(() => {
                     this.currentDayProgress = progressRecord;
@@ -1792,7 +1796,8 @@ export class MealPlanStore {
 
         // Load Daily Log (meals)
         try {
-            let dailyLog: DailyLog | undefined | null = await db.dailyLogs.get(dateStr);
+            // Fix: Use 'where().equals().first()' for index-based lookup instead of 'get()' which is for primary keys.
+            let dailyLog: DailyLog | undefined | null = await db.dailyLogs.where('date').equals(dateStr).first();
             if (!dailyLog) {
                 const date = new Date(dateStr);
                 const dayIndex = (date.getDay() + 6) % 7;

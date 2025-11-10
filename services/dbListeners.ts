@@ -19,9 +19,10 @@ const debounceSync = (callback: () => void, delay: number) => {
     syncTimeout = window.setTimeout(callback, delay);
 };
 
-const nutritionistTables = ['ingredients', 'nutritionistPlans', 'recipes', 'patients', 'assignedPlans'];
+const nutritionistTables = ['ingredients', 'nutritionistPlans', 'recipes', 'patients', 'assignedPlans', 'pdfSettings', 'syncState'];
 
 async function handleDatabaseChange(changes: DexieObservableChange[]) {
+    // Only trigger sync if user is logged in
     if (!authStore.isLoggedIn || !authStore.accessToken) {
         return;
     }

@@ -1,10 +1,9 @@
-import { makeAutoObservable, runInAction } from 'mobx';
+import { makeAutoObservable, runInAction, toJS } from 'mobx';
 import { UserProfile } from '../types';
 import { tokenClient } from '../services/authService';
+import { db } from '../services/db';
 
-const ACCESS_TOKEN_KEY = 'google_access_token';
-const USER_PROFILE_KEY = 'google_user_profile';
-const LOGIN_MODE_KEY = 'app_login_mode';
+const REFRESH_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes before token expires
 
 export class AuthStore {
     isLoggedIn = false;
@@ -13,6 +12,7 @@ export class AuthStore {
     status: 'INITIAL' | 'LOGGED_IN' | 'LOGGED_OUT' | 'ERROR' = 'INITIAL';
     loginRedirectAction: (() => Promise<void>) | null = null;
     loginMode: 'user' | 'nutritionist' | null = null;
+    tokenExpirationTime: number | null = null; // Stored timestamp when the token is expected to expire
 
     constructor() {
         makeAutoObservable(this, {}, { autoBind: true });
@@ -20,80 +20,109 @@ export class AuthStore {
 
     init = async (): Promise<string | null> => {
         try {
-            const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-            const profileStr = localStorage.getItem(USER_PROFILE_KEY);
-            const mode = localStorage.getItem(LOGIN_MODE_KEY) as 'user' | 'nutritionist' | null;
-            
-            runInAction(() => {
-                this.loginMode = mode;
-            });
+            const authData = await db.authData.get('userAuth');
 
-            if (token && profileStr) {
-                // Validate token by fetching user info
-                const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+            if (authData) {
+                const { accessToken, userProfile, loginMode, tokenExpirationTime } = authData;
+                
+                runInAction(() => {
+                    this.accessToken = accessToken;
+                    this.userProfile = userProfile;
+                    this.loginMode = loginMode;
+                    this.tokenExpirationTime = tokenExpirationTime;
                 });
 
-                if (response.ok) {
-                    const profile = JSON.parse(profileStr);
-                    runInAction(() => {
-                        this.accessToken = token;
-                        this.userProfile = profile;
-                        this.isLoggedIn = true;
-                        this.status = 'LOGGED_IN';
-                    });
-                    return token;
-                } else {
-                    // Token is invalid/expired. Try to silently refresh.
-                    console.log("Access token expired or invalid. Attempting silent refresh.");
+                if (tokenExpirationTime && Date.now() >= tokenExpirationTime - REFRESH_THRESHOLD_MS) {
+                    console.log("Access token expiring soon or expired. Attempting silent refresh.");
                     if (tokenClient) {
-                        // This will trigger the callback in authService if successful
-                        tokenClient.requestAccessToken({ prompt: '' });
+                        tokenClient.requestAccessToken({ prompt: '' }); // Attempt silent refresh
+                        // While silent refresh is in progress, keep the UI in a logged-out/loading state
+                        runInAction(() => {
+                            this.status = 'INITIAL'; // Indicate awaiting refresh
+                            this.isLoggedIn = false;
+                        });
+                        return null; 
                     } else {
                         console.warn("Token client not ready for silent refresh. User will be logged out.");
                         this.setLoggedOut();
+                        return null;
                     }
-                    return null; // Act as logged out while refresh is attempted.
+                }
+
+                // Token seems valid enough, verify with userinfo endpoint
+                const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+
+                if (response.ok) {
+                    runInAction(() => {
+                        this.isLoggedIn = true;
+                        this.status = 'LOGGED_IN';
+                    });
+                    return accessToken;
+                } else {
+                    console.log("Access token invalid. Logging out.");
+                    this.setLoggedOut();
+                    return null;
                 }
             } else {
                  this.setLoggedOut();
                  return null;
             }
         } catch (error) {
-            console.warn("Could not restore session:", error);
-            this.setLoggedOut(); // This also cleans up invalid data from localStorage
+            console.warn("Could not restore session from IndexedDB:", error);
+            this.setLoggedOut();
             return null;
         }
     }
 
-    setLoggedIn = (profile: UserProfile, token: string) => {
-        this.userProfile = profile;
-        this.accessToken = token;
-        this.isLoggedIn = true;
-        this.status = 'LOGGED_IN';
+    setLoggedIn = async (profile: UserProfile, accessToken: string, expiresIn: number) => {
+        const tokenExpirationTime = Date.now() + expiresIn * 1000; // expiresIn is in seconds
 
-        localStorage.setItem(ACCESS_TOKEN_KEY, token);
-        localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
-        if (this.loginMode) {
-            localStorage.setItem(LOGIN_MODE_KEY, this.loginMode);
+        runInAction(() => {
+            this.userProfile = profile;
+            this.accessToken = accessToken;
+            this.isLoggedIn = true;
+            this.status = 'LOGGED_IN';
+            this.tokenExpirationTime = tokenExpirationTime;
+        });
+
+        try {
+            await db.authData.put({
+                key: 'userAuth',
+                userProfile: toJS(profile),
+                accessToken,
+                loginMode: this.loginMode!, // loginMode should be set by now
+                lastLogin: Date.now(),
+                // Fix: Added 'tokenExpirationTime' to the object being saved.
+                tokenExpirationTime,
+            });
+        } catch (e) {
+            console.error("Failed to save auth data to IndexedDB", e);
         }
     }
 
-    setLoggedOut = () => {
-        this.userProfile = null;
-        this.accessToken = null;
-        this.isLoggedIn = false;
-        this.status = 'LOGGED_OUT';
-        this.loginMode = null;
+    setLoggedOut = async () => {
+        runInAction(() => {
+            this.userProfile = null;
+            this.accessToken = null;
+            this.isLoggedIn = false;
+            this.status = 'LOGGED_OUT';
+            this.loginMode = null;
+            this.tokenExpirationTime = null;
+        });
 
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        localStorage.removeItem(USER_PROFILE_KEY);
-        localStorage.removeItem(LOGIN_MODE_KEY);
+        try {
+            await db.authData.delete('userAuth');
+        } catch (e) {
+            console.error("Failed to delete auth data from IndexedDB", e);
+        }
     }
     
     setLoginMode = (mode: 'user' | 'nutritionist') => {
-        this.loginMode = mode;
-        localStorage.setItem(LOGIN_MODE_KEY, mode);
+        runInAction(() => {
+            this.loginMode = mode;
+        });
     }
 
     setLoginRedirectAction = (action: () => Promise<void>) => {
