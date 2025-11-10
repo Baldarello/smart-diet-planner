@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import observable from 'dexie-observable';
-import { StoredState, ProgressRecord, SyncedData, DailyLog, Ingredient, NutritionistPlan, Recipe, Patient, AssignedPlan } from '../types';
+import { StoredState, ProgressRecord, SyncedData, DailyLog, Ingredient, NutritionistPlan, Recipe, Patient, AssignedPlan, AuthData } from '../types';
 
 // Define the structure of the object we are storing.
 // This is based on MealPlanStore.saveToDB
@@ -27,6 +27,7 @@ export class MySubClassedDexie extends Dexie {
   patients!: Table<Patient, number>;
   assignedPlans!: Table<AssignedPlan, number>;
   syncState!: Table<SyncState, string>;
+  authData!: Table<AuthData, string>; // New table for auth data
 
   constructor() {
     super('dietPlanDatabase', { addons: [observable] });
@@ -73,6 +74,11 @@ export class MySubClassedDexie extends Dexie {
 
     (this as Dexie).version(12).stores({
         syncState: 'key',
+    });
+
+    // New version for authData table
+    (this as Dexie).version(13).stores({
+        authData: 'key', // Primary key for a single auth entry (e.g., 'userAuth')
     });
   }
 }

@@ -70,7 +70,8 @@ class PatientStore {
         try {
             // Also delete all assigned plans for this patient
             const plansToDelete = this.assignedPlans.filter(p => p.patientId === id);
-            const planIds = plansToDelete.map(p => p.id!);
+            // Fix: Explicitly cast 'planIds' to 'number[]' to resolve type incompatibility with bulkDelete.
+            const planIds = plansToDelete.map(p => p.id!) as number[];
             await db.assignedPlans.bulkDelete(planIds);
 
             await db.patients.delete(id);

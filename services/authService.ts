@@ -22,6 +22,7 @@ declare global {
           access_token: string;
           error?: string;
           error_description?: string;
+          expires_in: number; // Add expires_in
           [key: string]: any;
         }
       }
@@ -49,6 +50,7 @@ export const initGoogleAuth = () => {
             callback: async (tokenResponse) => {
                 if (tokenResponse && tokenResponse.access_token) {
                     const accessToken = tokenResponse.access_token;
+                    const expiresIn = tokenResponse.expires_in;
                     try {
                         const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                             headers: { 'Authorization': `Bearer ${accessToken}` }
@@ -66,7 +68,7 @@ export const initGoogleAuth = () => {
                             picture: profile.picture,
                         };
 
-                        authStore.setLoggedIn(userProfile, accessToken);
+                        await authStore.setLoggedIn(userProfile, accessToken, expiresIn);
                         
                         // Sync based on login mode
                         if (authStore.loginMode === 'nutritionist') {
