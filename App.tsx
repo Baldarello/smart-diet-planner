@@ -4,7 +4,7 @@ import { mealPlanStore, AppStatus, NavigableTab } from './stores/MealPlanStore';
 import { authStore } from './stores/AuthStore';
 import { uiStore } from './stores/UIStore';
 import { t, setI18nLocaleGetter } from './i18n';
-import { syncWithDrive } from './services/syncService';
+import { syncWithDrive, syncNutritionistData } from './services/syncService';
 import { initGoogleAuth, handleSignOut } from './services/authService';
 import { setupDbListeners } from './services/dbListeners';
 
@@ -33,6 +33,13 @@ import InfoModal from './components/InfoModal';
 import ConfirmationModal from './components/ConfirmationModal';
 import AchievementsModal from './components/AchievementsModal';
 import HomePage from './components/HomePage';
+
+// Import nutritionist-specific stores
+import { ingredientStore } from './stores/IngredientStore';
+import { nutritionistStore } from './stores/NutritionistStore';
+import { recipeStore } from './stores/RecipeStore';
+import { patientStore } from './stores/PatientStore';
+import { pdfSettingsStore } from './stores/PdfSettingsStore';
 
 
 import { TodayIcon, CalendarIcon, ListIcon, PantryIcon, ArchiveIcon, UploadIcon, EditIcon, ProgressIcon, SettingsIcon, SparklesIcon, ExitIcon, DashboardIcon, ArrowLeftIcon, MenuIcon, AdminIcon } from './components/Icons';
@@ -92,26 +99,27 @@ const MainAppLayout: React.FC = observer(() => {
     
     const handleBack = () => window.history.back();
 
-    useEffect(() => {
-        const initializeApp = async () => {
-            setupDbListeners();
-            initGoogleAuth(); // Centralized initialization
-            const restoredToken = await authStore.init();
-            if (restoredToken) {
-                if (authStore.loginMode === 'user') {
-                    // This will sync and then call mealPlanStore.init() inside its finally block
-                    await syncWithDrive(restoredToken);
-                } else {
-                    // For nutritionist, sync is handled on login, just init store
-                    await mealPlanStore.init();
-                }
-            } else {
-                // No session, just init the meal plan store with local data (or none)
-                await mealPlanStore.init();
-            }
-        };
-        initializeApp();
-    }, []);
+    // REMOVED: Initialisation logic moved to the top-level App component.
+    // useEffect(() => {
+    //     const initializeApp = async () => {
+    //         setupDbListeners();
+    //         initGoogleAuth(); // Centralized initialization
+    //         const restoredToken = await authStore.init();
+    //         if (restoredToken) {
+    //             if (authStore.loginMode === 'user') {
+    //                 // This will sync and then call mealPlanStore.init() inside its finally block
+    //                 await syncWithDrive(restoredToken);
+    //             } else {
+    //                 // For nutritionist, sync is handled on login, just init store
+    //                 await mealPlanStore.init();
+    //             }
+    //         } else {
+    //             // No session, just init the meal plan store with local data (or none)
+    //             await mealPlanStore.init();
+    //         }
+    //     };
+    //     initializeApp();
+    // }, []);
 
     useEffect(() => {
         if (authStore.status === 'LOGGED_OUT') {
@@ -401,6 +409,7 @@ const MainAppLayout: React.FC = observer(() => {
 const App: React.FC = observer(() => {
     const getPathFromUrl = () => window.location.pathname.replace(/^\//, '').split('/')[0] || 'dashboard';
     const [currentPath, setCurrentPath] = useState(getPathFromUrl());
+    const [appInitialized, setAppInitialized] = useState(false); // New state to track overall app initialization
 
     const { 
         infoModalIsOpen,
@@ -417,6 +426,38 @@ const App: React.FC = observer(() => {
     } = uiStore;
 
     useEffect(() => {
+        const initializeAllStoresAndAuth = async () => {
+            setupDbListeners();
+            initGoogleAuth(); // Centralized initialization of GSI client
+            
+            // This is the core logic that needs to complete before rendering the main UI.
+            const restoredToken = await authStore.init(); // Blocks until authStore is hydrated
+            
+            if (restoredToken) {
+                if (authStore.loginMode === 'user') {
+                    // This will sync and then call mealPlanStore.init() inside its finally block
+                    await syncWithDrive(restoredToken);
+                } else {
+                    // For nutritionist, sync is handled on login, just init store
+                    // And also load other nutritionist-specific stores
+                    await mealPlanStore.init(); // mealPlanStore also needs to be ready for the app to function
+                    await Promise.all([
+                        ingredientStore.loadIngredients(),
+                        nutritionistStore.loadPlans(),
+                        recipeStore.loadRecipes(),
+                        patientStore.loadPatients(),
+                        patientStore.loadAssignedPlans(),
+                    ]);
+                    pdfSettingsStore.loadSettings();
+                }
+            } else {
+                // No session, just init the meal plan store with local data (or none)
+                await mealPlanStore.init();
+            }
+            setAppInitialized(true); // Mark app as fully initialized
+        };
+        initializeAllStoresAndAuth(); // Execute the async initialization
+
         const handleLocationChange = () => {
             const path = getPathFromUrl();
             setCurrentPath(path);
@@ -435,9 +476,10 @@ const App: React.FC = observer(() => {
         window.history.replaceState({ tab: getPathFromUrl() }, '', window.location.href);
 
         return () => window.removeEventListener('popstate', handleLocationChange);
-    }, []);
+    }, []); // Empty dependency array means it runs only once on mount
 
     const handleAdminLogin = () => {
+        // This is called AFTER successful login, when authStore is already updated.
         window.history.pushState({}, '', '/nutritionist');
         window.dispatchEvent(new PopStateEvent('popstate'));
     };
@@ -450,15 +492,24 @@ const App: React.FC = observer(() => {
     
     const RenderRedirect = ({ to }: { to: string }) => {
         useEffect(() => {
-            window.history.replaceState({}, '', to);
-            window.dispatchEvent(new PopStateEvent('popstate'));
-        }, [to]);
+            // Only redirect if we are not already on the target path
+            if (window.location.pathname !== to) {
+                window.history.replaceState({}, '', to);
+                window.dispatchEvent(new PopStateEvent('popstate'));
+            }
+        }, [to]); // Depend on 'to' to trigger if target changes
         return null;
     };
+
+    // Render a global loader if the app is not yet initialized
+    if (!appInitialized) {
+        return <Loader />;
+    }
 
     const renderPage = () => {
         switch (currentPath) {
             case 'admin':
+                // After appInitialized is true, authStore.isLoggedIn and loginMode are reliable.
                 if (authStore.isLoggedIn && authStore.loginMode === 'nutritionist') {
                     return <RenderRedirect to="/nutritionist" />;
                 }
@@ -467,11 +518,13 @@ const App: React.FC = observer(() => {
                 if (authStore.isLoggedIn && authStore.loginMode === 'nutritionist') {
                     return <NutritionistPage onLogout={handleAdminLogout} />;
                 }
+                // If attempting to access /nutritionist but not logged in as nutritionist, redirect to /admin
                 return <RenderRedirect to="/admin" />;
             case '404':
                 return <NotFoundPage />;
             default:
-                if (authStore.loginMode === 'nutritionist') {
+                // If nutritionist is logged in, but landed on a user path, redirect to nutritionist portal
+                if (authStore.isLoggedIn && authStore.loginMode === 'nutritionist') {
                     return <RenderRedirect to="/nutritionist" />;
                 }
                 return <MainAppLayout />;

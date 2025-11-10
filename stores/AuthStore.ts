@@ -13,6 +13,7 @@ export class AuthStore {
     loginRedirectAction: (() => Promise<void>) | null = null;
     loginMode: 'user' | 'nutritionist' | null = null;
     tokenExpirationTime: number | null = null; // Stored timestamp when the token is expected to expire
+    isHydrated = false; // New property to indicate if initial load is complete
 
     constructor() {
         makeAutoObservable(this, {}, { autoBind: true });
@@ -73,6 +74,10 @@ export class AuthStore {
             console.warn("Could not restore session from IndexedDB:", error);
             this.setLoggedOut();
             return null;
+        } finally {
+            runInAction(() => {
+                this.isHydrated = true; // Set to true regardless of success or failure
+            });
         }
     }
 
