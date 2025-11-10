@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { t } from '../../i18n';
 import { CloseIcon } from '../Icons';
@@ -42,6 +43,9 @@ const SelectMealToCopyModal: React.FC<SelectMealToCopyModalProps> = ({
                 currentMealContext &&
                 meal.dayIndex === currentMealContext.dayIndex &&
                 meal.mealIndex === currentMealContext.mealIndex
+            ) && (
+                (meal.isCheat && meal.cheatMealDescription && meal.cheatMealDescription.trim().length > 0) ||
+                (!meal.isCheat && meal.items.some(item => item.ingredientName.trim().length > 0))
             )
     );
 
@@ -92,10 +96,14 @@ const SelectMealToCopyModal: React.FC<SelectMealToCopyModalProps> = ({
                                         {meal.title || (meal.isCheat ? meal.cheatMealDescription || t('cheatMealBadge') : t('noTitleAvailable'))}
                                     </p>
                                     <ul className="text-xs text-gray-500 dark:text-gray-400 mt-2 list-disc list-inside">
-                                        {meal.items.slice(0, 2).map((item, i) => (
-                                            <li key={i} className="truncate">{item.ingredientName}</li>
-                                        ))}
-                                        {meal.items.length > 2 && <li>...</li>}
+                                        {meal.isCheat ? (
+                                            meal.cheatMealDescription && <li>{meal.cheatMealDescription}</li>
+                                        ) : (
+                                            meal.items.slice(0, 2).map((item, i) => (
+                                                <li key={i} className="truncate">{item.ingredientName}</li>
+                                            ))
+                                        )}
+                                        {!meal.isCheat && meal.items.length > 2 && <li>...</li>}
                                     </ul>
                                 </button>
                             ))}
