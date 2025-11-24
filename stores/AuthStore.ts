@@ -1,9 +1,6 @@
 import { makeAutoObservable, runInAction, toJS } from 'mobx';
 import { UserProfile } from '../types';
-import { tokenClient } from '../services/authService';
 import { db } from '../services/db';
-
-const REFRESH_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes before token expires
 
 export class AuthStore {
     isLoggedIn = false;
@@ -31,41 +28,15 @@ export class AuthStore {
                     this.userProfile = userProfile;
                     this.loginMode = loginMode;
                     this.tokenExpirationTime = tokenExpirationTime;
+                    
+                    // Ottimizzazione: Imposta l'utente come loggato se i dati esistono,
+                    // indipendentemente dalla scadenza del token.
+                    // Questo permette l'accesso offline e l'uso dell'app senza login forzato.
+                    this.isLoggedIn = true;
+                    this.status = 'LOGGED_IN';
                 });
 
-                if (tokenExpirationTime && Date.now() >= tokenExpirationTime - REFRESH_THRESHOLD_MS) {
-                    console.log("Access token expiring soon or expired. Attempting silent refresh.");
-                    if (tokenClient) {
-                        tokenClient.requestAccessToken({ prompt: '' }); // Attempt silent refresh
-                        // While silent refresh is in progress, keep the UI in a logged-out/loading state
-                        runInAction(() => {
-                            this.status = 'INITIAL'; // Indicate awaiting refresh
-                            this.isLoggedIn = false;
-                        });
-                        return null; 
-                    } else {
-                        console.warn("Token client not ready for silent refresh. User will be logged out.");
-                        this.setLoggedOut();
-                        return null;
-                    }
-                }
-
-                // Token seems valid enough, verify with userinfo endpoint
-                const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
-
-                if (response.ok) {
-                    runInAction(() => {
-                        this.isLoggedIn = true;
-                        this.status = 'LOGGED_IN';
-                    });
-                    return accessToken;
-                } else {
-                    console.log("Access token invalid. Logging out.");
-                    this.setLoggedOut();
-                    return null;
-                }
+                return accessToken;
             } else {
                  this.setLoggedOut();
                  return null;
@@ -99,7 +70,6 @@ export class AuthStore {
                 accessToken,
                 loginMode: this.loginMode!, // loginMode should be set by now
                 lastLogin: Date.now(),
-                // Fix: Added 'tokenExpirationTime' to the object being saved.
                 tokenExpirationTime,
             });
         } catch (e) {
