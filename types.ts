@@ -83,7 +83,6 @@ export interface BodyMetrics {
   weightKg?: number;
   heightCm?: number;
   bodyFatKg?: number;
-  // Fix: Add optional percentage properties to align with their usage in components.
   bodyFatPercentage?: number;
   leanMassKg?: number;
   bodyWaterLiters?: number;
@@ -98,10 +97,8 @@ export interface ProgressRecord {
   plannedCalories: number;
   actualCalories: number;
   weightKg?: number;
-  // Fix: Add optional 'heightCm' property to align with data being saved in PatientStore and accessed in BodyDataModal.
   heightCm?: number;
   bodyFatKg?: number;
-  // Fix: Add optional percentage properties to align with their usage in components.
   bodyFatPercentage?: number;
   leanMassKg?: number;
   stepsTaken: number;
@@ -164,10 +161,27 @@ export interface Ingredient {
   fat?: number;     // per 100g
 }
 
+export interface ModularMealData {
+    carbs: Meal[];
+    protein: Meal[];
+    vegetables: Meal[];
+    fats: Meal[];
+}
+
+export interface GenericPlanData {
+    breakfast: Meal[];
+    snack1: Meal[];
+    lunch: ModularMealData;
+    snack2: Meal[];
+    dinner: ModularMealData;
+}
+
 export interface PlanCreationData {
     planName: string;
     weeklyPlan: DayPlan[];
     shoppingList: ShoppingListCategory[];
+    type?: 'weekly' | 'generic';
+    genericPlan?: GenericPlanData;
 }
 
 export interface NutritionistPlan {
@@ -216,6 +230,5 @@ export interface AuthData {
   accessToken: string;
   loginMode: 'user' | 'nutritionist';
   lastLogin: number; // Timestamp of last successful login/refresh
-  // Fix: Added missing 'tokenExpirationTime' property to AuthData interface.
   tokenExpirationTime?: number;
 }

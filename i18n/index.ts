@@ -163,6 +163,8 @@ const translations = {
     syncStatusSynced: "Sincronizzato",
     syncStatusError: "Sincronizzazione Fallita",
     syncLastSync: "Ultima sinc: {time}",
+    nutritionVegetables: "Verdure",
+    // nutritionFat: "Grassi", // Removed duplicate
 
     // Homepage
     homeTitle: "LifePulse: Il Tuo Assistente Intelligente per la Dieta",
@@ -659,6 +661,8 @@ const translations = {
     syncStatusSynced: "Synced",
     syncStatusError: "Sync Failed",
     syncLastSync: "Last sync: {time}",
+    nutritionVegetables: "Vegetables",
+    // nutritionFat: "Fats", // Removed duplicate
 
     // Homepage
     homeTitle: "LifePulse: Your Intelligent Diet Companion",
