@@ -39,6 +39,7 @@ export interface FormModularMeal {
     protein: FormMeal[];
     vegetables: FormMeal[];
     fats: FormMeal[];
+    suggestions: string;
 }
 
 export interface FormGenericPlan {
@@ -70,13 +71,15 @@ const createInitialGenericPlan = (): FormGenericPlan => ({
         carbs: [],
         protein: [],
         vegetables: [],
-        fats: []
+        fats: [],
+        suggestions: ''
     },
     dinner: {
         carbs: [],
         protein: [],
         vegetables: [],
-        fats: []
+        fats: [],
+        suggestions: ''
     }
 });
 
@@ -288,6 +291,17 @@ const ModularMealEditor: React.FC<{
                     onChange={items => onChange({...data, fats: items})} 
                 />
             </div>
+            
+            <div className="mt-4 pt-4 border-t dark:border-gray-700">
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">{t('suggestionsLabel')}</label>
+                <textarea
+                    className="w-full p-3 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                    rows={3}
+                    placeholder={t('suggestionsPlaceholder')}
+                    value={data.suggestions || ''}
+                    onChange={(e) => onChange({...data, suggestions: e.target.value})}
+                />
+            </div>
         </div>
     );
 });
@@ -490,7 +504,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
         
         if (planToEdit) {
             const isAssigned = 'patientId' in planToEdit;
-            const pd = isAssigned ? (planToEdit as AssignedPlan).planData : planToEdit.planData;
+            const pd: PlanCreationData = isAssigned ? (planToEdit as AssignedPlan).planData : (planToEdit as NutritionistPlan).planData;
             
             initialName = pd.planName;
             
@@ -516,6 +530,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                     protein: mod.protein.map(mapToFormMeal),
                     vegetables: mod.vegetables.map(mapToFormMeal),
                     fats: mod.fats.map(mapToFormMeal),
+                    suggestions: mod.suggestions || ''
                 });
 
                 setGenericPlanData({
@@ -530,7 +545,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                 setPlanType('weekly');
                 // Existing logic to map Weekly plan...
                 let initialPlan = createInitialPlan();
-                const planMap = new Map(pd.weeklyPlan.map(d => [d.day.toUpperCase(), d]));
+                const planMap = new Map<string, DayPlan>(pd.weeklyPlan.map(d => [d.day.toUpperCase(), d]));
                 initialPlan.forEach(formDay => {
                     const sourceDay = planMap.get(formDay.day.toUpperCase());
                     if (sourceDay) {
@@ -773,12 +788,14 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                         protein: genericPlanData.lunch.protein.map(toMeal),
                         vegetables: genericPlanData.lunch.vegetables.map(toMeal),
                         fats: genericPlanData.lunch.fats.map(toMeal),
+                        suggestions: genericPlanData.lunch.suggestions
                     },
                     dinner: {
                         carbs: genericPlanData.dinner.carbs.map(toMeal),
                         protein: genericPlanData.dinner.protein.map(toMeal),
                         vegetables: genericPlanData.dinner.vegetables.map(toMeal),
                         fats: genericPlanData.dinner.fats.map(toMeal),
+                        suggestions: genericPlanData.dinner.suggestions
                     }
                 };
 

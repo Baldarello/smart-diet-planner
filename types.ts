@@ -166,6 +166,7 @@ export interface ModularMealData {
     protein: Meal[];
     vegetables: Meal[];
     fats: Meal[];
+    suggestions?: string;
 }
 
 export interface GenericPlanData {
