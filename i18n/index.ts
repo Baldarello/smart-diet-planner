@@ -164,7 +164,8 @@ const translations = {
     syncStatusError: "Sincronizzazione Fallita",
     syncLastSync: "Ultima sinc: {time}",
     nutritionVegetables: "Verdure",
-    // nutritionFat: "Grassi", // Removed duplicate
+    suggestionsLabel: "Suggerimenti / Ricette Consigliate",
+    suggestionsPlaceholder: "Inserisci qui suggerimenti di ricette o note aggiuntive...",
 
     // Homepage
     homeTitle: "LifePulse: Il Tuo Assistente Intelligente per la Dieta",
@@ -662,7 +663,8 @@ const translations = {
     syncStatusError: "Sync Failed",
     syncLastSync: "Last sync: {time}",
     nutritionVegetables: "Vegetables",
-    // nutritionFat: "Fats", // Removed duplicate
+    suggestionsLabel: "Suggestions / Recommended Recipes",
+    suggestionsPlaceholder: "Enter recipe suggestions or notes here...",
 
     // Homepage
     homeTitle: "LifePulse: Your Intelligent Diet Companion",
@@ -1000,33 +1002,23 @@ const translations = {
   }
 };
 
-let i18nLocaleGetter: () => Locale = () => 'it';
+let getLocale: () => Locale = () => 'it';
 
-export function setI18nLocaleGetter(getter: () => Locale) {
-  i18nLocaleGetter = getter;
-}
+export const setI18nLocaleGetter = (getter: () => Locale) => {
+  getLocale = getter;
+};
 
-// Fix: Add type check to handle string array translations correctly and prevent runtime errors.
-export function t(key: keyof typeof translations['it'], options?: Record<string, string>): string {
-  const locale = i18nLocaleGetter();
-  const rawTranslation = translations[locale][key] || translations['en'][key] || key;
+export const t = (key: string, params?: Record<string, string | number>): string => {
+  const locale = getLocale();
+  const lang = (translations as any)[locale] || (translations as any)['en'];
+  let text = lang[key] || (translations as any)['en'][key] || key;
 
-  if (typeof rawTranslation !== 'string') {
-    console.warn(`t() function was called for a translation key ('${key}') that returns an array. Use t_dynamic() instead.`);
-    return key;
+  if (params) {
+    Object.entries(params).forEach(([k, v]) => {
+      text = text.replace(new RegExp(`{${k}}`, 'g'), String(v));
+    });
   }
+  return text;
+};
 
-  let translation = rawTranslation;
-  if (options) {
-      Object.keys(options).forEach(optionKey => {
-          translation = translation.replace(`{${optionKey}}`, options[optionKey]);
-      });
-  }
-  return translation;
-}
-
-export function t_dynamic(key: 'readingMessages' | 'structuringPlanMessages' | 'analyzingNutritionMessages' | 'generatingListMessages'): string[] {
-    const locale = i18nLocaleGetter();
-    // @ts-ignore
-    return translations[locale][key] || translations['en'][key] || [];
-}
+export default { t, setI18nLocaleGetter };
