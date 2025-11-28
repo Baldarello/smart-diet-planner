@@ -5,7 +5,7 @@ import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem, Nutrit
 import { t } from '../../i18n';
 import { DAY_KEYWORDS, MEAL_KEYWORDS, MEAL_TIMES } from '../../services/offlineParser';
 import { getCategoriesForIngredients } from '../../services/geminiService';
-import { PlusCircleIcon, TrashIcon, CookieIcon, ViewIcon } from '../Icons';
+import { PlusCircleIcon, TrashIcon, CookieIcon, ViewIcon, EditIcon, CheckIcon } from '../Icons';
 import UnitPicker from '../UnitPicker';
 import { ingredientStore } from '../../stores/IngredientStore';
 import { nutritionistStore } from '../../stores/NutritionistStore';
@@ -35,12 +35,19 @@ export interface FormDayPlan extends Omit<DayPlan, 'meals'> {
 }
 
 // Interfaces for Generic Plan Form
+export interface FormSuggestion {
+    id?: number; // Original recipe ID (optional, for reference)
+    name: string;
+    procedure?: string;
+    ingredients: FormMealItem[];
+}
+
 export interface FormModularMeal {
     carbs: FormMeal[];
     protein: FormMeal[];
     vegetables: FormMeal[];
     fats: FormMeal[];
-    suggestions: Recipe[];
+    suggestions: FormSuggestion[];
 }
 
 export interface FormGenericPlan {
@@ -252,6 +259,7 @@ const ModularMealSectionEditor: React.FC<{
                         onChange={(m) => handleUpdateItem(idx, m)} 
                         onRemove={() => handleRemoveItem(idx)}
                         simpleMode={true}
+                        hideRecipePicker={true} // Goal 2: Removed picker for macros
                     />
                 ))}
                 <button onClick={handleAddItem} className="text-xs font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-1 mt-2">
@@ -268,19 +276,36 @@ const ModularMealEditor: React.FC<{
     onChange: (newData: FormModularMeal) => void;
 }> = observer(({ title, data, onChange }) => {
     const [selectedRecipeId, setSelectedRecipeId] = useState('');
-    const [viewingRecipe, setViewingRecipe] = useState<Recipe | null>(null);
 
     const handleAddSuggestion = () => {
         if (!selectedRecipeId) return;
         const recipeId = parseInt(selectedRecipeId, 10);
         const recipe = recipeStore.recipes.find(r => r.id === recipeId);
         if (recipe) {
+            // Convert Recipe to FormSuggestion to allow instance editing
+            const newSuggestion: FormSuggestion = {
+                id: recipe.id,
+                name: recipe.name,
+                procedure: recipe.procedure,
+                ingredients: recipe.ingredients.map(ing => ({
+                    ingredientName: ing.ingredientName,
+                    quantityValue: ing.quantityValue?.toString() || '',
+                    quantityUnit: ing.quantityUnit
+                }))
+            };
+
             onChange({
                 ...data,
-                suggestions: [...(data.suggestions || []), recipe]
+                suggestions: [...(data.suggestions || []), newSuggestion]
             });
             setSelectedRecipeId('');
         }
+    };
+
+    const handleUpdateSuggestion = (index: number, updatedSuggestion: FormSuggestion) => {
+        const newSuggestions = [...data.suggestions];
+        newSuggestions[index] = updatedSuggestion;
+        onChange({ ...data, suggestions: newSuggestions });
     };
 
     const handleRemoveSuggestion = (index: number) => {
@@ -292,7 +317,6 @@ const ModularMealEditor: React.FC<{
 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 mb-4">
-            {viewingRecipe && <ViewRecipeModal recipe={viewingRecipe} onClose={() => setViewingRecipe(null)} />}
             <h3 className="font-bold text-lg text-violet-700 dark:text-violet-400 mb-4">{title}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <ModularMealSectionEditor 
@@ -340,25 +364,60 @@ const ModularMealEditor: React.FC<{
                     </button>
                 </div>
 
-                {data.suggestions && data.suggestions.length > 0 ? (
-                    <ul className="space-y-2">
-                        {data.suggestions.map((recipe, idx) => (
-                            <li key={idx} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
-                                <span className="font-medium text-gray-800 dark:text-gray-200">{recipe.name}</span>
-                                <div className="flex gap-2">
-                                    <button onClick={() => setViewingRecipe(recipe)} className="p-1 text-gray-500 hover:text-blue-500" title={t('view')}>
-                                        <ViewIcon />
-                                    </button>
-                                    <button onClick={() => handleRemoveSuggestion(idx)} className="p-1 text-gray-500 hover:text-red-500" title={t('delete')}>
-                                        <TrashIcon />
-                                    </button>
+                <div className="space-y-3">
+                    {data.suggestions && data.suggestions.map((suggestion, idx) => (
+                        <details key={idx} className="group bg-slate-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
+                            <summary className="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-gray-600 transition-colors list-none">
+                                <div className="flex items-center gap-2">
+                                    <span className="transform transition-transform duration-200 group-open:rotate-90 text-violet-500 dark:text-violet-400 text-xs">&#9654;</span>
+                                    <span className="font-semibold text-gray-800 dark:text-gray-200">{suggestion.name}</span>
                                 </div>
-                            </li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 italic">Nessun suggerimento aggiunto.</p>
-                )}
+                                <button onClick={(e) => { e.preventDefault(); handleRemoveSuggestion(idx); }} className="text-gray-400 hover:text-red-500 p-1">
+                                    <TrashIcon />
+                                </button>
+                            </summary>
+                            <div className="p-3 border-t border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+                                <div className="space-y-2">
+                                    {suggestion.ingredients.map((ing, ingIdx) => (
+                                        <div key={ingIdx} className="flex gap-2 items-center text-sm">
+                                            <input 
+                                                type="text" 
+                                                value={ing.ingredientName} 
+                                                onChange={(e) => {
+                                                    const newIngredients = [...suggestion.ingredients];
+                                                    newIngredients[ingIdx].ingredientName = e.target.value;
+                                                    handleUpdateSuggestion(idx, { ...suggestion, ingredients: newIngredients });
+                                                }}
+                                                className="flex-grow p-1 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+                                            />
+                                            <input 
+                                                type="text" 
+                                                value={ing.quantityValue} 
+                                                onChange={(e) => {
+                                                    const newIngredients = [...suggestion.ingredients];
+                                                    newIngredients[ingIdx].quantityValue = e.target.value;
+                                                    handleUpdateSuggestion(idx, { ...suggestion, ingredients: newIngredients });
+                                                }}
+                                                className="w-16 p-1 text-right bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+                                            />
+                                            <UnitPicker 
+                                                value={ing.quantityUnit} 
+                                                onChange={(u) => {
+                                                    const newIngredients = [...suggestion.ingredients];
+                                                    newIngredients[ingIdx].quantityUnit = u;
+                                                    handleUpdateSuggestion(idx, { ...suggestion, ingredients: newIngredients });
+                                                }} 
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </details>
+                    ))}
+                    {(!data.suggestions || data.suggestions.length === 0) && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 italic">Nessun suggerimento aggiunto.</p>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -371,7 +430,8 @@ const MealEditor: React.FC<{
     onRemove?: () => void;
     label?: string;
     simpleMode?: boolean;
-}> = observer(({ meal, onChange, onRemove, label, simpleMode = false }) => {
+    hideRecipePicker?: boolean;
+}> = observer(({ meal, onChange, onRemove, label, simpleMode = false, hideRecipePicker = false }) => {
     const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
     const [activeAutocompleteIndex, setActiveAutocompleteIndex] = useState<number | null>(null);
     const autocompleteRef = useRef<HTMLDivElement>(null);
@@ -467,15 +527,17 @@ const MealEditor: React.FC<{
                         className="flex-grow p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm"
                     />
                 )}
-                {/* Recipe Picker */}
-                <select 
-                    className="p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-xs w-6" 
-                    onChange={e => { handleRecipeSelect(e.target.value); e.target.value = ''; }}
-                    title="Importa Ricetta"
-                >
-                    <option value="">+</option>
-                    {recipeStore.recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                </select>
+                {/* Recipe Picker - Conditionally Rendered */}
+                {!hideRecipePicker && (
+                    <select 
+                        className="p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-xs w-6" 
+                        onChange={e => { handleRecipeSelect(e.target.value); e.target.value = ''; }}
+                        title="Importa Ricetta"
+                    >
+                        <option value="">+</option>
+                        {recipeStore.recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    </select>
+                )}
             </div>
 
             <div className="space-y-2">
@@ -583,12 +645,25 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                     isCheat: m.cheat
                 });
 
+                const mapToFormSuggestion = (r: Recipe): FormSuggestion => ({
+                    id: r.id,
+                    name: r.name,
+                    procedure: r.procedure,
+                    ingredients: r.ingredients.map(i => ({
+                        ingredientName: i.ingredientName,
+                        quantityValue: i.quantityValue?.toString() || '',
+                        quantityUnit: i.quantityUnit
+                    }))
+                });
+
                 const mapToFormModular = (mod: ModularMealData): FormModularMeal => ({
                     carbs: mod.carbs.map(mapToFormMeal),
                     protein: mod.protein.map(mapToFormMeal),
                     vegetables: mod.vegetables.map(mapToFormMeal),
                     fats: mod.fats.map(mapToFormMeal),
-                    suggestions: Array.isArray(mod.suggestions) ? mod.suggestions : [] // Safe handle legacy string if needed, though strictly it's Recipe[]
+                    suggestions: Array.isArray(mod.suggestions) 
+                        ? mod.suggestions.map(mapToFormSuggestion) 
+                        : [] // Handle legacy if needed
                 });
 
                 setGenericPlanData({
@@ -626,6 +701,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                                             quantityUnit: parsed?.unit ?? 'g',
                                         };
                                     });
+                                    formItems.forEach(fi => { if(!fi.quantityUnit) fi.quantityUnit = 'g'; }); // Safety default
                                     formMeal.items = formItems.length > 0 ? formItems : [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }];
                                 }
                             }
@@ -834,7 +910,17 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                         fullDescription: [i.quantityValue, i.quantityUnit, i.ingredientName].join(' '),
                         used: false
                     })),
-                    // We can attempt to calculate macro for the Option here if we want to store it static
+                });
+
+                const toRecipe = (s: FormSuggestion): Recipe => ({
+                    id: s.id,
+                    name: s.name,
+                    procedure: s.procedure,
+                    ingredients: s.ingredients.map(i => ({
+                        ingredientName: i.ingredientName,
+                        quantityValue: i.quantityValue ? parseFloat(i.quantityValue) : null,
+                        quantityUnit: i.quantityUnit
+                    }))
                 });
 
                 const genericPlan: GenericPlanData = {
@@ -846,21 +932,18 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                         protein: genericPlanData.lunch.protein.map(toMeal),
                         vegetables: genericPlanData.lunch.vegetables.map(toMeal),
                         fats: genericPlanData.lunch.fats.map(toMeal),
-                        suggestions: genericPlanData.lunch.suggestions
+                        suggestions: genericPlanData.lunch.suggestions.map(toRecipe)
                     },
                     dinner: {
                         carbs: genericPlanData.dinner.carbs.map(toMeal),
                         protein: genericPlanData.dinner.protein.map(toMeal),
                         vegetables: genericPlanData.dinner.vegetables.map(toMeal),
                         fats: genericPlanData.dinner.fats.map(toMeal),
-                        suggestions: genericPlanData.dinner.suggestions
+                        suggestions: genericPlanData.dinner.suggestions.map(toRecipe)
                     }
                 };
 
-                // For Generic Plans, shopping list is tricky because it's choice-based. 
-                // We'll generate a "Potential Shopping List" containing ALL options.
-                // Or leave it empty and let the user populate it dynamically later (if feature supported).
-                // For now, let's aggregate EVERYTHING to be safe.
+                // For Generic Plans, aggregate EVERYTHING for potential shopping list.
                 const aggregatedIngredients = new Map<string, { totalValue: number; unit: string }>();
                 const processMeal = (m: FormMeal) => {
                     m.items.forEach(item => {
