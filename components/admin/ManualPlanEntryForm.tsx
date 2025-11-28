@@ -1,11 +1,11 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
-import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem, NutritionistPlan, NutritionInfo, Patient, AssignedPlan, PlanCreationData, GenericPlanData, ModularMealData } from '../../types';
+import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem, NutritionistPlan, NutritionInfo, Patient, AssignedPlan, PlanCreationData, GenericPlanData, ModularMealData, Recipe } from '../../types';
 import { t } from '../../i18n';
 import { DAY_KEYWORDS, MEAL_KEYWORDS, MEAL_TIMES } from '../../services/offlineParser';
 import { getCategoriesForIngredients } from '../../services/geminiService';
-import { PlusCircleIcon, TrashIcon, CookieIcon } from '../Icons';
+import { PlusCircleIcon, TrashIcon, CookieIcon, ViewIcon } from '../Icons';
 import UnitPicker from '../UnitPicker';
 import { ingredientStore } from '../../stores/IngredientStore';
 import { nutritionistStore } from '../../stores/NutritionistStore';
@@ -16,6 +16,7 @@ import LiveNutritionSummary from './LiveNutritionSummary';
 import { patientStore } from '../../stores/PatientStore';
 import SelectMealToCopyModal from './SelectMealToCopyModal';
 import Switch from '../Switch';
+import ViewRecipeModal from './ViewRecipeModal';
 
 export interface FormMealItem {
   ingredientName: string;
@@ -39,7 +40,7 @@ export interface FormModularMeal {
     protein: FormMeal[];
     vegetables: FormMeal[];
     fats: FormMeal[];
-    suggestions: string;
+    suggestions: Recipe[];
 }
 
 export interface FormGenericPlan {
@@ -72,14 +73,14 @@ const createInitialGenericPlan = (): FormGenericPlan => ({
         protein: [],
         vegetables: [],
         fats: [],
-        suggestions: ''
+        suggestions: []
     },
     dinner: {
         carbs: [],
         protein: [],
         vegetables: [],
         fats: [],
-        suggestions: ''
+        suggestions: []
     }
 });
 
@@ -266,8 +267,32 @@ const ModularMealEditor: React.FC<{
     data: FormModularMeal;
     onChange: (newData: FormModularMeal) => void;
 }> = observer(({ title, data, onChange }) => {
+    const [selectedRecipeId, setSelectedRecipeId] = useState('');
+    const [viewingRecipe, setViewingRecipe] = useState<Recipe | null>(null);
+
+    const handleAddSuggestion = () => {
+        if (!selectedRecipeId) return;
+        const recipeId = parseInt(selectedRecipeId, 10);
+        const recipe = recipeStore.recipes.find(r => r.id === recipeId);
+        if (recipe) {
+            onChange({
+                ...data,
+                suggestions: [...(data.suggestions || []), recipe]
+            });
+            setSelectedRecipeId('');
+        }
+    };
+
+    const handleRemoveSuggestion = (index: number) => {
+        onChange({
+            ...data,
+            suggestions: data.suggestions.filter((_, i) => i !== index)
+        });
+    };
+
     return (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 mb-4">
+            {viewingRecipe && <ViewRecipeModal recipe={viewingRecipe} onClose={() => setViewingRecipe(null)} />}
             <h3 className="font-bold text-lg text-violet-700 dark:text-violet-400 mb-4">{title}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <ModularMealSectionEditor 
@@ -294,13 +319,46 @@ const ModularMealEditor: React.FC<{
             
             <div className="mt-4 pt-4 border-t dark:border-gray-700">
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">{t('suggestionsLabel')}</label>
-                <textarea
-                    className="w-full p-3 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
-                    rows={3}
-                    placeholder={t('suggestionsPlaceholder')}
-                    value={data.suggestions || ''}
-                    onChange={(e) => onChange({...data, suggestions: e.target.value})}
-                />
+                
+                <div className="flex gap-2 mb-3">
+                    <select
+                        className="flex-grow p-2 bg-slate-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none"
+                        value={selectedRecipeId}
+                        onChange={(e) => setSelectedRecipeId(e.target.value)}
+                    >
+                        <option value="">{t('selectRecipePlaceholder')}</option>
+                        {recipeStore.recipes.map(r => (
+                            <option key={r.id} value={r.id}>{r.name}</option>
+                        ))}
+                    </select>
+                    <button 
+                        onClick={handleAddSuggestion} 
+                        disabled={!selectedRecipeId}
+                        className="bg-violet-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-violet-700 disabled:bg-violet-300 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        <PlusCircleIcon /> {t('add')}
+                    </button>
+                </div>
+
+                {data.suggestions && data.suggestions.length > 0 ? (
+                    <ul className="space-y-2">
+                        {data.suggestions.map((recipe, idx) => (
+                            <li key={idx} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                                <span className="font-medium text-gray-800 dark:text-gray-200">{recipe.name}</span>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setViewingRecipe(recipe)} className="p-1 text-gray-500 hover:text-blue-500" title={t('view')}>
+                                        <ViewIcon />
+                                    </button>
+                                    <button onClick={() => handleRemoveSuggestion(idx)} className="p-1 text-gray-500 hover:text-red-500" title={t('delete')}>
+                                        <TrashIcon />
+                                    </button>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 italic">Nessun suggerimento aggiunto.</p>
+                )}
             </div>
         </div>
     );
@@ -530,7 +588,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                     protein: mod.protein.map(mapToFormMeal),
                     vegetables: mod.vegetables.map(mapToFormMeal),
                     fats: mod.fats.map(mapToFormMeal),
-                    suggestions: mod.suggestions || ''
+                    suggestions: Array.isArray(mod.suggestions) ? mod.suggestions : [] // Safe handle legacy string if needed, though strictly it's Recipe[]
                 });
 
                 setGenericPlanData({
