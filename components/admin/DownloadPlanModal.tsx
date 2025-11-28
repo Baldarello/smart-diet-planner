@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { NutritionistPlan, AssignedPlan, DayPlan } from '../../types';
+import { NutritionistPlan, AssignedPlan, DayPlan, GenericPlanData, Meal } from '../../types';
 import { t } from '../../i18n';
 import { CloseIcon, DownloadIcon } from '../Icons';
 import { pdfSettingsStore } from '../../stores/PdfSettingsStore';
@@ -12,8 +13,6 @@ interface DownloadPlanModalProps {
 const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) => {
     
     const handleJsonDownload = () => {
-        // Fix: The original ternary operator was incorrect as both types have `planData`.
-        // This is simplified to correctly use `plan.planData`, which is of the correct type for both union members.
         const planData = plan.planData;
         const jsonString = JSON.stringify(planData, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
@@ -31,14 +30,20 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
 
     const handlePdfDownload = () => {
         let planName: string;
-        let weeklyPlan: DayPlan[];
+        let weeklyPlan: DayPlan[] = [];
+        let genericPlan: GenericPlanData | undefined;
+        let isGeneric = false;
     
         if ('name' in plan) { // NutritionistPlan
             planName = plan.name;
             weeklyPlan = plan.planData.weeklyPlan;
+            genericPlan = plan.planData.genericPlan;
+            isGeneric = plan.planData.type === 'generic';
         } else { // AssignedPlan
             planName = plan.planData.planName;
             weeklyPlan = plan.planData.weeklyPlan;
+            genericPlan = plan.planData.genericPlan;
+            isGeneric = plan.planData.type === 'generic';
         }
         
         const { settings } = pdfSettingsStore;
@@ -49,60 +54,129 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
         } = settings;
 
         let mainContentHtml = `<h1>${planName}</h1>`;
-        weeklyPlan.forEach(day => {
-            mainContentHtml += `<h2>${day.day}</h2>`;
 
-            if (showDailySummary) {
-                const summary = { carbs: 0, protein: 0, fat: 0, calories: 0 };
-                let hasData = false;
-                day.meals.forEach(meal => {
-                    if (meal.nutrition && !meal.cheat) {
-                        hasData = true;
-                        summary.carbs += meal.nutrition.carbs;
-                        summary.protein += meal.nutrition.protein;
-                        summary.fat += meal.nutrition.fat;
-                        summary.calories += meal.nutrition.calories;
-                    }
-                });
-                if (hasData) {
-                    mainContentHtml += `
-                        <div class="daily-summary">
-                            <div><strong>${t('nutritionCalories')}:</strong> ${Math.round(summary.calories)}${t('nutritionUnitKcal')}</div>
-                            <div><strong>${t('nutritionCarbs')}:</strong> ${Math.round(summary.carbs)}${t('nutritionUnitG')}</div>
-                            <div><strong>${t('nutritionProtein')}:</strong> ${Math.round(summary.protein)}${t('nutritionUnitG')}</div>
-                            <div><strong>${t('nutritionFat')}:</strong> ${Math.round(summary.fat)}${t('nutritionUnitG')}</div>
-                        </div>`;
-                }
+        const renderMealOption = (meal: Meal, label?: string) => {
+            let html = `<li>`;
+            if (label) html += `<strong>${label}:</strong> `;
+            
+            // Recipe/Title check
+            if (meal.title) html += `<em>${meal.title}</em> - `;
+            
+            html += meal.items.map(i => i.fullDescription).join(', ');
+            
+            if (showProcedures && meal.procedure) {
+                html += `<br/><span class="procedure">(${meal.procedure})</span>`;
             }
 
+            if (showMealNutrition && meal.nutrition && meal.nutrition.calories > 0) {
+                html += ` <span class="meal-nutrition-inline">[${Math.round(meal.nutrition.calories)} kcal]</span>`;
+            }
+            html += `</li>`;
+            return html;
+        };
 
-            day.meals.forEach(meal => {
-                mainContentHtml += `<h3>${meal.name}${meal.title ? ` - ${meal.title}` : ''}</h3>`;
-                if(meal.cheat) {
-                     mainContentHtml += `<p><strong>Sgarro:</strong> ${meal.cheatMealDescription || 'N/A'}</p>`;
-                } else {
-                    if (meal.items.length > 0) {
-                        mainContentHtml += '<ul>';
-                        meal.items.forEach(item => {
-                            mainContentHtml += `<li>${item.fullDescription}</li>`;
+        if (isGeneric && genericPlan) {
+            // --- GENERIC PLAN PDF ---
+            
+            // Helper to render a section of options
+            const renderOptionsSection = (title: string, options: Meal[]) => {
+                if (!options || options.length === 0) return '';
+                let sectionHtml = `<h2>${title}</h2><ul>`;
+                options.forEach((opt, idx) => {
+                    sectionHtml += renderMealOption(opt, `Opzione ${idx + 1}`);
+                });
+                sectionHtml += `</ul>`;
+                return sectionHtml;
+            };
+
+            const renderModularSection = (title: string, data: { carbs: Meal[], protein: Meal[], vegetables: Meal[], fats: Meal[] }) => {
+                let sectionHtml = `<h2>${title}</h2>`;
+                sectionHtml += `<div class="modular-grid">`;
+                
+                const categories = [
+                    { title: t('nutritionCarbs'), items: data.carbs },
+                    { title: t('nutritionProtein'), items: data.protein },
+                    { title: t('nutritionVegetables') || 'Verdure', items: data.vegetables },
+                    { title: t('nutritionFat') || 'Grassi', items: data.fats }
+                ];
+
+                categories.forEach(cat => {
+                    sectionHtml += `<div class="modular-column"><h3>${cat.title}</h3><ul>`;
+                    if (cat.items.length === 0) sectionHtml += `<li>-</li>`;
+                    else {
+                        cat.items.forEach(item => {
+                            sectionHtml += renderMealOption(item);
                         });
-                        mainContentHtml += '</ul>';
                     }
-                    if (showProcedures && meal.procedure) {
-                        mainContentHtml += `<p class="procedure"><strong>Procedura:</strong><br>${meal.procedure.replace(/\n/g, '<br>')}</p>`;
-                    }
-                     if (showMealNutrition && meal.nutrition) {
+                    sectionHtml += `</ul></div>`;
+                });
+
+                sectionHtml += `</div>`;
+                return sectionHtml;
+            };
+
+            mainContentHtml += renderOptionsSection("COLAZIONE", genericPlan.breakfast);
+            mainContentHtml += renderOptionsSection("SPUNTINO MATTINA", genericPlan.snack1);
+            mainContentHtml += renderModularSection("PRANZO", genericPlan.lunch);
+            mainContentHtml += renderOptionsSection("MERENDA", genericPlan.snack2);
+            mainContentHtml += renderModularSection("CENA", genericPlan.dinner);
+
+        } else {
+            // --- WEEKLY PLAN PDF (Existing Logic) ---
+            weeklyPlan.forEach(day => {
+                mainContentHtml += `<h2>${day.day}</h2>`;
+
+                if (showDailySummary) {
+                    const summary = { carbs: 0, protein: 0, fat: 0, calories: 0 };
+                    let hasData = false;
+                    day.meals.forEach(meal => {
+                        if (meal.nutrition && !meal.cheat) {
+                            hasData = true;
+                            summary.carbs += meal.nutrition.carbs;
+                            summary.protein += meal.nutrition.protein;
+                            summary.fat += meal.nutrition.fat;
+                            summary.calories += meal.nutrition.calories;
+                        }
+                    });
+                    if (hasData) {
                         mainContentHtml += `
-                            <div class="meal-nutrition">
-                                <span><strong>Kcal:</strong> ${Math.round(meal.nutrition.calories)}</span>
-                                <span><strong>C:</strong> ${Math.round(meal.nutrition.carbs)}g</span>
-                                <span><strong>P:</strong> ${Math.round(meal.nutrition.protein)}g</span>
-                                <span><strong>F:</strong> ${Math.round(meal.nutrition.fat)}g</span>
+                            <div class="daily-summary">
+                                <div><strong>${t('nutritionCalories')}:</strong> ${Math.round(summary.calories)}${t('nutritionUnitKcal')}</div>
+                                <div><strong>${t('nutritionCarbs')}:</strong> ${Math.round(summary.carbs)}${t('nutritionUnitG')}</div>
+                                <div><strong>${t('nutritionProtein')}:</strong> ${Math.round(summary.protein)}${t('nutritionUnitG')}</div>
+                                <div><strong>${t('nutritionFat')}:</strong> ${Math.round(summary.fat)}${t('nutritionUnitG')}</div>
                             </div>`;
                     }
                 }
+
+                day.meals.forEach(meal => {
+                    mainContentHtml += `<h3>${meal.name}${meal.title ? ` - ${meal.title}` : ''}</h3>`;
+                    if(meal.cheat) {
+                        mainContentHtml += `<p><strong>Sgarro:</strong> ${meal.cheatMealDescription || 'N/A'}</p>`;
+                    } else {
+                        if (meal.items.length > 0) {
+                            mainContentHtml += '<ul>';
+                            meal.items.forEach(item => {
+                                mainContentHtml += `<li>${item.fullDescription}</li>`;
+                            });
+                            mainContentHtml += '</ul>';
+                        }
+                        if (showProcedures && meal.procedure) {
+                            mainContentHtml += `<p class="procedure"><strong>Procedura:</strong><br>${meal.procedure.replace(/\n/g, '<br>')}</p>`;
+                        }
+                        if (showMealNutrition && meal.nutrition) {
+                            mainContentHtml += `
+                                <div class="meal-nutrition">
+                                    <span><strong>Kcal:</strong> ${Math.round(meal.nutrition.calories)}</span>
+                                    <span><strong>C:</strong> ${Math.round(meal.nutrition.carbs)}g</span>
+                                    <span><strong>P:</strong> ${Math.round(meal.nutrition.protein)}g</span>
+                                    <span><strong>F:</strong> ${Math.round(meal.nutrition.fat)}g</span>
+                                </div>`;
+                        }
+                    }
+                });
             });
-        });
+        }
 
         let fontFamilyString = '';
         switch(fontFamily) {
@@ -156,9 +230,15 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
                     ul { list-style-type: none; padding-left: 0; }
                     li { background-color: #f9fafb; border-left: 3px solid ${primaryColor}; opacity: 0.8; padding: 8px 12px; margin-bottom: 5px; border-radius: 4px; }
                     p { margin-top: 5px; }
-                    .procedure { margin-top: 10px; font-style: italic; }
+                    .procedure { font-style: italic; font-size: 0.9em; color: #666; }
                     .meal-nutrition { display: flex; gap: 15px; font-size: 0.8em; color: #555; background: #f3f4f6; padding: 5px 10px; border-radius: 5px; margin-top: 10px; }
                     .daily-summary { display: flex; justify-content: space-around; background: #f3f4f6; padding: 10px; border-radius: 8px; margin: 10px 0; font-size: 0.9em; }
+                    
+                    /* Generic Plan Styles */
+                    .modular-grid { display: flex; flex-wrap: wrap; gap: 20px; }
+                    .modular-column { flex: 1; min-width: 200px; border: 1px solid #eee; padding: 10px; border-radius: 8px; }
+                    .modular-column h3 { margin-top: 0; font-size: ${fontSizeH3}px; text-align: center; color: ${primaryColor}; }
+                    .meal-nutrition-inline { font-size: 0.8em; color: #888; margin-left: 5px; }
                 </style>
             </head>
             <body>
@@ -200,7 +280,7 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
             setTimeout(() => {
                 win.print();
                 win.close();
-            }, 250); // Small delay to ensure content is rendered before printing
+            }, 250);
         }
         onClose();
     };
