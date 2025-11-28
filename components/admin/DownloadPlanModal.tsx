@@ -4,6 +4,7 @@ import { NutritionistPlan, AssignedPlan, DayPlan, GenericPlanData, Meal } from '
 import { t } from '../../i18n';
 import { CloseIcon, DownloadIcon } from '../Icons';
 import { pdfSettingsStore } from '../../stores/PdfSettingsStore';
+import { formatQuantity } from '../../utils/quantityParser';
 
 interface DownloadPlanModalProps {
     plan: NutritionistPlan | AssignedPlan;
@@ -89,7 +90,7 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
                 return sectionHtml;
             };
 
-            const renderModularSection = (title: string, data: { carbs: Meal[], protein: Meal[], vegetables: Meal[], fats: Meal[], suggestions?: string }) => {
+            const renderModularSection = (title: string, data: { carbs: Meal[], protein: Meal[], vegetables: Meal[], fats: Meal[], suggestions?: any }) => {
                 let sectionHtml = `<h2>${title}</h2>`;
                 sectionHtml += `<div class="modular-grid">`;
                 
@@ -113,8 +114,24 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
 
                 sectionHtml += `</div>`;
                 
-                if (data.suggestions) {
-                    sectionHtml += `<div class="suggestions-box"><strong>${t('suggestionsLabel')}:</strong><br/>${data.suggestions.replace(/\n/g, '<br/>')}</div>`;
+                // Render Suggestions
+                if (data.suggestions && Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+                    sectionHtml += `<div class="suggestions-box"><h3>${t('suggestionsLabel')}</h3><ul>`;
+                    data.suggestions.forEach(recipe => {
+                        let ingredientsText = recipe.ingredients
+                            .map((ing: any) => `${ing.ingredientName} (${formatQuantity(ing.quantityValue, ing.quantityUnit)})`)
+                            .join(', ');
+                        
+                        sectionHtml += `<li><strong>${recipe.name}:</strong> ${ingredientsText}`;
+                        if (showProcedures && recipe.procedure) {
+                             sectionHtml += `<br/><span class="procedure">(${recipe.procedure})</span>`;
+                        }
+                        sectionHtml += `</li>`;
+                    });
+                    sectionHtml += `</ul></div>`;
+                } else if (typeof data.suggestions === 'string' && data.suggestions.trim()) {
+                     // Fallback for legacy string suggestions
+                     sectionHtml += `<div class="suggestions-box"><strong>${t('suggestionsLabel')}:</strong><br/>${data.suggestions.replace(/\n/g, '<br/>')}</div>`;
                 }
                 
                 return sectionHtml;
@@ -244,7 +261,8 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
                     .modular-column { flex: 1; min-width: 200px; border: 1px solid #eee; padding: 10px; border-radius: 8px; }
                     .modular-column h3 { margin-top: 0; font-size: ${fontSizeH3}px; text-align: center; color: ${primaryColor}; }
                     .meal-nutrition-inline { font-size: 0.8em; color: #888; margin-left: 5px; }
-                    .suggestions-box { margin-top: 20px; padding: 15px; background-color: #f9fafb; border: 1px dashed #ccc; border-radius: 8px; white-space: pre-wrap; font-style: italic; color: #555; }
+                    .suggestions-box { margin-top: 20px; padding: 15px; background-color: #f9fafb; border: 1px dashed #ccc; border-radius: 8px; color: #555; }
+                    .suggestions-box h3 { font-size: ${fontSizeH3}px; color: ${primaryColor}; margin-top:0; }
                 </style>
             </head>
             <body>
