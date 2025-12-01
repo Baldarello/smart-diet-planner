@@ -1,7 +1,8 @@
 
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
-import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem, NutritionistPlan, NutritionInfo, Patient, AssignedPlan, PlanCreationData, GenericPlanData, ModularMealData, Recipe } from '../../types';
+import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem, NutritionistPlan, NutritionInfo, Patient, AssignedPlan, PlanCreationData, GenericPlanData, ModularMealData, Recipe, FormDayPlan, FormMeal, FormMealItem, FormGenericPlan, FormModularMeal, FormSuggestion } from '../../types';
 import { t } from '../../i18n';
 import { DAY_KEYWORDS, MEAL_KEYWORDS, MEAL_TIMES } from '../../services/offlineParser';
 import { getCategoriesForIngredients } from '../../services/geminiService';
@@ -17,46 +18,6 @@ import { patientStore } from '../../stores/PatientStore';
 import SelectMealToCopyModal from './SelectMealToCopyModal';
 import Switch from '../Switch';
 import ViewRecipeModal from './ViewRecipeModal';
-
-export interface FormMealItem {
-  ingredientName: string;
-  quantityValue: string;
-  quantityUnit: string;
-}
-
-export interface FormMeal extends Omit<Meal, 'items' | 'done' | 'nutrition' | 'actualNutrition' | 'cheat' | 'cheatMealDescription' | 'procedure'> {
-    items: FormMealItem[];
-    procedure: string;
-    isCheat?: boolean;
-}
-  
-export interface FormDayPlan extends Omit<DayPlan, 'meals'> {
-    meals: FormMeal[];
-}
-
-// Interfaces for Generic Plan Form
-export interface FormSuggestion {
-    id?: number; // Original recipe ID (optional, for reference)
-    name: string;
-    procedure?: string;
-    ingredients: FormMealItem[];
-}
-
-export interface FormModularMeal {
-    carbs: FormMeal[];
-    protein: FormMeal[];
-    vegetables: FormMeal[];
-    fats: FormMeal[];
-    suggestions: FormSuggestion[];
-}
-
-export interface FormGenericPlan {
-    breakfast: FormMeal[];
-    snack1: FormMeal[];
-    lunch: FormModularMeal;
-    snack2: FormMeal[];
-    dinner: FormModularMeal;
-}
 
 const createInitialPlan = (): FormDayPlan[] => 
     DAY_KEYWORDS.map(day => ({
@@ -1098,7 +1059,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                                     })();
 
                                     return (
-                                    <div key={meal.name} className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                                    <div key={mealIndex} className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-lg">
                                         <div className="flex justify-between items-center mb-2 flex-wrap gap-y-2">
                                             <div className="flex items-center gap-x-4 gap-y-2 flex-wrap">
                                                 <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200">{meal.name}</h4>

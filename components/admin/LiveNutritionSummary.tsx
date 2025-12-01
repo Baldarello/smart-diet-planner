@@ -1,24 +1,10 @@
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { ingredientStore } from '../../stores/IngredientStore';
 import { t } from '../../i18n';
-import { Meal, DayPlan } from '../../types';
-
-interface FormMealItem {
-    ingredientName: string;
-    quantityValue: string;
-    quantityUnit: string;
-}
-  
-interface FormMeal extends Omit<Meal, 'items' | 'done' | 'nutrition' | 'actualNutrition' | 'cheat' | 'cheatMealDescription' | 'procedure'> {
-    items: FormMealItem[];
-    procedure: string;
-    isCheat?: boolean;
-}
-  
-interface FormDayPlan extends Omit<DayPlan, 'meals'> {
-    meals: FormMeal[];
-}
+import { Meal, DayPlan, FormDayPlan, FormMeal, FormMealItem } from '../../types';
 
 interface LiveNutritionSummaryProps {
     planData: FormDayPlan[];
