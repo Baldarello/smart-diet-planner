@@ -1,4 +1,5 @@
 
+
 import type { Locale } from '../types';
 
 const translations = {
@@ -500,6 +501,8 @@ const translations = {
     unlockedAchievements: "Ottenuti",
     lockedAchievements: "Da Sbloccare",
     close: "Chiudi",
+    deleteOptionConfirmationTitle: "Conferma Eliminazione Opzione",
+    deleteOptionConfirmationMessage: "L'opzione che stai per eliminare contiene dei dati. Sei sicuro di voler procedere?",
   },
   en: {
     // App.tsx
@@ -999,6 +1002,8 @@ const translations = {
     unlockedAchievements: "Unlocked",
     lockedAchievements: "To Unlock",
     close: "Close",
+    deleteOptionConfirmationTitle: "Confirm Option Deletion",
+    deleteOptionConfirmationMessage: "The option you are about to delete contains data. Are you sure you want to proceed?",
   }
 };
 

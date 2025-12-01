@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem, NutritionistPlan, NutritionInfo, Patient, AssignedPlan, PlanCreationData, GenericPlanData, ModularMealData, Recipe, FormDayPlan, FormMeal, FormMealItem, FormGenericPlan, FormModularMeal, FormSuggestion } from '../../types';
@@ -158,8 +159,26 @@ const GenericMealEditor: React.FC<{
     };
 
     const handleRemoveOption = (index: number) => {
-        const newOptions = options.filter((_, i) => i !== index);
-        onChange(newOptions);
+        const optionToRemove = options[index];
+        const isPopulated =
+            optionToRemove.title?.trim() !== '' ||
+            optionToRemove.procedure?.trim() !== '' ||
+            (optionToRemove.items.length > 1) ||
+            (optionToRemove.items.length === 1 && optionToRemove.items[0].ingredientName.trim() !== '');
+
+        if (isPopulated) {
+            uiStore.showConfirmationModal(
+                t('deleteOptionConfirmationTitle'),
+                t('deleteOptionConfirmationMessage'),
+                () => {
+                    const newOptions = options.filter((_, i) => i !== index);
+                    onChange(newOptions);
+                }
+            );
+        } else {
+            const newOptions = options.filter((_, i) => i !== index);
+            onChange(newOptions);
+        }
     };
 
     const handleCloneOption = (index: number) => {
@@ -219,7 +238,24 @@ const ModularMealSectionEditor: React.FC<{
     };
 
     const handleRemoveItem = (index: number) => {
-        onChange(items.filter((_, i) => i !== index));
+        const itemToRemove = items[index];
+        const isPopulated = 
+            itemToRemove.title?.trim() !== '' || 
+            itemToRemove.procedure?.trim() !== '' || 
+            (itemToRemove.items.length > 1) || 
+            (itemToRemove.items.length === 1 && itemToRemove.items[0].ingredientName.trim() !== '');
+
+        if (isPopulated) {
+            uiStore.showConfirmationModal(
+                t('deleteOptionConfirmationTitle'),
+                t('deleteOptionConfirmationMessage'),
+                () => {
+                    onChange(items.filter((_, i) => i !== index));
+                }
+            );
+        } else {
+            onChange(items.filter((_, i) => i !== index));
+        }
     };
 
     return (
