@@ -1,10 +1,10 @@
 
 
+
 import React from 'react';
 import { t } from '../../i18n';
 import { CloseIcon } from '../Icons';
-// Fix: Import FormDayPlan and FormMealItem as named exports from ManualPlanEntryForm.
-import { FormDayPlan, FormMealItem } from './ManualPlanEntryForm'; 
+import { FormDayPlan, FormMealItem } from '../../types'; 
 
 interface SelectMealToCopyModalProps {
     isOpen: boolean;

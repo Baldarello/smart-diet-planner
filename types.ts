@@ -1,4 +1,5 @@
 
+
 export interface NutritionInfo {
   carbs: number;
   protein: number;
@@ -245,4 +246,44 @@ export interface AuthData {
   loginMode: 'user' | 'nutritionist';
   lastLogin: number; // Timestamp of last successful login/refresh
   tokenExpirationTime?: number;
+}
+
+// Form-specific types for ManualPlanEntryForm to handle string inputs
+export interface FormMealItem {
+  ingredientName: string;
+  quantityValue: string;
+  quantityUnit: string;
+}
+
+export interface FormMeal extends Omit<Meal, 'items' | 'done' | 'nutrition' | 'actualNutrition' | 'cheat' | 'cheatMealDescription' | 'procedure'> {
+    items: FormMealItem[];
+    procedure: string;
+    isCheat?: boolean;
+}
+  
+export interface FormDayPlan extends Omit<DayPlan, 'meals'> {
+    meals: FormMeal[];
+}
+
+export interface FormSuggestion {
+    id?: number;
+    name: string;
+    procedure?: string;
+    ingredients: FormMealItem[];
+}
+
+export interface FormModularMeal {
+    carbs: FormMeal[];
+    protein: FormMeal[];
+    vegetables: FormMeal[];
+    fats: FormMeal[];
+    suggestions: FormSuggestion[];
+}
+
+export interface FormGenericPlan {
+    breakfast: FormMeal[];
+    snack1: FormMeal[];
+    lunch: FormModularMeal;
+    snack2: FormMeal[];
+    dinner: FormModularMeal;
 }
