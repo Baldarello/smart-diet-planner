@@ -1,12 +1,11 @@
 
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem, NutritionistPlan, NutritionInfo, Patient, AssignedPlan, PlanCreationData, GenericPlanData, ModularMealData, Recipe, FormDayPlan, FormMeal, FormMealItem, FormGenericPlan, FormModularMeal, FormSuggestion } from '../../types';
 import { t } from '../../i18n';
 import { DAY_KEYWORDS, MEAL_KEYWORDS, MEAL_TIMES } from '../../services/offlineParser';
 import { getCategoriesForIngredients } from '../../services/geminiService';
-import { PlusCircleIcon, TrashIcon, CookieIcon, ViewIcon, EditIcon, CheckIcon } from '../Icons';
+import { PlusCircleIcon, TrashIcon, CookieIcon, ViewIcon, EditIcon, CheckIcon, MoreVertIcon, CopyIcon } from '../Icons';
 import UnitPicker from '../UnitPicker';
 import { ingredientStore } from '../../stores/IngredientStore';
 import { nutritionistStore } from '../../stores/NutritionistStore';
@@ -163,6 +162,20 @@ const GenericMealEditor: React.FC<{
         onChange(newOptions);
     };
 
+    const handleCloneOption = (index: number) => {
+        const optionToClone = options[index];
+        // Deep copy the option and its items
+        const newOption: FormMeal = {
+            ...optionToClone,
+            name: `Opzione ${options.length + 1}`, // Will be rendered with correct label by parent index, this is internal
+            items: optionToClone.items.map(item => ({ ...item }))
+        };
+        
+        const newOptions = [...options];
+        newOptions.splice(index + 1, 0, newOption); // Insert immediately after
+        onChange(newOptions);
+    };
+
     return (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 mb-4">
             <h3 className="font-bold text-lg text-violet-700 dark:text-violet-400 mb-4">{title}</h3>
@@ -173,6 +186,7 @@ const GenericMealEditor: React.FC<{
                         meal={option} 
                         onChange={(m) => handleUpdateOption(idx, m)} 
                         onRemove={() => handleRemoveOption(idx)}
+                        onClone={() => handleCloneOption(idx)}
                         label={`Opzione ${idx + 1}`}
                     />
                 ))}
@@ -389,14 +403,29 @@ const MealEditor: React.FC<{
     meal: FormMeal;
     onChange: (meal: FormMeal) => void;
     onRemove?: () => void;
+    onClone?: () => void;
     label?: string;
     simpleMode?: boolean;
     hideRecipePicker?: boolean;
-}> = observer(({ meal, onChange, onRemove, label, simpleMode = false, hideRecipePicker = false }) => {
+}> = observer(({ meal, onChange, onRemove, onClone, label, simpleMode = false, hideRecipePicker = false }) => {
     const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
     const [activeAutocompleteIndex, setActiveAutocompleteIndex] = useState<number | null>(null);
     const autocompleteRef = useRef<HTMLDivElement>(null);
     const [showProcedure, setShowProcedure] = useState(!!meal.procedure);
+    
+    // Actions Menu State
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     const updateSuggestions = (inputValue: string) => {
         if (inputValue.length >= 3) {
@@ -458,11 +487,17 @@ const MealEditor: React.FC<{
     };
 
     const handleProcedureBlur = () => {
-        if (!meal.procedure || meal.procedure.trim() === '') {
-            if(meal.procedure && meal.procedure.trim() === '') {
-                 onChange({...meal, procedure: ''});
-            }
+        if (meal.procedure && meal.procedure.trim() === '') {
+             onChange({...meal, procedure: ''});
+             setShowProcedure(false);
+        }
+    };
+
+    const toggleProcedure = () => {
+        if (showProcedure && (!meal.procedure || meal.procedure.trim() === '')) {
             setShowProcedure(false);
+        } else {
+            setShowProcedure(true);
         }
     };
 
@@ -485,13 +520,44 @@ const MealEditor: React.FC<{
 
     return (
         <div className={`p-3 bg-slate-100 dark:bg-gray-700/50 rounded-lg relative group ${simpleMode ? 'border border-gray-200 dark:border-gray-600' : ''}`}>
-            {onRemove && (
-                <button type="button" onClick={onRemove} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <TrashIcon />
-                </button>
+            {/* Actions Menu */}
+            {(onRemove || onClone) && (
+                <div className="absolute top-2 right-2 z-10" ref={menuRef}>
+                    <button 
+                        type="button" 
+                        onClick={() => setIsMenuOpen(!isMenuOpen)} 
+                        className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        title="Opzioni"
+                    >
+                        <MoreVertIcon />
+                    </button>
+                    
+                    {isMenuOpen && (
+                        <div className="absolute right-0 mt-1 w-36 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                            {onClone && (
+                                <button
+                                    type="button"
+                                    onClick={() => { onClone(); setIsMenuOpen(false); }}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                >
+                                    <CopyIcon className="w-4 h-4" /> Clona
+                                </button>
+                            )}
+                            {onRemove && (
+                                <button
+                                    type="button"
+                                    onClick={() => { onRemove(); setIsMenuOpen(false); }}
+                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 flex items-center gap-2 border-t border-gray-100 dark:border-gray-700"
+                                >
+                                    <TrashIcon className="w-4 h-4" /> Elimina
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
             )}
             
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 pr-8">
                 {label && <span className="text-sm font-bold text-violet-600 dark:text-violet-400">{label}:</span>}
                 {!simpleMode && (
                     <input 
@@ -554,17 +620,19 @@ const MealEditor: React.FC<{
             </div>
             
             {showProcedure ? (
-                <textarea 
-                    placeholder={t('procedurePlaceholder')} 
-                    value={meal.procedure} 
-                    onChange={handleProcedureChange}
-                    onBlur={handleProcedureBlur}
-                    className="w-full mt-2 p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md h-24"
-                    autoFocus
-                />
+                <div className="mt-2">
+                    <textarea 
+                        placeholder={t('procedurePlaceholder')} 
+                        value={meal.procedure} 
+                        onChange={handleProcedureChange}
+                        onBlur={handleProcedureBlur}
+                        className="w-full p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md h-24 text-sm"
+                        autoFocus
+                    />
+                </div>
             ) : (
-                <button type="button" onClick={() => setShowProcedure(true)} className="text-xs text-violet-500 flex items-center gap-1 mt-2">
-                    <PlusCircleIcon /> {t('procedureLabel')}
+                <button type="button" onClick={toggleProcedure} className="text-xs text-violet-500 flex items-center gap-1 mt-2">
+                    <PlusCircleIcon /> {t('add')} Procedimento
                 </button>
             )}
 
