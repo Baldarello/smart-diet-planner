@@ -216,7 +216,7 @@ const GenericMealEditor: React.FC<{
                         label={`Opzione ${idx + 1}`}
                     />
                 ))}
-                <button onClick={handleAddOption} className="text-sm font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-2 hover:bg-violet-50 dark:hover:bg-gray-700 p-2 rounded-lg">
+                <button type="button" onClick={handleAddOption} className="text-sm font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-2 hover:bg-violet-50 dark:hover:bg-gray-700 p-2 rounded-lg">
                     <PlusCircleIcon /> {t('add')} Opzione
                 </button>
             </div>
@@ -262,7 +262,7 @@ const ModularMealSectionEditor: React.FC<{
                         hideRecipePicker={true} // Goal 2: Removed picker for macros
                     />
                 ))}
-                <button onClick={handleAddItem} className="text-xs font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-1 mt-2">
+                <button type="button" onClick={handleAddItem} className="text-xs font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-1 mt-2">
                     <PlusCircleIcon /> {t('add')} Voce
                 </button>
             </div>
@@ -356,6 +356,7 @@ const ModularMealEditor: React.FC<{
                         ))}
                     </select>
                     <button 
+                        type="button"
                         onClick={handleAddSuggestion} 
                         disabled={!selectedRecipeId}
                         className="bg-violet-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-violet-700 disabled:bg-violet-300 disabled:cursor-not-allowed flex items-center gap-2"
@@ -372,7 +373,7 @@ const ModularMealEditor: React.FC<{
                                     <span className="transform transition-transform duration-200 group-open:rotate-90 text-violet-500 dark:text-violet-400 text-xs">&#9654;</span>
                                     <span className="font-semibold text-gray-800 dark:text-gray-200">{suggestion.name}</span>
                                 </div>
-                                <button onClick={(e) => { e.preventDefault(); handleRemoveSuggestion(idx); }} className="text-gray-400 hover:text-red-500 p-1">
+                                <button type="button" onClick={(e) => { e.preventDefault(); handleRemoveSuggestion(idx); }} className="text-gray-400 hover:text-red-500 p-1">
                                     <TrashIcon />
                                 </button>
                             </summary>
@@ -511,7 +512,7 @@ const MealEditor: React.FC<{
     return (
         <div className={`p-3 bg-slate-100 dark:bg-gray-700/50 rounded-lg relative group ${simpleMode ? 'border border-gray-200 dark:border-gray-600' : ''}`}>
             {onRemove && (
-                <button onClick={onRemove} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button type="button" onClick={onRemove} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                     <TrashIcon />
                 </button>
             )}
@@ -569,12 +570,12 @@ const MealEditor: React.FC<{
                         />
                         <UnitPicker value={item.quantityUnit} onChange={u => handleItemChange(idx, 'quantityUnit', u)} />
                         {meal.items.length > 1 && (
-                            <button onClick={() => handleRemoveItem(idx)} className="text-gray-400 hover:text-red-500"><TrashIcon /></button>
+                            <button type="button" onClick={() => handleRemoveItem(idx)} className="text-gray-400 hover:text-red-500"><TrashIcon /></button>
                         )}
                     </div>
                 ))}
                 {!simpleMode && (
-                    <button onClick={handleAddItem} className="text-xs text-violet-500 flex items-center gap-1 mt-1"><PlusCircleIcon /> Agg. Ingrediente</button>
+                    <button type="button" onClick={handleAddItem} className="text-xs text-violet-500 flex items-center gap-1 mt-1"><PlusCircleIcon /> Agg. Ingrediente</button>
                 )}
             </div>
             <MealNutritionSummaryDisplay summary={summary} />
