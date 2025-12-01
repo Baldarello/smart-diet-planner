@@ -1,3 +1,4 @@
+
 import Dexie from 'dexie';
 import { db } from './db';
 import { authStore } from '../stores/AuthStore';
@@ -78,5 +79,5 @@ async function handleDatabaseChange(changes: DexieObservableChange[]) {
 }
 
 export function setupDbListeners() {
-    (db as Dexie).on('changes', handleDatabaseChange);
+    (db as any).on('changes', handleDatabaseChange);
 }

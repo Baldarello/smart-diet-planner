@@ -23,6 +23,7 @@ export interface Meal {
   actualNutrition?: NutritionInfo | null;
   cheat?: boolean;
   cheatMealDescription?: string;
+  section?: string; // New field for grouping Generic Plan options (e.g., "lunch-carbs")
 }
 
 export interface DayPlan {
@@ -117,6 +118,14 @@ export interface UserProfile {
   picture: string;
 }
 
+// Map<DayName, Map<SectionKey, OptionIndex[]>>
+// Example: { "LUNEDI": { "breakfast": [0, 2], "lunch-carbs": [1] } }
+export interface GenericPlanPreferences {
+    [day: string]: {
+        [section: string]: number[];
+    }
+}
+
 // From db.ts StoredState definition
 export interface StoredState {
     masterMealPlan: DayPlan[];
@@ -143,6 +152,10 @@ export interface StoredState {
     showBodyMetricsInApp?: boolean;
     bodyFatUnit?: 'kg' | '%';
     bodyWaterUnit?: 'liters' | '%';
+    // New fields for Generic Plans
+    isGenericPlan?: boolean;
+    genericPlanData?: GenericPlanData;
+    genericPlanPreferences?: GenericPlanPreferences;
 }
 
 export interface SyncedData {
