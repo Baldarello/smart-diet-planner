@@ -4,6 +4,8 @@ import { db } from './db';
 import { authStore } from '../stores/AuthStore';
 import { writeBackupFile, getOrCreateFolderId } from './driveService';
 import { SyncedData } from '../types';
+// Dynamic import for stores to avoid circular dependencies
+// syncStore will be imported dynamically inside the function
 
 interface DexieObservableChange {
   table: string;
@@ -61,11 +63,20 @@ async function handleDatabaseChange(changes: DexieObservableChange[]) {
     
     // Nutritionist sync logic
     else if (authStore.loginMode === 'nutritionist') {
-        const isNutritionistChange = changes.some(c => nutritionistTables.includes(c.table));
-        if (isNutritionistChange) {
+        // Strictly filter only relevant tables. syncState must NOT trigger this.
+        const relevantChanges = changes.filter(c => nutritionistTables.includes(c.table));
+        
+        if (relevantChanges.length > 0) {
             // Apply debounce to nutritionist sync as well to group rapid changes (like adding ingredients)
-            // and preventing network congestion.
+            // and preventing network congestion. Increased to 5000ms (5s) to allow chunked updates to finish.
             debounceSync(async () => {
+                // Check if sync is already in progress
+                const { syncStore } = await import('../stores/SyncStore');
+                if (syncStore.status === 'syncing') {
+                    console.log('Sync already in progress, skipping auto-sync trigger.');
+                    return;
+                }
+
                 console.log('Nutritionist DB changed. Triggering sync upload to Google Drive.');
                 
                 // First, update the local timestamp immediately
@@ -77,7 +88,7 @@ async function handleDatabaseChange(changes: DexieObservableChange[]) {
                     // The status check in uploadNutritionistData prevents concurrent syncs.
                     uploadNutritionistData(authStore.accessToken);
                 }
-            }, 2000); // 2 second delay for nutritionist actions
+            }, 5000); // 5 second delay for nutritionist actions
         }
     }
 }
