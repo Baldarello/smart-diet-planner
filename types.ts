@@ -185,10 +185,11 @@ export interface ModularMealData {
 
 export interface GenericPlanData {
     breakfast: Meal[];
-    snack1: Meal[];
+    snacks: Meal[];
     lunch: ModularMealData;
-    snack2: Meal[];
     dinner: ModularMealData;
+    snack1?: Meal[]; // For migration
+    snack2?: Meal[]; // For migration
 }
 
 export interface PlanCreationData {
@@ -282,8 +283,7 @@ export interface FormModularMeal {
 
 export interface FormGenericPlan {
     breakfast: FormMeal[];
-    snack1: FormMeal[];
+    snacks: FormMeal[];
     lunch: FormModularMeal;
-    snack2: FormMeal[];
     dinner: FormModularMeal;
 }

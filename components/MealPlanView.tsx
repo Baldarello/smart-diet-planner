@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { DayPlan, Meal } from '../types';
@@ -18,14 +19,15 @@ const GenericPlanDayConfig: React.FC<{ dayName: string; onClose: () => void }> =
     const { genericPlanData, genericPlanPreferences, setGenericPlanPreference } = mealPlanStore;
     if (!genericPlanData) return null;
 
+    const allSnacks = [...(genericPlanData.snacks || []), ...(genericPlanData.snack1 || []), ...(genericPlanData.snack2 || [])];
+
     const sections = [
         { title: "COLAZIONE", key: "breakfast", items: genericPlanData.breakfast },
-        { title: "SPUNTINO MATTINA", key: "snack1", items: genericPlanData.snack1 },
+        { title: "SPUNTINI", key: "snacks", items: allSnacks },
         { title: "PRANZO - CARBOIDRATI", key: "lunch_carbs", items: genericPlanData.lunch.carbs },
         { title: "PRANZO - PROTEINE", key: "lunch_protein", items: genericPlanData.lunch.protein },
         { title: "PRANZO - VERDURE", key: "lunch_vegetables", items: genericPlanData.lunch.vegetables },
         { title: "PRANZO - GRASSI", key: "lunch_fats", items: genericPlanData.lunch.fats },
-        { title: "MERENDA", key: "snack2", items: genericPlanData.snack2 },
         { title: "CENA - CARBOIDRATI", key: "dinner_carbs", items: genericPlanData.dinner.carbs },
         { title: "CENA - PROTEINE", key: "dinner_protein", items: genericPlanData.dinner.protein },
         { title: "CENA - VERDURE", key: "dinner_vegetables", items: genericPlanData.dinner.vegetables },
@@ -75,10 +77,9 @@ const GenericPlanDayConfig: React.FC<{ dayName: string; onClose: () => void }> =
         // Update store logic: if array is empty or null, it might mean "Nothing selected".
         // Let's look at `generateDailyLogFromGeneric`: 
         // `if (selectedIndices && !selectedIndices.includes(index)) return;`
-        // This implies if `selectedIndices` is undefined, it shows ALL.
+        // This implies if `selectedIndices` is undefined (key missing), checks are skipped -> SHOW ALL.
         // So to select all, we pass `undefined` (or handle it in store).
-        // Let's pass `undefined` via a cast or change store signature? 
-        // Simpler: pass all indices.
+        // Let's pass all indices.
         const allIndices = Array.from({length: totalItems}, (_, i) => i);
         setGenericPlanPreference(dayName, sectionKey, allIndices);
     };
