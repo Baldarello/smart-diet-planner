@@ -20,7 +20,9 @@ const debounceSync = (callback: () => void, delay: number) => {
     syncTimeout = window.setTimeout(callback, delay);
 };
 
-const nutritionistTables = ['ingredients', 'nutritionistPlans', 'recipes', 'patients', 'assignedPlans', 'pdfSettings', 'syncState'];
+// Removed 'syncState' from this list to prevent infinite recursion loops where
+// the sync action updates syncState, which triggers the listener again.
+const nutritionistTables = ['ingredients', 'nutritionistPlans', 'recipes', 'patients', 'assignedPlans', 'pdfSettings'];
 
 async function handleDatabaseChange(changes: DexieObservableChange[]) {
     // Only trigger sync if user is logged in
@@ -61,19 +63,21 @@ async function handleDatabaseChange(changes: DexieObservableChange[]) {
     else if (authStore.loginMode === 'nutritionist') {
         const isNutritionistChange = changes.some(c => nutritionistTables.includes(c.table));
         if (isNutritionistChange) {
-             // First, update the local timestamp immediately
-            db.syncState.put({ key: 'nutritionist', lastModified: Date.now() }).catch(e => console.error("Failed to update sync state", e));
+            // Apply debounce to nutritionist sync as well to group rapid changes (like adding ingredients)
+            // and preventing network congestion.
+            debounceSync(async () => {
+                console.log('Nutritionist DB changed. Triggering sync upload to Google Drive.');
+                
+                // First, update the local timestamp immediately
+                // We do this inside the debounce to ensure it happens just before upload
+                db.syncState.put({ key: 'nutritionist', lastModified: Date.now() }).catch(e => console.error("Failed to update sync state", e));
 
-            // Then, trigger the upload without debounce.
-            // An IIFE is used to handle the async operation without blocking.
-            (async () => {
                 if (authStore.accessToken) {
-                    console.log('Nutritionist DB changed. Triggering sync upload to Google Drive.');
                     const { uploadNutritionistData } = await import('../services/syncService');
                     // The status check in uploadNutritionistData prevents concurrent syncs.
                     uploadNutritionistData(authStore.accessToken);
                 }
-            })();
+            }, 2000); // 2 second delay for nutritionist actions
         }
     }
 }
