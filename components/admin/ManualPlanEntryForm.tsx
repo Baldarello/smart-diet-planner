@@ -34,8 +34,7 @@ const createInitialPlan = (): FormDayPlan[] =>
 
 const createInitialGenericPlan = (): FormGenericPlan => ({
     breakfast: [{ name: 'Opzione 1', title: '', procedure: '', items: [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }], time: '08:00' }],
-    snack1: [{ name: 'Opzione 1', title: '', procedure: '', items: [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }], time: '10:30' }],
-    snack2: [{ name: 'Opzione 1', title: '', procedure: '', items: [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }], time: '16:30' }],
+    snacks: [{ name: 'Opzione 1', title: '', procedure: '', items: [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }], time: '10:30' }],
     lunch: {
         carbs: [],
         protein: [],
@@ -658,10 +657,13 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                         : [] // Handle legacy if needed
                 });
 
+                const typedGenericPlan = pd.genericPlan as GenericPlanData;
+                const snacksFromOldPlan = [...(typedGenericPlan.snack1 || []), ...(typedGenericPlan.snack2 || [])];
+                const allSnacks = [...(typedGenericPlan.snacks || []), ...snacksFromOldPlan];
+
                 setGenericPlanData({
                     breakfast: pd.genericPlan.breakfast.map(mapToFormMeal),
-                    snack1: pd.genericPlan.snack1.map(mapToFormMeal),
-                    snack2: pd.genericPlan.snack2.map(mapToFormMeal),
+                    snacks: allSnacks.map(mapToFormMeal),
                     lunch: mapToFormModular(pd.genericPlan.lunch),
                     dinner: mapToFormModular(pd.genericPlan.dinner),
                 });
@@ -917,8 +919,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
 
                 const genericPlan: GenericPlanData = {
                     breakfast: genericPlanData.breakfast.map(toMeal),
-                    snack1: genericPlanData.snack1.map(toMeal),
-                    snack2: genericPlanData.snack2.map(toMeal),
+                    snacks: genericPlanData.snacks.map(toMeal),
                     lunch: {
                         carbs: genericPlanData.lunch.carbs.map(toMeal),
                         protein: genericPlanData.lunch.protein.map(toMeal),
@@ -949,7 +950,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                     });
                 };
                 
-                [...genericPlanData.breakfast, ...genericPlanData.snack1, ...genericPlanData.snack2].forEach(processMeal);
+                [...genericPlanData.breakfast, ...genericPlanData.snacks].forEach(processMeal);
                 [...genericPlanData.lunch.carbs, ...genericPlanData.lunch.protein, ...genericPlanData.lunch.vegetables, ...genericPlanData.lunch.fats].forEach(processMeal);
                 [...genericPlanData.dinner.carbs, ...genericPlanData.dinner.protein, ...genericPlanData.dinner.vegetables, ...genericPlanData.dinner.fats].forEach(processMeal);
 
@@ -1160,21 +1161,15 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                             onChange={(opts) => setGenericPlanData({...genericPlanData, breakfast: opts})} 
                         />
                         <GenericMealEditor 
-                            title="Spuntino Mattina - Opzioni" 
-                            options={genericPlanData.snack1} 
-                            onChange={(opts) => setGenericPlanData({...genericPlanData, snack1: opts})} 
+                            title="Spuntini - Opzioni" 
+                            options={genericPlanData.snacks} 
+                            onChange={(opts) => setGenericPlanData({...genericPlanData, snacks: opts})} 
                         />
                         
                         <ModularMealEditor
                             title="Pranzo - Composizione"
                             data={genericPlanData.lunch}
                             onChange={(data) => setGenericPlanData({...genericPlanData, lunch: data})}
-                        />
-
-                        <GenericMealEditor 
-                            title="Merenda - Opzioni" 
-                            options={genericPlanData.snack2} 
-                            onChange={(opts) => setGenericPlanData({...genericPlanData, snack2: opts})} 
                         />
 
                         <ModularMealEditor

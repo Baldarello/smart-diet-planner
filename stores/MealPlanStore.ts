@@ -1,4 +1,5 @@
 
+
 import {makeAutoObservable, runInAction, toJS, computed} from 'mobx';
 import Dexie from 'dexie';
 import {
@@ -584,13 +585,17 @@ export class MealPlanStore {
             });
         };
 
+        // Migration for snacks from old plan structure
+        const allSnacks = [...(this.genericPlanData.snacks || []), ...(this.genericPlanData.snack1 || []), ...(this.genericPlanData.snack2 || [])];
+
         processSection("COLAZIONE", "breakfast", this.genericPlanData.breakfast);
-        processSection("SPUNTINO MATTINA", "snack1", this.genericPlanData.snack1);
+        if (allSnacks.length > 0) {
+            processSection("SPUNTINI", "snacks", allSnacks);
+        }
         processSection("PRANZO - CARBOIDRATI", "lunch_carbs", this.genericPlanData.lunch.carbs);
         processSection("PRANZO - PROTEINE", "lunch_protein", this.genericPlanData.lunch.protein);
         processSection("PRANZO - VERDURE", "lunch_vegetables", this.genericPlanData.lunch.vegetables);
         processSection("PRANZO - GRASSI", "lunch_fats", this.genericPlanData.lunch.fats);
-        processSection("MERENDA", "snack2", this.genericPlanData.snack2);
         processSection("CENA - CARBOIDRATI", "dinner_carbs", this.genericPlanData.dinner.carbs);
         processSection("CENA - PROTEINE", "dinner_protein", this.genericPlanData.dinner.protein);
         processSection("CENA - VERDURE", "dinner_vegetables", this.genericPlanData.dinner.vegetables);
