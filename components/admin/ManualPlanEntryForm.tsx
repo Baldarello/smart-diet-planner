@@ -85,11 +85,11 @@ const MealNutritionSummaryDisplay: React.FC<{ summary: NutritionInfo }> = ({ sum
                 <div className="text-gray-500 dark:text-gray-400 font-medium">{t('nutritionCarbs')}</div>
                 <div className="font-bold text-sm text-orange-600 dark:text-orange-400">{Math.round(summary.carbs)}g</div>
             </div>
-            <div>
+             <div>
                 <div className="text-gray-500 dark:text-gray-400 font-medium">{t('nutritionProtein')}</div>
                 <div className="font-bold text-sm text-sky-600 dark:text-sky-400">{Math.round(summary.protein)}g</div>
             </div>
-            <div>
+             <div>
                 <div className="text-gray-500 dark:text-gray-400 font-medium">{t('nutritionFat')}</div>
                 <div className="font-bold text-sm text-amber-600 dark:text-amber-400">{Math.round(summary.fat)}g</div>
             </div>
@@ -397,6 +397,7 @@ const MealEditor: React.FC<{
     const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
     const [activeAutocompleteIndex, setActiveAutocompleteIndex] = useState<number | null>(null);
     const autocompleteRef = useRef<HTMLDivElement>(null);
+    const [showProcedure, setShowProcedure] = useState(!!meal.procedure);
 
     const updateSuggestions = (inputValue: string) => {
         if (inputValue.length >= 3) {
@@ -451,6 +452,19 @@ const MealEditor: React.FC<{
             procedure: selectedRecipe.procedure ?? meal.procedure,
             items: newItems.length > 0 ? newItems : [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }],
         });
+    };
+    
+    const handleProcedureChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        onChange({...meal, procedure: e.target.value});
+    };
+
+    const handleProcedureBlur = () => {
+        if (!meal.procedure || meal.procedure.trim() === '') {
+            if(meal.procedure && meal.procedure.trim() === '') {
+                 onChange({...meal, procedure: ''});
+            }
+            setShowProcedure(false);
+        }
     };
 
     const summary = useMemo(() => {
@@ -539,6 +553,22 @@ const MealEditor: React.FC<{
                     <button type="button" onClick={handleAddItem} className="text-xs text-violet-500 flex items-center gap-1 mt-1"><PlusCircleIcon /> Agg. Ingrediente</button>
                 )}
             </div>
+            
+            {showProcedure ? (
+                <textarea 
+                    placeholder={t('procedurePlaceholder')} 
+                    value={meal.procedure} 
+                    onChange={handleProcedureChange}
+                    onBlur={handleProcedureBlur}
+                    className="w-full mt-2 p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md h-24"
+                    autoFocus
+                />
+            ) : (
+                <button type="button" onClick={() => setShowProcedure(true)} className="text-xs text-violet-500 flex items-center gap-1 mt-2">
+                    <PlusCircleIcon /> {t('procedureLabel')}
+                </button>
+            )}
+
             <MealNutritionSummaryDisplay summary={summary} />
         </div>
     );
