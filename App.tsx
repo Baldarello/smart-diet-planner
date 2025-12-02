@@ -437,18 +437,13 @@ const App: React.FC = observer(() => {
                 if (authStore.loginMode === 'user') {
                     // This will sync and then call mealPlanStore.init() inside its finally block
                     await syncWithDrive(restoredToken);
+                } else if (authStore.loginMode === 'nutritionist') {
+                    // Sync on refresh for nutritionist to ensure data consistency
+                    await mealPlanStore.init(); // Ensure base stores are ready
+                    await syncNutritionistData(restoredToken); // This will sync and then reload nutritionist-specific stores
                 } else {
-                    // For nutritionist, sync is handled on login, just init store
-                    // And also load other nutritionist-specific stores
-                    await mealPlanStore.init(); // mealPlanStore also needs to be ready for the app to function
-                    await Promise.all([
-                        ingredientStore.loadIngredients(),
-                        nutritionistStore.loadPlans(),
-                        recipeStore.loadRecipes(),
-                        patientStore.loadPatients(),
-                        patientStore.loadAssignedPlans(),
-                    ]);
-                    pdfSettingsStore.loadSettings();
+                    // Fallback for an unknown login mode with a token
+                    await mealPlanStore.init();
                 }
             } else {
                 // No session, just init the meal plan store with local data (or none)
