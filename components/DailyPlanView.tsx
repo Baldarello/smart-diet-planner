@@ -19,6 +19,15 @@ import CheatMealModal from './CheatMealModal';
 import MealActionsPopup from './MealActionsPopup';
 import ConfirmationModal from './ConfirmationModal';
 
+interface GroupedMealSection {
+    title: string;
+    subSections: {
+        title?: string;
+        meals: (Meal & { originalIndex: number })[];
+    }[];
+    isMainMeal?: boolean; // True for Pranzo/Cena
+}
+
 const DailyPlanView: React.FC = observer(() => {
     const { dailyPlan, toggleMealDone, dailyNutritionSummary, currentDate, setCurrentDate, startDate, endDate, toggleAllItemsInMeal, undoCheatMeal, isGenericPlan } = mealPlanStore;
     const [cheatingMealIndex, setCheatingMealIndex] = useState<number | null>(null);
@@ -48,37 +57,67 @@ const DailyPlanView: React.FC = observer(() => {
         ? -1 // Not used for generic plans
         : mealPlanStore.masterMealPlan.findIndex(d => d.day.toUpperCase() === dailyPlan.day.toUpperCase());
 
-    const getSortKey = (meal: { done: boolean; cheat?: boolean; time?: string; section?: string }, index: number) => {
-        // Keep original order primary, but group done items at bottom if needed.
-        // For Generic Plans, preserving 'section' grouping is vital.
-        // Let's just use original index for now to maintain the logical flow (Breakfast -> Lunch -> Dinner).
-        return index;
+    const sortedMeals = [...dailyPlan.meals].map((meal, index) => ({ ...meal, originalIndex: index }));
+
+    // --- Logic for Grouping Meals by Section ---
+    const sections: GroupedMealSection[] = [];
+    
+    // Helper to determine if a section name belongs to Lunch or Dinner in Generic Plans
+    const getMainMealType = (sectionName: string): 'PRANZO' | 'CENA' | null => {
+        if (sectionName.toUpperCase().startsWith('PRANZO')) return 'PRANZO';
+        if (sectionName.toUpperCase().startsWith('CENA')) return 'CENA';
+        return null;
     };
 
-    const sortedMeals = [...dailyPlan.meals].map((meal, index) => ({ ...meal, originalIndex: index }));
-    // .sort((a, b) => getSortKey(a, a.originalIndex) - getSortKey(b, b.originalIndex)); 
-    // Commented out sort to respect generated order which is already chronological/logical.
-
-    // Group meals by Section if available
-    const groupedMeals: { section: string, meals: typeof sortedMeals }[] = [];
-    let currentSection = '';
-    let currentGroup: typeof sortedMeals = [];
+    let currentSection: GroupedMealSection | null = null;
 
     sortedMeals.forEach(meal => {
-        const section = meal.section || 'General';
-        if (section !== currentSection) {
-            if (currentGroup.length > 0) {
-                groupedMeals.push({ section: currentSection, meals: currentGroup });
+        const fullSectionName = meal.section || 'General';
+        const mainType = getMainMealType(fullSectionName);
+        
+        // If it's a main meal (Lunch/Dinner), we want to group everything together
+        if (mainType) {
+            // Check if we are already in this main section
+            if (!currentSection || currentSection.title !== mainType) {
+                // New Main Section
+                if (currentSection) sections.push(currentSection);
+                currentSection = {
+                    title: mainType,
+                    isMainMeal: true,
+                    subSections: []
+                };
             }
-            currentSection = section;
-            currentGroup = [];
+            
+            // Extract subsection title (e.g., "CARBOIDRATI" from "PRANZO - CARBOIDRATI")
+            const subTitle = fullSectionName.includes('-') ? fullSectionName.split('-')[1].trim() : fullSectionName;
+            
+            // Find or create subsection
+            let subSection = currentSection.subSections.find(s => s.title === subTitle);
+            if (!subSection) {
+                subSection = { title: subTitle, meals: [] };
+                currentSection.subSections.push(subSection);
+            }
+            subSection.meals.push(meal);
+
+        } else {
+            // Standard section (Breakfast, Snacks, etc.)
+            // For these, we might want to group by the full name, or treat individually.
+            // Let's treat distinct section names as distinct blocks.
+            
+            if (!currentSection || currentSection.title !== fullSectionName) {
+                if (currentSection) sections.push(currentSection);
+                currentSection = {
+                    title: fullSectionName,
+                    isMainMeal: false,
+                    subSections: [{ meals: [] }]
+                };
+            }
+            currentSection.subSections[0].meals.push(meal);
         }
-        currentGroup.push(meal);
     });
-    if (currentGroup.length > 0) {
-        groupedMeals.push({ section: currentSection, meals: currentGroup });
-    }
-      
+    if (currentSection) sections.push(currentSection);
+
+
     const changeDate = (offset: number) => {
         const newDate = new Date(currentDate);
         newDate.setDate(newDate.getDate() + offset);
@@ -92,7 +131,7 @@ const DailyPlanView: React.FC = observer(() => {
     const displayDate = `${day}/${month}/${year}`;
     const formattedDayName = dailyPlan.day.charAt(0) + dailyPlan.day.slice(1).toLowerCase();
 
-    const renderMealCard = (meal: typeof sortedMeals[0]) => {
+    const renderMealCard = (meal: typeof sortedMeals[0], isCompact: boolean = false) => {
         const allItemsUsed = meal.items.length > 0 && meal.items.every(item => item.used);
         const someItemsUsed = meal.items.some(item => item.used) && !allItemsUsed;
 
@@ -100,10 +139,12 @@ const DailyPlanView: React.FC = observer(() => {
             ? 'opacity-60 bg-slate-50 dark:bg-gray-700/50'
             : meal.cheat
             ? 'bg-orange-50 dark:bg-orange-900/30'
-            : 'bg-white dark:bg-gray-700 shadow-sm border border-slate-100 dark:border-gray-600'; // Elevated for active meals
+            : isCompact 
+                ? 'bg-white/50 dark:bg-gray-700/30 border-b border-gray-100 dark:border-gray-600 last:border-0' 
+                : 'bg-white dark:bg-gray-700 shadow-sm border border-slate-100 dark:border-gray-600 rounded-xl mb-3';
 
         return (
-            <div key={meal.originalIndex} className={`p-4 rounded-xl transition-all duration-500 ease-in-out ${containerClasses}`}>
+            <div key={meal.originalIndex} className={`p-4 transition-all duration-300 ease-in-out ${containerClasses}`}>
                 <div className="flex justify-between items-start gap-2">
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-x-2">
@@ -150,7 +191,7 @@ const DailyPlanView: React.FC = observer(() => {
                             </button>
                         )}
                         
-                        {/* Mobile-only menu - hidden for Generic Plan simplification or handled differently */}
+                        {/* Mobile-only menu */}
                         {!meal.done && !isGenericPlan && (
                             <div className="relative sm:hidden">
                                 <button onClick={(e) => { e.stopPropagation(); setActionsMenuMealIndex(meal.originalIndex); }} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
@@ -199,16 +240,44 @@ const DailyPlanView: React.FC = observer(() => {
 
     const MealsContent = (
         <div className="space-y-6 mt-6">
-            {groupedMeals.map((group, groupIdx) => (
-                <div key={groupIdx} className="space-y-3">
-                    {group.section !== 'General' && (
-                        <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 pl-2 border-l-4 border-violet-500">{group.section}</h3>
-                    )}
-                    <div className="space-y-3">
-                        {group.meals.map(renderMealCard)}
-                    </div>
-                </div>
-            ))}
+            {sections.map((section, idx) => {
+                if (section.isMainMeal) {
+                    // Grouped Logic for Lunch/Dinner
+                    return (
+                        <div key={idx} className="bg-white dark:bg-gray-700/20 border border-violet-100 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="bg-violet-50 dark:bg-gray-700/50 p-3 border-b border-violet-100 dark:border-gray-600">
+                                <h3 className="text-lg font-bold text-violet-700 dark:text-violet-300 uppercase tracking-wide text-center">{section.title}</h3>
+                            </div>
+                            <div>
+                                {section.subSections.map((sub, subIdx) => (
+                                    <div key={subIdx} className="border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                        {sub.title && (
+                                            <div className="bg-slate-50/50 dark:bg-gray-800/30 px-4 py-1.5">
+                                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{sub.title}</span>
+                                            </div>
+                                        )}
+                                        <div>
+                                            {sub.meals.map(meal => renderMealCard(meal, true))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                } else {
+                    // Standard logic for Breakfast/Snacks (rendered mainly as separate cards or simple groups)
+                    return (
+                        <div key={idx} className="space-y-3">
+                            {section.title !== 'General' && (
+                                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 pl-2 border-l-4 border-violet-500">{section.title}</h3>
+                            )}
+                            <div className="space-y-3">
+                                {section.subSections.flatMap(sub => sub.meals).map(meal => renderMealCard(meal))}
+                            </div>
+                        </div>
+                    );
+                }
+            })}
         </div>
     );
 
