@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { DayPlan, Meal } from '../types';
@@ -9,7 +8,7 @@ import MealTimeEditor from './MealTimeEditor';
 import NutritionInfoDisplay from './NutritionInfoDisplay';
 import DailyNutritionSummary from './DailyNutritionSummary';
 import MealModificationControl from './MealModificationControl';
-import { MoreVertIcon, ClockIcon, CheckIcon, CloseIcon } from './Icons';
+import { MoreVertIcon, ClockIcon, CheckIcon, CloseIcon, ChevronRightIcon } from './Icons';
 import MealActionsPopup from './MealActionsPopup';
 import ConfirmationModal from './ConfirmationModal';
 import { t } from '../i18n';
@@ -36,54 +35,6 @@ const GenericPlanDayConfig: React.FC<{ dayName: string; onClose: () => void }> =
 
     const preferences = genericPlanPreferences[dayName] || {};
 
-    const toggleSelection = (sectionKey: string, index: number) => {
-        const currentSelections = preferences[sectionKey] || [];
-        // If empty/undefined, it means "ALL". So if we toggle one, we are moving to "Custom" mode.
-        // But wait, if it's currently "ALL", and I click one, do I select ONLY that one, or deselect it?
-        // Let's assume standard checkbox logic:
-        // If "ALL" (undefined), all are visually checked. Clicking one unchecks it -> so we need to store the *included* ones.
-        
-        let newSelections: number[];
-        
-        if (currentSelections.length === 0) {
-            // Currently selecting ALL. 
-            // If we are clicking one, we probably want to *keep* the others? 
-            // Or maybe the user wants to pick just *this* one?
-            // "Select Options to Consume": Usually implies picking what you want.
-            // Let's initialize with just this one selected.
-            newSelections = [index];
-        } else {
-            if (currentSelections.includes(index)) {
-                newSelections = currentSelections.filter(i => i !== index);
-            } else {
-                newSelections = [...currentSelections, index];
-            }
-        }
-        
-        // If we deselected the last one, should we revert to "All" or leave empty (nothing)? 
-        // Let's leave empty (nothing selected).
-        // To revert to "All", maybe a specific button?
-        
-        setGenericPlanPreference(dayName, sectionKey, newSelections);
-    };
-    
-    const selectAll = (sectionKey: string, totalItems: number) => {
-        // We can represent "All" by either an array of all indices OR undefined/empty.
-        // Our store logic uses "if selectedIndices ... include". So to include all, we can remove the key or fill the array.
-        // Let's remove the key from preferences for cleanliness (default state).
-        // However, `setGenericPlanPreference` expects an array. Let's send an empty array but handle it?
-        // No, let's explicitely select all indices for clarity in UI, or delete the key.
-        // Store implementation: `this.genericPlanPreferences[day][sectionKey] = selectedIndices;`
-        // Update store logic: if array is empty or null, it might mean "Nothing selected".
-        // Let's look at `generateDailyLogFromGeneric`: 
-        // `if (selectedIndices && !selectedIndices.includes(index)) return;`
-        // This implies if `selectedIndices` is undefined (key missing), checks are skipped -> SHOW ALL.
-        // So to select all, we pass `undefined` (or handle it in store).
-        // Let's pass all indices.
-        const allIndices = Array.from({length: totalItems}, (_, i) => i);
-        setGenericPlanPreference(dayName, sectionKey, allIndices);
-    };
-    
     const clearSection = (sectionKey: string) => {
         setGenericPlanPreference(dayName, sectionKey, []);
     };
@@ -91,76 +42,101 @@ const GenericPlanDayConfig: React.FC<{ dayName: string; onClose: () => void }> =
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4" onClick={onClose}>
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                <header className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">Opzioni per {dayName.toLowerCase()}</h2>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                <header className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 rounded-t-2xl">
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 capitalize">Opzioni per {dayName.toLowerCase()}</h2>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Espandi le sezioni per configurare il piano.</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                         <CloseIcon />
                     </button>
                 </header>
-                <div className="overflow-y-auto p-6 space-y-6">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Seleziona le opzioni che desideri visualizzare nel piano giornaliero per questo giorno. Se nessuna opzione è selezionata per una categoria, non verrà mostrata alcuna opzione.</p>
+                <div className="overflow-y-auto p-4 space-y-3">
                     {sections.map((section, idx) => {
                         if (section.items.length === 0) return null;
                         const selectedIndices = preferences[section.key];
-                        // If undefined, it acts as "Show All" in the generator logic? 
-                        // Wait, looking at generator: `const selectedIndices = preferences[sectionKey];`
-                        // `if (selectedIndices && !selectedIndices.includes(index)) return;`
-                        // If `selectedIndices` is undefined (key missing), checks are skipped -> SHOW ALL.
-                        // If `selectedIndices` is [], it exists, checks happen -> includes fails -> returns -> SHOW NONE.
-                        
+                        // If undefined, it means "Show All"
                         const isAllSelected = selectedIndices === undefined;
+                        const selectionCount = isAllSelected ? section.items.length : selectedIndices.length;
                         
                         return (
-                            <div key={idx} className="bg-slate-50 dark:bg-gray-700/30 rounded-lg p-4">
-                                <div className="flex justify-between items-center mb-3">
-                                    <h3 className="font-bold text-gray-700 dark:text-gray-300 text-sm">{section.title}</h3>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setGenericPlanPreference(dayName, section.key, undefined as any)} className="text-xs text-violet-600 hover:underline">Tutti</button>
-                                        <button onClick={() => clearSection(section.key)} className="text-xs text-red-500 hover:underline">Nessuno</button>
+                            <details key={idx} className="group bg-slate-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
+                                <summary className="flex justify-between items-center p-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-gray-600/50 transition-colors list-none select-none">
+                                    <div className="flex items-center gap-3">
+                                        <span className="transform transition-transform duration-200 group-open:rotate-90 text-violet-500 dark:text-violet-400">
+                                            <ChevronRightIcon />
+                                        </span>
+                                        <div>
+                                            <h3 className="font-bold text-gray-700 dark:text-gray-300 text-sm">{section.title}</h3>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                                {selectionCount === 0 ? "Nessuna opzione selezionata" : 
+                                                 isAllSelected ? "Tutte le opzioni attive" : 
+                                                 `${selectionCount} opzioni selezionate`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2" onClick={(e) => e.preventDefault()}>
+                                        <button 
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); setGenericPlanPreference(dayName, section.key, undefined as any); }} 
+                                            className={`text-xs px-2 py-1 rounded border transition-colors ${isAllSelected ? 'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-700' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500'}`}
+                                        >
+                                            Tutti
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); clearSection(section.key); }} 
+                                            className="text-xs px-2 py-1 rounded border border-gray-300 bg-white text-red-500 hover:bg-red-50 hover:border-red-200 dark:bg-gray-700 dark:border-gray-500 dark:hover:bg-red-900/20 transition-colors"
+                                        >
+                                            Nessuno
+                                        </button>
+                                    </div>
+                                </summary>
+                                <div className="p-4 pt-0 border-t border-gray-100 dark:border-gray-600/50 mt-2">
+                                    <div className="space-y-2 mt-2">
+                                        {section.items.map((item, itemIdx) => {
+                                            const isSelected = isAllSelected || selectedIndices?.includes(itemIdx);
+                                            return (
+                                                <div 
+                                                    key={itemIdx} 
+                                                    className={`flex items-start p-3 rounded-md border cursor-pointer transition-all ${isSelected ? 'bg-white dark:bg-gray-600 border-violet-300 dark:border-violet-500 shadow-sm' : 'bg-transparent border-gray-200 dark:border-gray-600 opacity-60 grayscale-[0.5]'}`}
+                                                    onClick={() => {
+                                                        let newSel;
+                                                        if (isAllSelected) {
+                                                            const allOthers = section.items.map((_, i) => i).filter(i => i !== itemIdx);
+                                                            newSel = allOthers;
+                                                        } else {
+                                                            if (selectedIndices.includes(itemIdx)) {
+                                                                newSel = selectedIndices.filter(i => i !== itemIdx);
+                                                            } else {
+                                                                newSel = [...selectedIndices, itemIdx];
+                                                            }
+                                                        }
+                                                        setGenericPlanPreference(dayName, section.key, newSel);
+                                                    }}
+                                                >
+                                                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center mr-3 mt-0.5 flex-shrink-0 transition-colors ${isSelected ? 'bg-violet-600 border-violet-600' : 'border-gray-400 bg-white dark:bg-gray-700'}`}>
+                                                        {isSelected && <CheckIcon className="w-3 h-3 text-white" />}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-medium text-gray-800 dark:text-gray-200 text-sm truncate">{item.name || `Opzione ${itemIdx + 1}`}</p>
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal leading-relaxed mt-1">
+                                                            {item.items.map(i => i.ingredientName).join(', ')}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    {section.items.map((item, itemIdx) => {
-                                        const isSelected = isAllSelected || selectedIndices?.includes(itemIdx);
-                                        return (
-                                            <div 
-                                                key={itemIdx} 
-                                                className={`flex items-center p-3 rounded-md border cursor-pointer transition-colors ${isSelected ? 'bg-white dark:bg-gray-600 border-violet-300 dark:border-violet-500' : 'bg-transparent border-gray-200 dark:border-gray-600 opacity-60'}`}
-                                                onClick={() => {
-                                                    // If we are in "Show All" state (undefined), and click one, we assume the user wants to toggle THAT one off?
-                                                    // No, "Checkbox logic" implies clicking an unchecked box selects it.
-                                                    // But here everything starts "Selected".
-                                                    // If "All Selected", clicking one should probably Deselect it.
-                                                    let newSel;
-                                                    if (isAllSelected) {
-                                                        // All are selected. Deselecting this one.
-                                                        const allOthers = section.items.map((_, i) => i).filter(i => i !== itemIdx);
-                                                        newSel = allOthers;
-                                                    } else {
-                                                        // Explicit list exists. Toggle.
-                                                        if (selectedIndices.includes(itemIdx)) {
-                                                            newSel = selectedIndices.filter(i => i !== itemIdx);
-                                                        } else {
-                                                            newSel = [...selectedIndices, itemIdx];
-                                                        }
-                                                    }
-                                                    setGenericPlanPreference(dayName, section.key, newSel);
-                                                }}
-                                            >
-                                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center mr-3 ${isSelected ? 'bg-violet-600 border-violet-600' : 'border-gray-400'}`}>
-                                                    {isSelected && <CheckIcon className="w-3 h-3 text-white" />}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <p className="font-medium text-gray-800 dark:text-gray-200 text-sm">{item.name || `Opzione ${itemIdx + 1}`}</p>
-                                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{item.items.map(i => i.ingredientName).join(', ')}</p>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                            </details>
                         );
                     })}
+                </div>
+                <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl text-right">
+                    <button onClick={onClose} className="bg-violet-600 hover:bg-violet-700 text-white font-semibold px-6 py-2 rounded-full transition-colors shadow-sm">
+                        Chiudi
+                    </button>
                 </div>
             </div>
         </div>
@@ -207,10 +183,10 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                             <button 
                                 key={day} 
                                 onClick={() => setConfiguringDay(day)}
-                                className="p-4 bg-slate-50 dark:bg-gray-700/50 rounded-xl border border-slate-200 dark:border-gray-600 hover:border-violet-400 dark:hover:border-violet-500 transition-all flex justify-between items-center group"
+                                className="p-4 bg-slate-50 dark:bg-gray-700/50 rounded-xl border border-slate-200 dark:border-gray-600 hover:border-violet-400 dark:hover:border-violet-500 transition-all flex justify-between items-center group shadow-sm hover:shadow-md"
                             >
                                 <span className="font-bold text-gray-700 dark:text-gray-300 capitalize">{day.toLowerCase()}</span>
-                                <span className="p-2 bg-white dark:bg-gray-600 rounded-full text-gray-400 group-hover:text-violet-600 transition-colors">
+                                <span className="p-2 bg-white dark:bg-gray-600 rounded-full text-gray-400 group-hover:text-violet-600 transition-colors shadow-sm">
                                     <MoreVertIcon />
                                 </span>
                             </button>
