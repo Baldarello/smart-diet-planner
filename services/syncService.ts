@@ -1,3 +1,5 @@
+
+
 import { runInAction } from 'mobx';
 import { db } from './db';
 import { findLatestBackupFile, readBackupFile, writeBackupFile, getOrCreateFolderId, uploadOrUpdateFileByName, listFiles, readFile, readFileByName, deleteFile, deleteFolder } from './driveService';
@@ -235,33 +237,59 @@ export async function syncWithDrive(accessToken: string) {
         const remoteTimestamp = remoteData?.appState?.lastModified || 0;
         const localTimestamp = localData?.value?.lastModified || 0;
         
-        console.log(`Sync check: Remote timestamp=${remoteTimestamp}, Local timestamp=${localTimestamp}`);
+        const remoteVersion = remoteData?.appState?.planVersion || 0;
+        const localVersion = localData?.value?.planVersion || 0;
+        
+        const remoteEndDate = remoteData?.appState?.endDate || '';
+        const localEndDate = localData?.value?.endDate || '';
 
-        if (remoteData && (!localData || remoteTimestamp > localTimestamp)) {
-            console.log("Remote data is newer or local data is missing. Overwriting local database.");
+        console.log(`Sync check: Remote v${remoteVersion} (${remoteTimestamp}), Local v${localVersion} (${localTimestamp})`);
+
+        let shouldDownload = false;
+        let shouldUpload = false;
+
+        // Decision logic with version priority
+        if (remoteVersion > localVersion) {
+            shouldDownload = true;
+        } else if (localVersion > remoteVersion) {
+            shouldUpload = true;
+        } else {
+            // Version match or both 0: Fallback to End Date check (usually signifies a later plan)
+            if (remoteEndDate > localEndDate) {
+                shouldDownload = true;
+            } else if (localEndDate > remoteEndDate) {
+                shouldUpload = true;
+            } else {
+                // End dates match: Fallback to Timestamp
+                if (remoteTimestamp > localTimestamp) {
+                    shouldDownload = true;
+                } else if (localTimestamp > remoteTimestamp) {
+                    shouldUpload = true;
+                } else if (!remoteData && localData) {
+                    // No remote data, upload local
+                    shouldUpload = true;
+                }
+            }
+        }
+
+        if (shouldDownload && remoteData) {
+            console.log("Remote data priority established. Overwriting local database.");
             await (db as Dexie).transaction('rw', [db.appState, db.progressHistory, db.dailyLogs], async () => {
                 await db.appState.clear();
                 await db.progressHistory.clear();
                 await db.dailyLogs.clear();
 
-                await db.appState.put({ key: 'dietPlanData', value: remoteData.appState });
-                if (remoteData.progressHistory?.length) {
-                    await db.progressHistory.bulkPut(remoteData.progressHistory);
+                await db.appState.put({ key: 'dietPlanData', value: remoteData!.appState });
+                if (remoteData!.progressHistory?.length) {
+                    await db.progressHistory.bulkPut(remoteData!.progressHistory);
                 }
-                 if (remoteData.dailyLogs?.length) {
-                    await db.dailyLogs.bulkPut(remoteData.dailyLogs);
+                 if (remoteData!.dailyLogs?.length) {
+                    await db.dailyLogs.bulkPut(remoteData!.dailyLogs);
                 }
             });
             console.log("Local database overwritten successfully.");
-        } else if (localData && (!remoteData || localTimestamp > remoteTimestamp)) {
-            // This condition covers two cases:
-            // 1. No remote backup exists, so we do an initial upload. (User's request)
-            // 2. Local data is newer than the remote backup.
-            if (!remoteData) {
-                console.log("Local data found but no remote backup exists. Creating initial backup on Google Drive.");
-            } else {
-                console.log("Local data is newer than remote backup. Uploading changes to Google Drive.");
-            }
+        } else if (shouldUpload && localData) {
+            console.log("Local data priority established. Uploading changes to Google Drive.");
             
             const progressHistory = await db.progressHistory.toArray();
             const dailyLogs = await db.dailyLogs.toArray();

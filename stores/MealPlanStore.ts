@@ -142,6 +142,9 @@ export class MealPlanStore {
     lastActiveDate: string = getTodayDateString();
     lastModified: number = 0;
     
+    // Sync Versioning
+    planVersion: number = 0;
+    
     onlineMode = true;
     recalculatingActualMeal: { mealIndex: number } | null = null;
 
@@ -287,6 +290,7 @@ export class MealPlanStore {
                     this.showBodyMetricsInApp = data.showBodyMetricsInApp ?? true;
                     this.bodyFatUnit = data.bodyFatUnit || 'kg';
                     this.bodyWaterUnit = data.bodyWaterUnit || 'liters';
+                    this.planVersion = data.planVersion || 0;
 
                     if (data.sentNotifications) {
                         this.sentNotifications = new Map(data.sentNotifications);
@@ -426,6 +430,7 @@ export class MealPlanStore {
                 isGenericPlan: this.isGenericPlan,
                 genericPlanData: toJS(this.genericPlanData || undefined),
                 genericPlanPreferences: toJS(this.genericPlanPreferences),
+                planVersion: this.planVersion,
             };
             await db.appState.put({key: 'dietPlanData', value: dataToSave as StoredState});
         } catch (error) {
@@ -527,6 +532,21 @@ export class MealPlanStore {
 
     commitNewPlan = async (startDate: string, endDate: string) => {
         runInAction(() => {
+            // Priority logic: Handle date overlap.
+            // If the new plan starts before the current plan ends, adjust the current plan's end date.
+            const newStart = new Date(startDate);
+            const currentEnd = this.endDate ? new Date(this.endDate) : null;
+            const currentStart = this.startDate ? new Date(this.startDate) : null;
+
+            if (this.currentPlanId && currentEnd && currentStart) {
+                // Check if new start is within current range (but not before start)
+                if (newStart <= currentEnd && newStart > currentStart) {
+                    const adjustedEndDate = new Date(newStart);
+                    adjustedEndDate.setDate(adjustedEndDate.getDate() - 1);
+                    this.endDate = adjustedEndDate.toISOString().split('T')[0];
+                }
+            }
+
             if (this.masterMealPlan.length > 0 || (this.isGenericPlan && this.genericPlanData)) {
                 const currentPlanToArchive: ArchivedPlan = {
                     id: this.currentPlanId || Date.now().toString(),
@@ -556,6 +576,9 @@ export class MealPlanStore {
             this.currentPlanId = Date.now().toString();
             this.currentDate = getTodayDateString();
             this.planToSet = null;
+            
+            // Increment plan version on every commit to prioritize local changes during sync
+            this.planVersion = (this.planVersion || 0) + 1;
         });
 
         await db.dailyLogs.clear();

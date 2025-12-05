@@ -157,6 +157,8 @@ export interface StoredState {
     isGenericPlan?: boolean;
     genericPlanData?: GenericPlanData;
     genericPlanPreferences?: GenericPlanPreferences;
+    // Versioning for sync conflict resolution
+    planVersion?: number;
 }
 
 export interface SyncedData {
