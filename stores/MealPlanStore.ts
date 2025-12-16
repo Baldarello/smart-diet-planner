@@ -1,5 +1,4 @@
 
-
 import {makeAutoObservable, runInAction, toJS, computed} from 'mobx';
 import Dexie from 'dexie';
 import {
@@ -29,6 +28,7 @@ import {db} from '../services/db';
 import {calculateCaloriesBurned} from '../utils/calories';
 import {authStore} from './AuthStore';
 import {readSharedFile} from '../services/driveService';
+import { trackEvent } from '../services/analyticsService';
 
 export enum AppStatus {
     INITIAL,
@@ -167,6 +167,7 @@ export class MealPlanStore {
 
     setActiveTab(tab: NavigableTab) {
         this.activeTab = tab;
+        trackEvent('tab_changed', { tab });
     }
 
     navigateTo(tab: NavigableTab, replace: boolean = false) {
@@ -353,12 +354,14 @@ export class MealPlanStore {
             });
             this.currentPlanId = 'simulated_plan_123';
         });
+        trackEvent('simulation_started');
     }
 
     public exitSimulation = async () => {
         await db.appState.clear();
         await db.dailyLogs.clear();
         await db.progressHistory.clear();
+        trackEvent('simulation_ended');
         window.location.reload();
     }
 
@@ -398,6 +401,7 @@ export class MealPlanStore {
                 this.updateCurrentDayProgressObject(updates);
             }
         }
+        trackEvent('body_metrics_updated', { metric, value });
     }
 
     saveToDB = async () => {
@@ -471,6 +475,11 @@ export class MealPlanStore {
                 }
             });
 
+            trackEvent('plan_imported', { 
+                type: isGeneric ? 'generic' : 'weekly',
+                has_start_date: !!data.startDate 
+            });
+
             if (data.startDate && data.endDate) {
                 await this.commitNewPlan(data.startDate, data.endDate);
                 this.navigateTo('list', true);
@@ -495,6 +504,7 @@ export class MealPlanStore {
         try {
             const data = await readSharedFile(url);
             await this.processImportedData(data);
+            trackEvent('plan_imported_from_url');
         } catch (e: any) {
             console.error("Failed to import plan from URL", e);
             runInAction(() => {
@@ -511,6 +521,7 @@ export class MealPlanStore {
                 const text = e.target?.result as string;
                 const data = JSON.parse(text);
                 await this.processImportedData(data);
+                trackEvent('plan_imported_from_file');
             } catch (error: any) {
                 console.error("Failed to parse JSON file", error);
                 runInAction(() => {
@@ -584,6 +595,7 @@ export class MealPlanStore {
         await db.dailyLogs.clear();
         this.saveToDB();
         this.loadPlanForDate(this.currentDate);
+        trackEvent('plan_dates_set', { start: startDate, end: endDate });
     }
 
     private generateDailyLogFromGeneric(dateStr: string, dayName: string): DailyLog {
@@ -747,6 +759,7 @@ export class MealPlanStore {
             
             this.updateDailyLog(this.currentDayPlan);
             this.updateAchievements();
+            trackEvent('meal_toggled', { status: meal.done ? 'done' : 'todo', mealName: meal.name });
         }
     }
 
@@ -829,6 +842,7 @@ export class MealPlanStore {
             meal.done = true;
             this.updateDailyLog(this.currentDayPlan);
             this.updateAchievements();
+            trackEvent('cheat_meal_logged', { description });
         }
     }
 
@@ -870,6 +884,7 @@ export class MealPlanStore {
         if (this.currentDayProgress) {
             const current = this.currentDayProgress.waterIntakeMl || 0;
             this.setWaterIntake(current + amount);
+            trackEvent('water_logged', { amount_ml: amount, total: current + amount });
         }
     }
 
@@ -906,6 +921,7 @@ export class MealPlanStore {
         if (this.currentDayProgress) {
             const current = this.currentDayProgress.stepsTaken || 0;
             this.setSteps(current + amount);
+            trackEvent('steps_logged', { amount, total: current + amount });
         }
     }
 
@@ -965,6 +981,7 @@ export class MealPlanStore {
         if (cat) {
             cat.items.push(item);
             this.saveToDB();
+            trackEvent('shopping_item_added', { item: item.item, category });
         }
     }
 
@@ -1027,6 +1044,7 @@ export class MealPlanStore {
             });
         }
         this.saveToDB();
+        trackEvent('pantry_item_added', { item, category });
     }
 
     updatePantryItem(item: string, updates: Partial<PantryItem>) {

@@ -1,6 +1,8 @@
+
 import { makeAutoObservable, runInAction, toJS } from 'mobx';
 import { UserProfile } from '../types';
 import { db } from '../services/db';
+import { identifyUser, resetUser, trackEvent } from '../services/analyticsService';
 
 export class AuthStore {
     isLoggedIn = false;
@@ -35,6 +37,9 @@ export class AuthStore {
                     this.isLoggedIn = true;
                     this.status = 'LOGGED_IN';
                 });
+                
+                // Re-identify user on app load if logged in
+                identifyUser(userProfile.id, { email: userProfile.email, name: userProfile.name, loginMode });
 
                 return accessToken;
             } else {
@@ -63,6 +68,10 @@ export class AuthStore {
             this.tokenExpirationTime = tokenExpirationTime;
         });
 
+        // Analytics Identify
+        identifyUser(profile.id, { email: profile.email, name: profile.name, loginMode: this.loginMode });
+        trackEvent('user_logged_in', { mode: this.loginMode });
+
         try {
             await db.authData.put({
                 key: 'userAuth',
@@ -78,6 +87,12 @@ export class AuthStore {
     }
 
     setLoggedOut = async () => {
+        // Analytics Reset
+        if (this.isLoggedIn) {
+            trackEvent('user_logged_out');
+            resetUser();
+        }
+
         runInAction(() => {
             this.userProfile = null;
             this.accessToken = null;
