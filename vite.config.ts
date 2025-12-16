@@ -18,6 +18,8 @@ export default defineConfig(({ mode }) => {
             'process.env.GOOGLE_CLIENT_ID': JSON.stringify(env.GOOGLE_CLIENT_ID || env.VITE_GOOGLE_CLIENT_ID),
             'process.env.VAPID_PUBLIC_KEY': JSON.stringify(env.VAPID_PUBLIC_KEY || env.VITE_VAPID_PUBLIC_KEY),
             'process.env.BUILD_TYPE': JSON.stringify(env.BUILD_TYPE || 'web'),
+            'process.env.POSTHOG_KEY': JSON.stringify(env.POSTHOG_KEY || env.VITE_POSTHOG_KEY),
+            'process.env.POSTHOG_HOST': JSON.stringify(env.POSTHOG_HOST || env.VITE_POSTHOG_HOST || 'https://app.posthog.com'),
         }
     };
 });
