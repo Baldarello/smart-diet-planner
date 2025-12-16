@@ -15,7 +15,7 @@
     "dexie-observable": "^4.0.1-beta.13",
     "mobx": "^6.13.7",
     "mobx-react-lite": "^4.1.0",
-    "posthog-js": "^1.160.0",
+    "posthog-js": "^1.306.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
