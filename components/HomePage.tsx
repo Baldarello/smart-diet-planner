@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
@@ -29,16 +30,25 @@ const HomePage: React.FC = observer(() => {
                 <h1 className="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600 mb-4 break-words pb-5">
                     {t('homeTitle')}
                 </h1>
-                <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto mb-8 break-words">
+                <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto mb-10 break-words">
                     {t('homeSubtitle')}
                 </p>
-                <button
-                    onClick={() => mealPlanStore.startSimulation()}
-                    className="inline-flex items-center gap-3 px-8 py-4 rounded-full bg-violet-600 text-white font-semibold text-lg hover:bg-violet-700 transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                >
-                    <SparklesIcon />
-                    <span>{t('simulateApp')}</span>
-                </button>
+                <div className="flex flex-col sm:flex-row justify-center gap-4">
+                    <button
+                        onClick={() => mealPlanStore.startSimulationClassic()}
+                        className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-violet-600 text-white font-semibold text-lg hover:bg-violet-700 transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                    >
+                        <SparklesIcon />
+                        <span>{t('simulateAppClassic')}</span>
+                    </button>
+                    <button
+                        onClick={() => mealPlanStore.startSimulationGeneric()}
+                        className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-purple-600 text-white font-semibold text-lg hover:bg-purple-700 transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                    >
+                        <SparklesIcon />
+                        <span>{t('simulateAppGeneric')}</span>
+                    </button>
+                </div>
             </section>
             
             {/* Features Section */}
@@ -69,13 +79,20 @@ const HomePage: React.FC = observer(() => {
             {/* Final CTA */}
             <section className="py-16">
                  <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">{t('homeFinalCta')}</h2>
-                 <button
-                    onClick={() => mealPlanStore.startSimulation()}
-                    className="inline-flex items-center gap-3 px-8 py-4 rounded-full bg-violet-600 text-white font-semibold text-lg hover:bg-violet-700 transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                >
-                    <SparklesIcon />
-                    <span>{t('simulateApp')}</span>
-                </button>
+                 <div className="flex flex-col sm:flex-row justify-center gap-4">
+                    <button
+                        onClick={() => mealPlanStore.startSimulationClassic()}
+                        className="px-8 py-4 rounded-full bg-violet-600 text-white font-semibold text-lg hover:bg-violet-700 transition-colors shadow-lg"
+                    >
+                        {t('simulateAppClassic')}
+                    </button>
+                    <button
+                        onClick={() => mealPlanStore.startSimulationGeneric()}
+                        className="px-8 py-4 rounded-full bg-purple-600 text-white font-semibold text-lg hover:bg-purple-700 transition-colors shadow-lg"
+                    >
+                        {t('simulateAppGeneric')}
+                    </button>
+                </div>
             </section>
         </div>
     );

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore, AppStatus, NavigableTab } from './stores/MealPlanStore';
@@ -220,7 +221,6 @@ const MainAppLayout: React.FC = observer(() => {
     }, [store, store.currentPlanId]);
 
     const renderDrawerContent = () => {
-        const isPlanLocked = !store.shoppingListManaged && !!store.currentPlanId;
         const planSpecificTabs = [
             { id: 'dashboard', icon: <DashboardIcon />, label: t('tabDashboard') },
             { id: 'daily', icon: <TodayIcon />, label: t('tabDaily') },
@@ -255,17 +255,31 @@ const MainAppLayout: React.FC = observer(() => {
                 return (
                     <div className="border-b dark:border-gray-700 py-6">
                          <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4">{t('simulateAppDescription')}</h3>
-                         <button
-                            onClick={() => {
-                                store.startSimulation();
-                                setIsDrawerOpen(false);
-                            }}
-                            className="flex items-center w-full text-left px-4 py-3 rounded-lg bg-violet-500 text-white font-semibold hover:bg-violet-600 transition-colors shadow-md hover:shadow-lg"
-                            title={t('simulateAppTitle')}
-                        >
-                            <SparklesIcon />
-                            <span className="ml-3">{t('simulateApp')}</span>
-                        </button>
+                         <div className="flex flex-col space-y-2 px-4">
+                            {/* FIX: Replaced non-existent store.startSimulation() with startSimulationClassic() and added startSimulationGeneric() */}
+                            <button
+                                onClick={() => {
+                                    store.startSimulationClassic();
+                                    setIsDrawerOpen(false);
+                                }}
+                                className="flex items-center w-full text-left px-4 py-2 rounded-lg bg-violet-500 text-white text-sm font-semibold hover:bg-violet-600 transition-colors shadow-md"
+                                title={t('simulateAppClassic')}
+                            >
+                                <SparklesIcon />
+                                <span className="ml-3">{t('simulateAppClassic')}</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    store.startSimulationGeneric();
+                                    setIsDrawerOpen(false);
+                                }}
+                                className="flex items-center w-full text-left px-4 py-2 rounded-lg bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors shadow-md"
+                                title={t('simulateAppGeneric')}
+                            >
+                                <SparklesIcon />
+                                <span className="ml-3">{t('simulateAppGeneric')}</span>
+                            </button>
+                         </div>
                     </div>
                 );
             }
@@ -273,7 +287,8 @@ const MainAppLayout: React.FC = observer(() => {
         }
 
         const renderExitSimulationButton = () => {
-            if (store.currentPlanId === 'simulated_plan_123') {
+            /* FIX: Updated condition to check if the current plan ID starts with 'sim_' as correctly defined in MealPlanStore */
+            if (store.currentPlanId?.startsWith('sim_')) {
                 return (
                     <div className="border-t dark:border-gray-700 pt-6 pb-2">
                          <button

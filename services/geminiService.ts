@@ -1,14 +1,7 @@
+
 import { GoogleGenAI, Type, HarmCategory, HarmBlockThreshold } from "@google/genai";
 // Fix: Import types for the new function
 import { DayPlan, ShoppingListCategory } from "../types";
-
-let ai: GoogleGenAI | null = null;
-
-if (process.env.API_KEY) {
-  ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-} else {
-  console.warn("API_KEY environment variable not set. AI features will be disabled.");
-}
 
 const safetySettings = [
     {
@@ -37,10 +30,85 @@ export function isQuotaError(error: unknown): boolean {
     return false;
 }
 
+// @google/genai Guidelines: Define the schema for plan details output for improved reliability and structure
+const planDetailsSchema = {
+    type: Type.OBJECT,
+    properties: {
+        weeklyPlan: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    day: { type: Type.STRING },
+                    meals: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                name: { type: Type.STRING },
+                                title: { type: Type.STRING },
+                                procedure: { type: Type.STRING },
+                                items: {
+                                    type: Type.ARRAY,
+                                    items: {
+                                        type: Type.OBJECT,
+                                        properties: {
+                                            ingredientName: { type: Type.STRING },
+                                            fullDescription: { type: Type.STRING },
+                                            used: { type: Type.BOOLEAN }
+                                        },
+                                        required: ['ingredientName', 'fullDescription', 'used']
+                                    }
+                                },
+                                done: { type: Type.BOOLEAN },
+                                time: { type: Type.STRING },
+                                nutrition: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        carbs: { type: Type.NUMBER },
+                                        protein: { type: Type.NUMBER },
+                                        fat: { type: Type.NUMBER },
+                                        calories: { type: Type.NUMBER }
+                                    },
+                                    required: ['carbs', 'protein', 'fat', 'calories']
+                                }
+                            },
+                            required: ['name', 'items', 'done', 'nutrition']
+                        }
+                    }
+                },
+                required: ['day', 'meals']
+            }
+        },
+        shoppingList: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    category: { type: Type.STRING },
+                    items: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                item: { type: Type.STRING },
+                                quantityValue: { type: Type.NUMBER },
+                                quantityUnit: { type: Type.STRING }
+                            },
+                            required: ['item', 'quantityUnit']
+                        }
+                    }
+                },
+                required: ['category', 'items']
+            }
+        }
+    },
+    required: ['weeklyPlan', 'shoppingList']
+};
+
 export async function getPlanDetailsAndShoppingList(plan: DayPlan[]): Promise<{ weeklyPlan: DayPlan[], shoppingList: ShoppingListCategory[] }> {
-    if (!ai) {
-        throw new Error("AI features are disabled due to missing API key.");
-    }
+    // Guidelines: Create a new GoogleGenAI instance right before making an API call to ensure the latest API key is used.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     const prompt = `
     Sei un assistente nutrizionista esperto. Ti viene fornito un piano alimentare settimanale in formato JSON.
@@ -55,48 +123,17 @@ export async function getPlanDetailsAndShoppingList(plan: DayPlan[]): Promise<{ 
     ${JSON.stringify(plan, null, 2)}
     ---
 
-    Restituisci l'output ESCLUSIVAMENTE in formato JSON con la seguente struttura:
-    {
-      "weeklyPlan": [
-        {
-          "day": "NOME_GIORNO",
-          "meals": [
-            {
-              "name": "NOME_PASTO",
-              "title": "Titolo Piatto",
-              "procedure": "Procedura di preparazione...",
-              "items": [
-                { "ingredientName": "Nome Ingrediente", "fullDescription": "Descrizione completa", "used": false }
-              ],
-              "done": false,
-              "time": "HH:MM",
-              "nutrition": {
-                "carbs": 25,
-                "protein": 15,
-                "fat": 10,
-                "calories": 250
-              }
-            }
-          ]
-        }
-      ],
-      "shoppingList": [
-        {
-          "category": "Nome Categoria",
-          "items": [
-            { "item": "Nome Articolo", "quantityValue": 150, "quantityUnit": "g" }
-          ]
-        }
-      ]
-    }
+    Restituisci l'output ESCLUSIVAMENTE in formato JSON con la struttura richiesta.
     `;
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            // Guideline: Use 'gemini-3-flash-preview' for basic text tasks like plan analysis and nutrition estimation.
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
+                responseSchema: planDetailsSchema,
                 temperature: 0.1,
                 safetySettings,
             },
@@ -115,9 +152,8 @@ export async function getPlanDetailsAndShoppingList(plan: DayPlan[]): Promise<{ 
 }
 
 export async function getCategoriesForIngredients(ingredientNames: string[]): Promise<Record<string, string>> {
-    if (!ai) {
-        throw new Error("AI features are disabled due to missing API key.");
-    }
+    // Guidelines: Create a new GoogleGenAI instance right before making an API call.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     const prompt = `
 Sei un assistente esperto di categorizzazione alimentare. Ti viene fornita una lista di ingredienti.
@@ -156,7 +192,8 @@ ${JSON.stringify(ingredientNames)}
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            // Guideline: Use 'gemini-3-flash-preview' for basic text categorization tasks.
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
@@ -198,9 +235,8 @@ ${JSON.stringify(ingredientNames)}
 
 
 export async function getNutritionForIngredients(ingredientNames: string[]): Promise<Record<string, { calories: number; carbs: number; protein: number; fat: number }>> {
-    if (!ai) {
-        throw new Error("AI features are disabled due to missing API key.");
-    }
+    // Guidelines: Create a new GoogleGenAI instance right before making an API call.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const prompt = `
 Sei un esperto di dati nutrizionali. Ti viene fornita una lista di ingredienti.
@@ -223,7 +259,8 @@ ${JSON.stringify(ingredientNames)}
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            // Guideline: Use 'gemini-3-flash-preview' for extraction tasks.
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',

@@ -1,6 +1,5 @@
 
 import {makeAutoObservable, runInAction, toJS, computed} from 'mobx';
-import Dexie from 'dexie';
 import {
     ArchivedPlan,
     BodyMetrics,
@@ -17,6 +16,7 @@ import {
     ShoppingListItem,
     StoredState,
     Theme,
+    Locale as LocaleType,
     GenericPlanData,
     GenericPlanPreferences,
     PlanCreationData
@@ -52,33 +52,112 @@ interface ImportedJsonData extends PlanCreationData {
 
 const getTodayDateString = () => new Date().toLocaleDateString('en-CA');
 
-const MOCK_MEAL_PLAN_DATA = {
-    planName: 'Demo Plan',
-    weeklyPlan: [
-        {
-            day: 'LUNEDI',
-            meals: [
-                {
-                    name: 'COLAZIONE',
-                    title: 'Yogurt & Cereali',
-                    items: [{
-                        ingredientName: 'Yogurt Greco',
-                        fullDescription: '150g di Yogurt Greco',
-                        used: false
-                    }, {
-                        ingredientName: 'Miele',
-                        fullDescription: '1 cucchiaino di miele',
-                        used: false
-                    }, {ingredientName: 'Noci', fullDescription: '3 noci', used: false}],
-                    done: false,
-                    time: '08:00',
-                    nutrition: {carbs: 25, protein: 15, fat: 10, calories: 250}
-                },
-            ]
+const MOCK_GENERIC_PLAN = {
+    planName: 'LifePulse Simulazione (Generico)',
+    type: 'generic' as const,
+    weeklyPlan: [],
+    genericPlan: {
+        breakfast: [
+            {
+                name: 'Opzione 1',
+                title: 'Yogurt & Cereali',
+                items: [
+                    { ingredientName: 'Yogurt Greco', fullDescription: '150g di Yogurt Greco', used: false },
+                    { ingredientName: 'Miele', fullDescription: '1 cucchiaino di miele', used: false },
+                    { ingredientName: 'Noci', fullDescription: '3 noci', used: false }
+                ],
+                done: false,
+                time: '08:00',
+                nutrition: { carbs: 25, protein: 15, fat: 10, calories: 250 }
+            }
+        ],
+        snacks: [
+            {
+                name: 'Frutta Fresca',
+                items: [{ ingredientName: 'Mela', fullDescription: '1 mela media', used: false }],
+                done: false,
+                time: '10:30',
+                nutrition: { carbs: 20, protein: 0, fat: 0, calories: 80 }
+            }
+        ],
+        lunch: {
+            carbs: [{ name: 'Pasta Integrale', items: [{ ingredientName: 'Pasta Integrale', fullDescription: '80g Pasta Integrale', used: false }], done: false }],
+            protein: [{ name: 'Pollo alla Piastra', items: [{ ingredientName: 'Petto di Pollo', fullDescription: '150g Petto di Pollo', used: false }], done: false }],
+            vegetables: [{ name: 'Zucchine', items: [{ ingredientName: 'Zucchine', fullDescription: '200g Zucchine lesse', used: false }], done: false }],
+            fats: [{ name: 'Olio EVO', items: [{ ingredientName: 'Olio EVO', fullDescription: '10g Olio EVO', used: false }], done: false }],
+            suggestions: []
+        },
+        dinner: {
+            carbs: [{ name: 'Patate lesse', items: [{ ingredientName: 'Patate', fullDescription: '200g Patate lesse', used: false }], done: false }],
+            protein: [{ name: 'Salmone', items: [{ ingredientName: 'Salmone', fullDescription: '150g Salmone al vapore', used: false }], done: false }],
+            vegetables: [{ name: 'Insalata', items: [{ ingredientName: 'Insalata Mista', fullDescription: 'Insalata mista a piacere', used: false }], done: false }],
+            fats: [{ name: 'Olio EVO', items: [{ ingredientName: 'Olio EVO', fullDescription: '10g Olio EVO', used: false }], done: false }],
+            suggestions: []
         }
+    },
+    shoppingList: [
+        { category: 'Carne', items: [{ item: 'Petto di Pollo', quantityValue: 1050, quantityUnit: 'g' }] },
+        { category: 'Latticini', items: [{ item: 'Yogurt Greco', quantityValue: 1, quantityUnit: 'kg' }] },
+        { category: 'Frutta', items: [{ item: 'Mele', quantityValue: 7, quantityUnit: 'unità' }] }
     ],
-    shoppingList: [],
-    pantry: []
+    pantry: [
+        { item: 'Olio EVO', quantityValue: 500, quantityUnit: 'ml', originalCategory: 'Grassi' },
+        { item: 'Sale', quantityValue: 1, quantityUnit: 'kg', originalCategory: 'Altro' }
+    ]
+};
+
+const MOCK_WEEKLY_PLAN = {
+    planName: 'LifePulse Simulazione (Classico)',
+    type: 'weekly' as const,
+    weeklyPlan: DAY_KEYWORDS.map(day => ({
+        day,
+        meals: [
+            {
+                name: 'COLAZIONE',
+                title: 'Pancake Proteici',
+                time: '08:00',
+                items: [
+                    { ingredientName: 'Albume', fullDescription: '150ml Albume', used: false },
+                    { ingredientName: 'Farina Avena', fullDescription: '40g Farina Avena', used: false },
+                    { ingredientName: 'Burro Arachidi', fullDescription: '15g Burro Arachidi', used: false }
+                ],
+                done: false,
+                nutrition: { carbs: 30, protein: 25, fat: 12, calories: 330 }
+            },
+            {
+                name: 'PRANZO',
+                title: 'Riso con Pollo e Broccoli',
+                time: '13:00',
+                items: [
+                    { ingredientName: 'Riso Basmati', fullDescription: '80g Riso Basmati', used: false },
+                    { ingredientName: 'Petto di Pollo', fullDescription: '150g Petto di Pollo', used: false },
+                    { ingredientName: 'Broccoli', fullDescription: '200g Broccoli al vapore', used: false }
+                ],
+                done: false,
+                nutrition: { carbs: 65, protein: 40, fat: 5, calories: 465 }
+            },
+            {
+                name: 'CENA',
+                title: 'Merluzzo con Patate',
+                time: '20:00',
+                items: [
+                    { ingredientName: 'Merluzzo', fullDescription: '200g Filetto di Merluzzo', used: false },
+                    { ingredientName: 'Patate', fullDescription: '250g Patate al forno', used: false },
+                    { ingredientName: 'Olio EVO', fullDescription: '10g Olio EVO', used: false }
+                ],
+                done: false,
+                nutrition: { carbs: 45, protein: 35, fat: 11, calories: 420 }
+            }
+        ]
+    })),
+    shoppingList: [
+        { category: 'Carne', items: [{ item: 'Petto di Pollo', quantityValue: 1050, quantityUnit: 'g' }] },
+        { category: 'Pesce', items: [{ item: 'Merluzzo', quantityValue: 1.4, quantityUnit: 'kg' }] },
+        { category: 'Carboidrati e Cereali', items: [{ item: 'Riso Basmati', quantityValue: 1, quantityUnit: 'kg' }, { item: 'Patate', quantityValue: 2, quantityUnit: 'kg' }] }
+    ],
+    pantry: [
+        { item: 'Olio EVO', quantityValue: 500, quantityUnit: 'ml', originalCategory: 'Grassi' }
+    ]
 };
 
 export type NavigableTab =
@@ -97,7 +176,7 @@ export class MealPlanStore {
     status: AppStatus = AppStatus.HYDRATING;
     error: string | null = null;
     masterMealPlan: DayPlan[] = [];
-    presetMealPlan: DayPlan[] = []; // Used to reset the master plan
+    presetMealPlan: DayPlan[] = []; 
     shoppingList: ShoppingListCategory[] = [];
     pantry: PantryItem[] = [];
     archivedPlans: ArchivedPlan[] = [];
@@ -107,28 +186,23 @@ export class MealPlanStore {
     locale: Locale = 'it';
     currentPlanId: string | null = null;
 
-    // Generic Plan Support
     isGenericPlan = false;
     genericPlanData: GenericPlanData | null = null;
     genericPlanPreferences: GenericPlanPreferences = {};
 
-    // Plan dates and daily log
     startDate: string | null = null;
     endDate: string | null = null;
     currentDate: string = getTodayDateString();
     currentDayPlan: DailyLog | null = null;
-    planToSet: DayPlan[] | null = null; // Holds a new plan before dates are set
+    planToSet: DayPlan[] | null = null; 
     shoppingListManaged = false;
 
-    // Day-specific progress tracking
     currentDayProgress: ProgressRecord | null = null;
-
     recalculatingProgress = false;
     showMacros = false;
     showCheatMealButton = false;
     showBodyMetricsInApp = true;
 
-    // Global goals and settings
     hydrationGoalLiters = 3;
     stepGoal = 6000;
     bodyMetrics: BodyMetrics = {};
@@ -141,13 +215,9 @@ export class MealPlanStore {
     sentNotifications = new Map<string, boolean>();
     lastActiveDate: string = getTodayDateString();
     lastModified: number = 0;
-    
-    // Sync Versioning
     planVersion: number = 0;
-    
     onlineMode = true;
     recalculatingActualMeal: { mealIndex: number } | null = null;
-
 
     constructor() {
         makeAutoObservable(this, {
@@ -172,10 +242,17 @@ export class MealPlanStore {
 
     navigateTo(tab: NavigableTab, replace: boolean = false) {
         this.setActiveTab(tab);
-        if (replace) {
-            window.history.replaceState({ tab }, '', `/${tab}`);
-        } else {
-            window.history.pushState({ tab }, '', `/${tab}`);
+        
+        // Risoluzione errore SecurityError: usa percorsi relativi e gestisci errori
+        try {
+            const path = `./${tab}`;
+            if (replace) {
+                window.history.replaceState({ tab }, '', path);
+            } else {
+                window.history.pushState({ tab }, '', path);
+            }
+        } catch (e) {
+            console.warn("Navigation: history API restricted in this environment. State updated locally.", e);
         }
         window.dispatchEvent(new PopStateEvent('popstate'));
     }
@@ -212,12 +289,8 @@ export class MealPlanStore {
 
     recalculateActualMealNutrition = async (mealIndex: number) => {
         if (!this.currentDayPlan || !this.onlineMode) return;
-        
-        runInAction(() => {
-            this.recalculatingActualMeal = { mealIndex };
-        });
+        runInAction(() => { this.recalculatingActualMeal = { mealIndex }; });
 
-        // Simplified recalculation for demo, actual logic would involve AI call or lookup
         setTimeout(() => {
             runInAction(() => {
                 if (this.currentDayPlan && this.currentDayPlan.meals[mealIndex]) {
@@ -263,14 +336,11 @@ export class MealPlanStore {
 
                 if (savedState) {
                     const data = savedState.value;
-                    
                     this.masterMealPlan = data.masterMealPlan || [];
                     this.presetMealPlan = data.presetMealPlan || [];
-                    
                     this.isGenericPlan = data.isGenericPlan || false;
                     this.genericPlanData = data.genericPlanData || null;
                     this.genericPlanPreferences = data.genericPlanPreferences || {};
-
                     this.shoppingList = (data.shoppingList || []).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
                     this.pantry = data.pantry || [];
                     this.archivedPlans = data.archivedPlans || [];
@@ -295,10 +365,6 @@ export class MealPlanStore {
 
                     if (data.sentNotifications) {
                         this.sentNotifications = new Map(data.sentNotifications);
-                    }
-
-                    if (this.masterMealPlan.length > 0 && !this.currentPlanId) {
-                        this.currentPlanId = 'migrated_' + Date.now().toString();
                     }
 
                     this.resetSentNotificationsIfNeeded();
@@ -336,25 +402,32 @@ export class MealPlanStore {
         this.saveToDB();
     }
 
-    public startSimulation = async () => {
-        runInAction(() => {
-             this.isGenericPlan = false;
-             this.genericPlanData = null;
-             this.status = AppStatus.LOADING;
+    public startSimulationClassic = async () => {
+        runInAction(() => { this.status = AppStatus.LOADING; });
+        await this.processImportedData({
+            ...MOCK_WEEKLY_PLAN,
+            startDate: getTodayDateString(),
+            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-CA'),
         });
-        
-        const mockData = MOCK_MEAL_PLAN_DATA;
-        
         runInAction(() => {
-            this.processImportedData({
-                ...mockData,
-                startDate: getTodayDateString(),
-                endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-CA'),
-                type: 'weekly'
-            });
-            this.currentPlanId = 'simulated_plan_123';
+            this.currentPlanId = 'sim_classic_' + Date.now();
+            this.navigateTo('dashboard', true);
         });
-        trackEvent('simulation_started');
+        trackEvent('simulation_started', { mode: 'classic' });
+    }
+
+    public startSimulationGeneric = async () => {
+        runInAction(() => { this.status = AppStatus.LOADING; });
+        await this.processImportedData({
+            ...MOCK_GENERIC_PLAN,
+            startDate: getTodayDateString(),
+            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-CA'),
+        });
+        runInAction(() => {
+            this.currentPlanId = 'sim_generic_' + Date.now();
+            this.navigateTo('dashboard', true);
+        });
+        trackEvent('simulation_started', { mode: 'generic' });
     }
 
     public exitSimulation = async () => {
@@ -461,7 +534,7 @@ export class MealPlanStore {
                     this.planToSet = []; 
                     this.genericPlanPreferences = {};
                 } else {
-                    const sanitizedPlan = data.weeklyPlan.map(day => ({
+                    const sanitizedPlan = (data.weeklyPlan || []).map(day => ({
                         ...day,
                         meals: day.meals.map(meal => ({
                             ...meal,
@@ -543,14 +616,11 @@ export class MealPlanStore {
 
     commitNewPlan = async (startDate: string, endDate: string) => {
         runInAction(() => {
-            // Priority logic: Handle date overlap.
-            // If the new plan starts before the current plan ends, adjust the current plan's end date.
             const newStart = new Date(startDate);
             const currentEnd = this.endDate ? new Date(this.endDate) : null;
             const currentStart = this.startDate ? new Date(this.startDate) : null;
 
             if (this.currentPlanId && currentEnd && currentStart) {
-                // Check if new start is within current range (but not before start)
                 if (newStart <= currentEnd && newStart > currentStart) {
                     const adjustedEndDate = new Date(newStart);
                     adjustedEndDate.setDate(adjustedEndDate.getDate() - 1);
@@ -583,12 +653,10 @@ export class MealPlanStore {
             this.shoppingListManaged = false;
             this.sentNotifications.clear();
             this.lastActiveDate = getTodayDateString();
-            this.pantry = [];
+            this.pantry = this.pantry || [];
             this.currentPlanId = Date.now().toString();
             this.currentDate = getTodayDateString();
             this.planToSet = null;
-            
-            // Increment plan version on every commit to prioritize local changes during sync
             this.planVersion = (this.planVersion || 0) + 1;
         });
 
@@ -607,7 +675,6 @@ export class MealPlanStore {
         const processSection = (sectionTitle: string, sectionKey: string, options: Meal[]) => {
             const selectedIndices = preferences[sectionKey];
             options.forEach((option, index) => {
-                // If selectedIndices is undefined, show all. If it exists, only show included.
                 if (selectedIndices && !selectedIndices.includes(index)) return;
 
                 generatedMeals.push({
@@ -620,13 +687,10 @@ export class MealPlanStore {
             });
         };
 
-        // Migration for snacks from old plan structure
-        const allSnacks = [...(this.genericPlanData.snacks || []), ...(this.genericPlanData.snack1 || []), ...(this.genericPlanData.snack2 || [])];
+        const snacksOld = [...(this.genericPlanData.snacks || []), ...(this.genericPlanData.snack1 || []), ...(this.genericPlanData.snack2 || [])];
 
         processSection("COLAZIONE", "breakfast", this.genericPlanData.breakfast);
-        if (allSnacks.length > 0) {
-            processSection("SPUNTINI", "snacks", allSnacks);
-        }
+        if (snacksOld.length > 0) processSection("SPUNTINI", "snacks", snacksOld);
         processSection("PRANZO - CARBOIDRATI", "lunch_carbs", this.genericPlanData.lunch.carbs);
         processSection("PRANZO - PROTEINE", "lunch_protein", this.genericPlanData.lunch.protein);
         processSection("PRANZO - VERDURE", "lunch_vegetables", this.genericPlanData.lunch.vegetables);
@@ -636,11 +700,7 @@ export class MealPlanStore {
         processSection("CENA - VERDURE", "dinner_vegetables", this.genericPlanData.dinner.vegetables);
         processSection("CENA - GRASSI", "dinner_fats", this.genericPlanData.dinner.fats);
 
-        return {
-            date: dateStr,
-            day: dayName,
-            meals: generatedMeals
-        };
+        return { date: dateStr, day: dayName, meals: generatedMeals };
     }
 
     async loadPlanForDate(dateStr: string) {
@@ -690,7 +750,6 @@ export class MealPlanStore {
                         dailyLog!.meals.forEach(meal => {
                             meal.done = false;
                             meal.cheat = false;
-                            meal.cheatMealDescription = undefined;
                             meal.actualNutrition = null;
                             meal.items.forEach(item => item.used = false);
                         });
@@ -698,9 +757,7 @@ export class MealPlanStore {
                     }
                 }
             }
-            runInAction(() => {
-                this.currentDayPlan = dailyLog || null;
-            });
+            runInAction(() => { this.currentDayPlan = dailyLog || null; });
         } catch (e) {
             console.error("Failed to load or create day plan", e);
             runInAction(() => { this.currentDayPlan = null; });
@@ -734,11 +791,8 @@ export class MealPlanStore {
                     const newDailyMeal = JSON.parse(JSON.stringify(masterDay.meals[mealIndex]));
                     newDailyMeal.done = false;
                     newDailyMeal.cheat = false;
-                    newDailyMeal.cheatMealDescription = undefined;
                     newDailyMeal.actualNutrition = null;
-                    newDailyMeal.items.forEach((item: MealItem) => {
-                        item.used = false;
-                    });
+                    newDailyMeal.items.forEach((item: MealItem) => { item.used = false; });
                     updatedDailyLog.meals[mealIndex] = newDailyMeal;
                     this.currentDayPlan = updatedDailyLog;
                     db.dailyLogs.put(updatedDailyLog);
@@ -752,11 +806,9 @@ export class MealPlanStore {
         if (this.currentDayPlan) {
             const meal = this.currentDayPlan.meals[mealIndex];
             meal.done = !meal.done;
-            
             if (meal.done && !meal.cheat && !meal.actualNutrition && this.onlineMode) {
                 this.recalculateActualMealNutrition(mealIndex);
             }
-            
             this.updateDailyLog(this.currentDayPlan);
             this.updateAchievements();
             trackEvent('meal_toggled', { status: meal.done ? 'done' : 'todo', mealName: meal.name });
@@ -808,29 +860,23 @@ export class MealPlanStore {
 
     async updateStatsForDate(date: string) {
         if (!this.currentDayProgress || this.currentDayProgress.date !== date) return; 
-
         const log = this.currentDayPlan;
         if (!log) return;
-
         const totalMeals = log.meals.length;
         const doneMeals = log.meals.filter(m => m.done).length;
         const adherence = totalMeals > 0 ? (doneMeals / totalMeals) * 100 : 0;
-
         let plannedCals = 0;
         let actualCals = 0;
-
         log.meals.forEach(m => {
             if (m.nutrition) plannedCals += m.nutrition.calories;
             if (m.actualNutrition) actualCals += m.actualNutrition.calories;
             else if (m.done && m.nutrition && !m.cheat) actualCals += m.nutrition.calories; 
         });
-
         runInAction(() => {
             this.currentDayProgress!.adherence = adherence;
             this.currentDayProgress!.plannedCalories = plannedCals;
             this.currentDayProgress!.actualCalories = actualCals;
         });
-
         await db.progressHistory.put(toJS(this.currentDayProgress!));
     }
 
@@ -872,7 +918,6 @@ export class MealPlanStore {
         });
     }
 
-    // Hydration
     setWaterIntake(ml: number) {
         if (this.currentDayProgress) {
             this.updateCurrentDayProgress('waterIntakeMl', ml);
@@ -896,7 +941,6 @@ export class MealPlanStore {
                 const targetPerHour = (this.hydrationGoalLiters * 1000) / 14; 
                 const expectedIntake = targetPerHour * (currentHour - 7);
                 const currentIntake = this.currentDayProgress?.waterIntakeMl || 0;
-                
                 if (currentIntake < expectedIntake - 250) { 
                      this.hydrationSnackbar = { visible: true, time: now.toLocaleTimeString(), amount: 250 };
                 }
@@ -908,7 +952,6 @@ export class MealPlanStore {
         this.hydrationSnackbar = null;
     }
 
-    // Steps & Activity
     setSteps(steps: number) {
         if (this.currentDayProgress) {
             this.updateCurrentDayProgress('stepsTaken', steps);
@@ -934,22 +977,14 @@ export class MealPlanStore {
 
     updateCalorieBurn() {
         if (this.currentDayProgress && this.bodyMetrics.weightKg) {
-            const burn = calculateCaloriesBurned(
-                this.currentDayProgress.stepsTaken || 0,
-                this.currentDayProgress.activityHours || 1,
-                this.bodyMetrics.weightKg
-            );
-            if (burn !== null) {
-                this.updateCurrentDayProgress('estimatedCaloriesBurned', burn);
-            }
+            const burn = calculateCaloriesBurned(this.currentDayProgress.stepsTaken || 0, this.currentDayProgress.activityHours || 1, this.bodyMetrics.weightKg);
+            if (burn !== null) this.updateCurrentDayProgress('estimatedCaloriesBurned', burn);
         }
     }
 
     updateCurrentDayProgressObject(updates: Partial<ProgressRecord>) {
         if (this.currentDayProgress) {
-            runInAction(() => {
-                Object.assign(this.currentDayProgress!, updates);
-            });
+            runInAction(() => { Object.assign(this.currentDayProgress!, updates); });
             db.progressHistory.put(toJS(this.currentDayProgress));
         }
     }
@@ -961,14 +996,12 @@ export class MealPlanStore {
     recalculateAllProgress = async () => {
         this.recalculatingProgress = true;
         try {
-            // Simplified, could implement full recalculation from daily logs
             await new Promise(resolve => setTimeout(resolve, 2000));
         } finally {
             runInAction(() => { this.recalculatingProgress = false; });
         }
     }
 
-    // Shopping List
     addShoppingListCategory(categoryName: string) {
         if (!this.shoppingList.find(c => c.category === categoryName)) {
             this.shoppingList.push({ category: categoryName, items: [] });
@@ -987,27 +1020,19 @@ export class MealPlanStore {
 
     updateShoppingListItem(category: string, itemIndex: number, newItem: ShoppingListItem) {
         const cat = this.shoppingList.find(c => c.category === category);
-        if (cat) {
-            cat.items[itemIndex] = newItem;
-            this.saveToDB();
-        }
+        if (cat) { cat.items[itemIndex] = newItem; this.saveToDB(); }
     }
 
     deleteShoppingListItem(category: string, itemIndex: number) {
         const cat = this.shoppingList.find(c => c.category === category);
-        if (cat) {
-            cat.items.splice(itemIndex, 1);
-            this.saveToDB();
-        }
+        if (cat) { cat.items.splice(itemIndex, 1); this.saveToDB(); }
     }
 
     moveShoppingItemToPantry(item: ShoppingListItem, category: string) {
         const cat = this.shoppingList.find(c => c.category === category);
         if (cat) {
             const index = cat.items.findIndex(i => i.item === item.item);
-            if (index > -1) {
-                cat.items.splice(index, 1);
-            }
+            if (index > -1) cat.items.splice(index, 1);
         }
         this.addPantryItem(item.item, item.quantityValue, item.quantityUnit, category);
         this.saveToDB();
@@ -1016,7 +1041,6 @@ export class MealPlanStore {
     updateShoppingListCategoryOrder(category: string, direction: 'up' | 'down') {
         const index = this.shoppingList.findIndex(c => c.category === category);
         if (index === -1) return;
-
         const newIndex = direction === 'up' ? index - 1 : index + 1;
         if (newIndex >= 0 && newIndex < this.shoppingList.length) {
             const temp = this.shoppingList[index];
@@ -1027,7 +1051,6 @@ export class MealPlanStore {
         }
     }
 
-    // Pantry
     addPantryItem(item: string, quantityValue: number | null, quantityUnit: string, category: string) {
         const existing = this.pantry.find(p => p.item === item);
         if (existing) {
@@ -1071,24 +1094,15 @@ export class MealPlanStore {
         this.saveToDB();
     }
 
-    // Archive
     updateArchivedPlanName(id: string, name: string) {
         const plan = this.archivedPlans.find(p => p.id === id);
-        if (plan) {
-            plan.name = name;
-            this.saveToDB();
-        }
+        if (plan) { plan.name = name; this.saveToDB(); }
     }
 
     restorePlanFromArchive(id: string) {
         const plan = this.archivedPlans.find(p => p.id === id);
         if (plan) {
-            this.processImportedData({
-                planName: plan.name,
-                weeklyPlan: plan.plan,
-                shoppingList: plan.shoppingList,
-                type: 'weekly'
-            });
+            this.processImportedData({ planName: plan.name, weeklyPlan: plan.plan, shoppingList: plan.shoppingList, type: 'weekly' });
             this.status = AppStatus.AWAITING_DATES;
         }
     }
@@ -1110,14 +1124,8 @@ export class MealPlanStore {
         return this.currentDayPlan ? this.getDayNutritionSummary(this.currentDayPlan) : null;
     }
 
-    get adherenceStreak() {
-        // Simplified streak logic
-        return 0; 
-    }
-
-    get hydrationStreak() {
-        return 0;
-    }
+    get adherenceStreak() { return 0; }
+    get hydrationStreak() { return 0; }
 
     get expiringSoonItems() {
         return this.pantry.filter(p => {
@@ -1145,22 +1153,12 @@ export class MealPlanStore {
 
     updateAchievements() {
         const newAchievements: string[] = [];
-        
         if (this.progressHistory.length > 0) newAchievements.push('firstDayComplete');
         if (this.progressHistory.length >= 7) newAchievements.push('firstWeekComplete');
         if (this.progressHistory.length >= 30) newAchievements.push('achievementMonthComplete');
-        
-        if (this.progressHistory.some(p => new Date(p.date).getDay() === 1)) {
-            newAchievements.push('firstMondayComplete');
-        }
-        
+        if (this.progressHistory.some(p => new Date(p.date).getDay() === 1)) newAchievements.push('firstMondayComplete');
         if (this.pantry.length >= 5) newAchievements.push('pantryOrganized');
-
-        newAchievements.forEach(a => {
-            if (!this.earnedAchievements.includes(a)) {
-                this.earnedAchievements.push(a);
-            }
-        });
+        newAchievements.forEach(a => { if (!this.earnedAchievements.includes(a)) this.earnedAchievements.push(a); });
     }
 }
 
