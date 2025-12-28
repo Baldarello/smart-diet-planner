@@ -778,11 +778,21 @@ export class MealPlanStore {
              if (this.currentDayPlan && this.currentDayPlan.meals[mealIndex]) {
                 runInAction(() => {
                     const meal = this.currentDayPlan!.meals[mealIndex];
+                    const sectionName = meal.section?.toUpperCase() || '';
+                    
                     meal.done = false;
                     meal.cheat = false;
                     meal.cheatMealDescription = undefined;
                     meal.actualNutrition = null;
                     meal.items.forEach(item => item.used = false);
+                    
+                    // Requirement 3: Restore default times for Generic Plan main meals
+                    if (sectionName.startsWith('PRANZO')) {
+                        meal.time = '13:00';
+                    } else if (sectionName.startsWith('CENA')) {
+                        meal.time = '20:00';
+                    }
+                    
                     db.dailyLogs.put(toJS(this.currentDayPlan!));
                 });
              }
