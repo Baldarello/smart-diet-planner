@@ -1,5 +1,4 @@
 
-
 import type { Locale } from '../types';
 
 const translations = {
@@ -48,7 +47,9 @@ const translations = {
     settingsProfessionalCheaterMode: "Modalità Sgarratore Professionista",
     settingsProfessionalCheaterModeDescription: "Mostra il pulsante per registrare gli sgarri e il relativo grafico nei progressi.",
     settingsStatus: "Stato",
-    simulateApp: "Simula App",
+    simulateApp: "Simulazione",
+    simulateAppClassic: "Simula Piano Classico",
+    simulateAppGeneric: "Simula Piano Generico",
     simulateAppTitle: "Popola l'app con dati di esempio per vedere tutte le funzionalità.",
     simulateAppDescription: "Prova l'App",
     exitSimulation: "Esci dalla Simulazione",
@@ -549,7 +550,9 @@ const translations = {
     settingsProfessionalCheaterMode: "Professional Cheater Mode",
     settingsProfessionalCheaterModeDescription: "Shows the button to log cheat meals and the related chart in the progress view.",
     settingsStatus: "Status",
-    simulateApp: "Simulate App",
+    simulateApp: "Simulation",
+    simulateAppClassic: "Simulate Classic Plan",
+    simulateAppGeneric: "Simulate Generic Plan",
     simulateAppTitle: "Populate the app with sample data to see all features.",
     simulateAppDescription: "Try the App",
     exitSimulation: "Exit Simulation",
