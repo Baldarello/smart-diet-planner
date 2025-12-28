@@ -81,17 +81,17 @@ const MOCK_GENERIC_PLAN = {
             }
         ],
         lunch: {
-            carbs: [{ name: 'Pasta Integrale', items: [{ ingredientName: 'Pasta Integrale', fullDescription: '80g Pasta Integrale', used: false }], done: false }],
-            protein: [{ name: 'Pollo alla Piastra', items: [{ ingredientName: 'Petto di Pollo', fullDescription: '150g Petto di Pollo', used: false }], done: false }],
-            vegetables: [{ name: 'Zucchine', items: [{ ingredientName: 'Zucchine', fullDescription: '200g Zucchine lesse', used: false }], done: false }],
-            fats: [{ name: 'Olio EVO', items: [{ ingredientName: 'Olio EVO', fullDescription: '10g Olio EVO', used: false }], done: false }],
+            carbs: [{ name: 'Pasta Integrale', items: [{ ingredientName: 'Pasta Integrale', fullDescription: '80g Pasta Integrale', used: false }], done: false, time: '13:00' }],
+            protein: [{ name: 'Pollo alla Piastra', items: [{ ingredientName: 'Petto di Pollo', fullDescription: '150g Petto di Pollo', used: false }], done: false, time: '13:00' }],
+            vegetables: [{ name: 'Zucchine', items: [{ ingredientName: 'Zucchine', fullDescription: '200g Zucchine lesse', used: false }], done: false, time: '13:00' }],
+            fats: [{ name: 'Olio EVO', items: [{ ingredientName: 'Olio EVO', fullDescription: '10g Olio EVO', used: false }], done: false, time: '13:00' }],
             suggestions: []
         },
         dinner: {
-            carbs: [{ name: 'Patate lesse', items: [{ ingredientName: 'Patate', fullDescription: '200g Patate lesse', used: false }], done: false }],
-            protein: [{ name: 'Salmone', items: [{ ingredientName: 'Salmone', fullDescription: '150g Salmone al vapore', used: false }], done: false }],
-            vegetables: [{ name: 'Insalata', items: [{ ingredientName: 'Insalata Mista', fullDescription: 'Insalata mista a piacere', used: false }], done: false }],
-            fats: [{ name: 'Olio EVO', items: [{ ingredientName: 'Olio EVO', fullDescription: '10g Olio EVO', used: false }], done: false }],
+            carbs: [{ name: 'Patate lesse', items: [{ ingredientName: 'Patate', fullDescription: '200g Patate lesse', used: false }], done: false, time: '20:00' }],
+            protein: [{ name: 'Salmone', items: [{ ingredientName: 'Salmone', fullDescription: '150g Salmone al vapore', used: false }], done: false, time: '20:00' }],
+            vegetables: [{ name: 'Insalata', items: [{ ingredientName: 'Insalata Mista', fullDescription: 'Insalata mista a piacere', used: false }], done: false, time: '20:00' }],
+            fats: [{ name: 'Olio EVO', items: [{ ingredientName: 'Olio EVO', fullDescription: '10g Olio EVO', used: false }], done: false, time: '20:00' }],
             suggestions: []
         }
     },
@@ -243,7 +243,6 @@ export class MealPlanStore {
     navigateTo(tab: NavigableTab, replace: boolean = false) {
         this.setActiveTab(tab);
         
-        // Risoluzione errore SecurityError: usa percorsi relativi e gestisci errori
         try {
             const path = `./${tab}`;
             if (replace) {
@@ -687,14 +686,24 @@ export class MealPlanStore {
             });
         };
 
-        const snacksOld = [...(this.genericPlanData.snacks || []), ...(this.genericPlanData.snack1 || []), ...(this.genericPlanData.snack2 || [])];
+        const allSnacks = [...(this.genericPlanData.snacks || []), ...(this.genericPlanData.snack1 || []), ...(this.genericPlanData.snack2 || [])];
 
+        // STRICT SEQUENCE: Colazione -> Spuntino -> Pranzo -> Merenda -> Cena
         processSection("COLAZIONE", "breakfast", this.genericPlanData.breakfast);
-        if (snacksOld.length > 0) processSection("SPUNTINI", "snacks", snacksOld);
+        
+        // Morning Snack (Spuntino)
+        if (allSnacks.length > 0) processSection("SPUNTINO", "snacks", allSnacks);
+        
+        // Lunch modular components
         processSection("PRANZO - CARBOIDRATI", "lunch_carbs", this.genericPlanData.lunch.carbs);
         processSection("PRANZO - PROTEINE", "lunch_protein", this.genericPlanData.lunch.protein);
         processSection("PRANZO - VERDURE", "lunch_vegetables", this.genericPlanData.lunch.vegetables);
         processSection("PRANZO - GRASSI", "lunch_fats", this.genericPlanData.lunch.fats);
+        
+        // Afternoon Snack (Merenda) - DUPLICATED OPTIONS FROM SNACKS
+        if (allSnacks.length > 0) processSection("MERENDA", "snacks", allSnacks);
+        
+        // Dinner modular components
         processSection("CENA - CARBOIDRATI", "dinner_carbs", this.genericPlanData.dinner.carbs);
         processSection("CENA - PROTEINE", "dinner_protein", this.genericPlanData.dinner.protein);
         processSection("CENA - VERDURE", "dinner_vegetables", this.genericPlanData.dinner.vegetables);
