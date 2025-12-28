@@ -112,6 +112,16 @@ const DailyPlanView: React.FC = observer(() => {
     });
     if (currentSection) sections.push(currentSection);
 
+    // Requirement 2: Sort sections so completed ones move to bottom
+    const availableSections = sections.filter(s => {
+        const allSubMeals = s.subSections.flatMap(sub => sub.meals);
+        return !allSubMeals.every(m => m.done);
+    });
+    const completedSections = sections.filter(s => {
+        const allSubMeals = s.subSections.flatMap(sub => sub.meals);
+        return allSubMeals.length > 0 && allSubMeals.every(m => m.done);
+    });
+    const sortedSections = [...availableSections, ...completedSections];
 
     const changeDate = (offset: number) => {
         const newDate = new Date(currentDate);
@@ -232,7 +242,7 @@ const DailyPlanView: React.FC = observer(() => {
 
     const MealsContent = (
         <div className="space-y-6 mt-6">
-            {sections.map((section, idx) => {
+            {sortedSections.map((section, idx) => {
                 if (section.isMainMeal) {
                     return (
                         <div key={idx} className="bg-white dark:bg-gray-700/20 border border-violet-100 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
@@ -246,9 +256,10 @@ const DailyPlanView: React.FC = observer(() => {
                             </div>
                             <div>
                                 {section.subSections.map((sub, subIdx) => {
-                                    // Requirement 1: MARKED MEALS GO TO BOTTOM
-                                    const availableMeals = sub.meals.filter(m => !m.done);
-                                    const completedMeals = sub.meals.filter(m => m.done);
+                                    // Requirement 1: EXCLUSIVE SELECTION LOGIC for Generic Plans
+                                    // If any meal in this subsection is marked done, hide all others.
+                                    const selectedMeal = sub.meals.find(m => m.done);
+                                    const availableMeals = selectedMeal ? [selectedMeal] : sub.meals;
                                     
                                     return (
                                         <div key={subIdx} className="border-b border-gray-100 dark:border-gray-700 last:border-0">
@@ -259,7 +270,6 @@ const DailyPlanView: React.FC = observer(() => {
                                             )}
                                             <div className="flex flex-col">
                                                 {availableMeals.map(meal => renderMealCard(meal, true))}
-                                                {completedMeals.map(meal => renderMealCard(meal, true))}
                                             </div>
                                         </div>
                                     );
@@ -282,10 +292,9 @@ const DailyPlanView: React.FC = observer(() => {
                             )}
                             <div className="space-y-3">
                                 {section.subSections.flatMap(sub => {
-                                    // Order generic snack options by status too
-                                    const available = sub.meals.filter(m => !m.done);
-                                    const completed = sub.meals.filter(m => m.done);
-                                    return [...available, ...completed];
+                                    // Requirement 1 for Snacks/Colazione in Generic Plans
+                                    const selectedMeal = sub.meals.find(m => m.done);
+                                    return selectedMeal ? [selectedMeal] : sub.meals;
                                 }).map(meal => renderMealCard(meal))}
                             </div>
                         </div>
