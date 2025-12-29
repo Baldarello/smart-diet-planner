@@ -55,15 +55,14 @@ const DailyPlanView: React.FC = observer(() => {
     }
 
     const dayIndex = isGenericPlan 
-        ? -1 // Not used for generic plans
+        ? -1 
         : mealPlanStore.masterMealPlan.findIndex(d => d.day.toUpperCase() === dailyPlan.day.toUpperCase());
 
-    const sortedMeals = [...dailyPlan.meals].map((meal, index) => ({ ...meal, originalIndex: index }));
+    const sortedMealsRaw = [...dailyPlan.meals].map((meal, index) => ({ ...meal, originalIndex: index }));
 
     // --- Logic for Grouping Meals by Section ---
     const sections: GroupedMealSection[] = [];
     
-    // Helper to determine if a section name belongs to Lunch or Dinner in Generic Plans
     const getMainMealType = (sectionName: string): 'PRANZO' | 'CENA' | null => {
         if (sectionName.toUpperCase().startsWith('PRANZO')) return 'PRANZO';
         if (sectionName.toUpperCase().startsWith('CENA')) return 'CENA';
@@ -72,11 +71,10 @@ const DailyPlanView: React.FC = observer(() => {
 
     let currentSection: GroupedMealSection | null = null;
 
-    sortedMeals.forEach(meal => {
+    sortedMealsRaw.forEach(meal => {
         const fullSectionName = meal.section || 'General';
         const mainType = getMainMealType(fullSectionName);
         
-        // If it's a main meal (Lunch/Dinner), we want to group everything together
         if (mainType) {
             if (!currentSection || currentSection.title !== mainType) {
                 if (currentSection) sections.push(currentSection);
@@ -84,7 +82,7 @@ const DailyPlanView: React.FC = observer(() => {
                     title: mainType,
                     isMainMeal: true,
                     subSections: [],
-                    sectionTime: meal.time // Use time from the first modular component
+                    sectionTime: meal.time 
                 };
             }
             
@@ -112,7 +110,17 @@ const DailyPlanView: React.FC = observer(() => {
     });
     if (currentSection) sections.push(currentSection);
 
-    // Requirement 2: Sort sections so completed ones move to bottom
+    // Requirement: Within each sub-section, move completed meals to the bottom
+    sections.forEach(s => {
+        s.subSections.forEach(sub => {
+            sub.meals.sort((a, b) => {
+                if (a.done === b.done) return 0;
+                return a.done ? 1 : -1;
+            });
+        });
+    });
+
+    // Requirement: Sort sections so fully completed ones move to bottom
     const availableSections = sections.filter(s => {
         const allSubMeals = s.subSections.flatMap(sub => sub.meals);
         return !allSubMeals.every(m => m.done);
@@ -136,7 +144,7 @@ const DailyPlanView: React.FC = observer(() => {
     const displayDate = `${day}/${month}/${year}`;
     const formattedDayName = dailyPlan.day.charAt(0) + dailyPlan.day.slice(1).toLowerCase();
 
-    const renderMealCard = (meal: typeof sortedMeals[0], isCompact: boolean = false) => {
+    const renderMealCard = (meal: typeof sortedMealsRaw[0], isCompact: boolean = false) => {
         const allItemsUsed = meal.items.length > 0 && meal.items.every(item => item.used);
         const someItemsUsed = meal.items.some(item => item.used) && !allItemsUsed;
 
@@ -166,6 +174,13 @@ const DailyPlanView: React.FC = observer(() => {
                             )}
                             <h4 className={`text-lg font-semibold text-gray-800 dark:text-gray-200 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.name}</h4>
                             {meal.cheat && <span className="text-xs font-bold uppercase text-orange-500 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50 px-2 py-1 rounded-full">{t('cheatMealBadge')}</span>}
+                            
+                            {/* Requirement: Always show time if available in generic plans too */}
+                            {isGenericPlan && meal.time && (
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                    <ClockIcon /> {meal.time}
+                                </span>
+                            )}
                         </div>
                         {meal.title && <p className={`text-md font-medium text-violet-600 dark:text-violet-400 mt-1 transition-all truncate ${meal.done ? 'line-through' : ''}`}>{meal.title}</p>}
                     </div>
@@ -256,8 +271,7 @@ const DailyPlanView: React.FC = observer(() => {
                             </div>
                             <div>
                                 {section.subSections.map((sub, subIdx) => {
-                                    // Requirement 1: EXCLUSIVE SELECTION LOGIC for Generic Plans
-                                    // If any meal in this subsection is marked done, hide all others.
+                                    // EXCLUSIVE SELECTION LOGIC for Generic Plans
                                     const selectedMeal = sub.meals.find(m => m.done);
                                     const availableMeals = selectedMeal ? [selectedMeal] : sub.meals;
                                     
@@ -292,7 +306,6 @@ const DailyPlanView: React.FC = observer(() => {
                             )}
                             <div className="space-y-3">
                                 {section.subSections.flatMap(sub => {
-                                    // Requirement 1 for Snacks/Colazione in Generic Plans
                                     const selectedMeal = sub.meals.find(m => m.done);
                                     return selectedMeal ? [selectedMeal] : sub.meals;
                                 }).map(meal => renderMealCard(meal))}
