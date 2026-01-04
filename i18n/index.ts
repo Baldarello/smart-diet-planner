@@ -295,7 +295,7 @@ const translations = {
     shareList: "Condividi Lista",
     listCopied: "Lista copiata negli appunti!",
     completedItems: "Articoli Acquistati",
-    reorderCategoryUp: "Sposta Su",
+    reorderCategoryUp: "Mancanti (In Lista Spesa)",
     reorderCategoryDown: "Sposta Giù",
     listShareTitle: "Lista della Spesa per {planName}",
 
@@ -472,6 +472,8 @@ const translations = {
     dashboardNoAlerts: "La tua dispensa è in ordine!",
     expiresOn: "Scade il {date}",
     dashboardExpired: "Scaduti",
+    dashboardMissingItems: "Da Acquistare (Lista Spesa)",
+    shoppingListAlert: "Presente nella lista della spesa",
     
     // Achievements
     achievementFirstHydration: "Fonte della Vita",
@@ -967,22 +969,8 @@ const translations = {
     dashboardNoAlerts: "Your pantry is in good shape!",
     expiresOn: "Expires on {date}",
     dashboardExpired: "Expired",
-
-    // Achievements
-    achievementFirstHydration: "Source of Life",
-    achievementFirstHydrationDesc: "Log your first water intake.",
-    achievementPerfectWeekHydration: "Perfect Hydration Week",
-    achievementPerfectWeekHydrationDesc: "Reach your hydration goal for 7 consecutive days.",
-    achievementTotalWater50L: "Personal Reservoir",
-    achievementTotalWater50LDesc: "Reach a total of 50 liters of water consumed.",
-    achievementFirstSteps: "First Step",
-    achievementFirstStepsDesc: "Log your first steps in the app.",
-    achievementDailyStepGoalReached: "Goal Achieved!",
-    achievementDailyStepGoalReachedDesc: "Reach your daily step goal for the first time.",
-    achievementStepMarathon: "Step Marathoner",
-    achievementStepMarathonDesc: "Reach a total of 250,000 steps.",
-    achievementPerfectWeekSteps: "Steady Pace",
-    achievementPerfectWeekStepsDesc: "Reach your daily step goal for 7 consecutive days.",
+    dashboardMissingItems: "To Buy (Shopping List)",
+    shoppingListAlert: "Already in your shopping list",
 
     // Achievements Modal
     allAchievementsTitle: "All Achievements",
