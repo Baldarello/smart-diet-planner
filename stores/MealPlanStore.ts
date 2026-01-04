@@ -691,8 +691,8 @@ export class MealPlanStore {
         // STRICT SEQUENCE: Colazione -> Spuntino -> Pranzo -> Merenda -> Cena
         processSection("COLAZIONE", "breakfast", this.genericPlanData.breakfast);
         
-        // Morning Snack (Spuntino)
-        if (allSnacks.length > 0) processSection("SPUNTINO", "snacks", allSnacks);
+        // Morning Snack (Spuntino) - Uses unique key snacks_morning
+        if (allSnacks.length > 0) processSection("SPUNTINO", "snacks_morning", allSnacks);
         
         // Lunch modular components
         processSection("PRANZO - CARBOIDRATI", "lunch_carbs", this.genericPlanData.lunch.carbs);
@@ -700,8 +700,8 @@ export class MealPlanStore {
         processSection("PRANZO - VERDURE", "lunch_vegetables", this.genericPlanData.lunch.vegetables);
         processSection("PRANZO - GRASSI", "lunch_fats", this.genericPlanData.lunch.fats);
         
-        // Afternoon Snack (Merenda) - DUPLICATED OPTIONS FROM SNACKS
-        if (allSnacks.length > 0) processSection("MERENDA", "snacks", allSnacks);
+        // Afternoon Snack (Merenda) - Uses unique key snacks_afternoon
+        if (allSnacks.length > 0) processSection("MERENDA", "snacks_afternoon", allSnacks);
         
         // Dinner modular components
         processSection("CENA - CARBOIDRATI", "dinner_carbs", this.genericPlanData.dinner.carbs);

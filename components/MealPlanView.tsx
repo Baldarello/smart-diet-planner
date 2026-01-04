@@ -22,11 +22,12 @@ const GenericPlanDayConfig: React.FC<{ dayName: string; onClose: () => void }> =
 
     const sections = [
         { title: "COLAZIONE", key: "breakfast", items: genericPlanData.breakfast },
-        { title: "SPUNTINI", key: "snacks", items: allSnacks },
+        { title: "SPUNTINO MATTINA", key: "snacks_morning", items: allSnacks },
         { title: "PRANZO - CARBOIDRATI", key: "lunch_carbs", items: genericPlanData.lunch.carbs },
         { title: "PRANZO - PROTEINE", key: "lunch_protein", items: genericPlanData.lunch.protein },
         { title: "PRANZO - VERDURE", key: "lunch_vegetables", items: genericPlanData.lunch.vegetables },
         { title: "PRANZO - GRASSI", key: "lunch_fats", items: genericPlanData.lunch.fats },
+        { title: "MERENDA", key: "snacks_afternoon", items: allSnacks },
         { title: "CENA - CARBOIDRATI", key: "dinner_carbs", items: genericPlanData.dinner.carbs },
         { title: "CENA - PROTEINE", key: "dinner_protein", items: genericPlanData.dinner.protein },
         { title: "CENA - VERDURE", key: "dinner_vegetables", items: genericPlanData.dinner.vegetables },
