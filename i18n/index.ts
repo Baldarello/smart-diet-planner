@@ -20,7 +20,7 @@ const translations = {
     tabCalendar: "Calendario",
     tabSettings: "Impostazioni",
     welcomeTitle: "Inizia un Nuovo Piano Dietetico",
-    welcomeSubtitle: "Importa il file JSON del tuo piano per iniziare.",
+    welcomeSubtitle: "Il tuo piano dietetico, reso intelligente. Carica il piano fornito dal tuo nutrizionista per iniziare.",
     uploadPdfTitle: "Carica il tuo Piano",
     viewArchived: "Vedi Piani Archiviati",
     uploadNew: "Carica un Nuovo Piano Dietetico",
@@ -100,7 +100,7 @@ const translations = {
     importJSONDescription: "Importa ingredienti da un file JSON.",
     ingredientColumnHeader: 'Ingrediente',
     noIngredientsMessage: 'Nessun ingrediente presente.',
-    noIngredientsSuggestion: "La tabella è vuota. Aggiungi ingredienti manualmente o importa un file.",
+    noIngredientsSuggestion: "La tabella è vuota. Aaggiungi ingredienti manualmente o importa un file.",
     categoryColumnHeader: 'Categoria',
     actionsColumnHeader: 'Azioni',
     searchIngredientsPlaceholder: 'Cerca per nome o categoria...',
@@ -319,6 +319,7 @@ const translations = {
     pantryThresholdPlaceholder: "es. 100",
     itemExpiresSoon: "In scadenza!",
     itemExpired: "Scaduto!",
+    itemFinished: "Esaurito",
 
     // ArchiveView.tsx
     archiveEmpty: "Archivio Vuoto",
@@ -514,7 +515,7 @@ const translations = {
     tabCalendar: "Calendar",
     tabSettings: "Settings",
     welcomeTitle: "Start a New Diet Plan",
-    welcomeSubtitle: "Import the JSON file of your plan to get started.",
+    welcomeSubtitle: "Your diet plan, made smart. Upload the plan provided by your nutritionist to get started.",
     uploadPdfTitle: "Upload Your Plan",
     viewArchived: "View Archived Plans",
     uploadNew: "Upload a New Diet Plan",
@@ -813,6 +814,7 @@ const translations = {
     pantryThresholdPlaceholder: "e.g., 100",
     itemExpiresSoon: "Expires soon!",
     itemExpired: "Expired!",
+    itemFinished: "Out of stock",
 
     // ArchiveView.tsx
     archiveEmpty: "Archive is Empty",
