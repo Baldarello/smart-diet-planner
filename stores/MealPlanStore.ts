@@ -41,7 +41,6 @@ export enum AppStatus {
     AWAITING_DATES,
 }
 
-// Fix: Define and export NavigableTab type
 export type NavigableTab = 'dashboard' | 'daily' | 'calendar' | 'plan' | 'list' | 'pantry' | 'progress' | 'archive' | 'settings' | 'upload';
 
 interface ImportedJsonData extends PlanCreationData {
@@ -118,7 +117,6 @@ export class MealPlanStore {
         return this.currentDayPlan;
     }
 
-    // Fix: Implement dailyNutritionSummary computed property
     get dailyNutritionSummary(): NutritionInfo | null {
         if (!this.currentDayPlan) return null;
         const summary: NutritionInfo = { carbs: 0, protein: 0, fat: 0, calories: 0 };
@@ -134,7 +132,6 @@ export class MealPlanStore {
         return summary;
     }
 
-    // Fix: Implement adherenceStreak computed property
     get adherenceStreak(): number {
         let streak = 0;
         const history = [...this.progressHistory].reverse();
@@ -146,7 +143,6 @@ export class MealPlanStore {
         return streak;
     }
 
-    // Fix: Implement hydrationStreak computed property
     get hydrationStreak(): number {
         let streak = 0;
         const history = [...this.progressHistory].reverse();
@@ -213,7 +209,20 @@ export class MealPlanStore {
 
         if (matchingPantryItem && matchingPantryItem.quantityValue !== null) {
             const oldVal = matchingPantryItem.quantityValue;
-            matchingPantryItem.quantityValue = subtractQuantities(oldVal, item.fullDescription, reverse);
+            const newVal = subtractQuantities(oldVal, item.fullDescription, reverse);
+            matchingPantryItem.quantityValue = newVal;
+            
+            // If item reached 0 or less during a regular deduction (not undo)
+            if (newVal <= 0 && !reverse) {
+                // Automatically add back to shopping list if not already present
+                const alreadyInList = this.shoppingList.some(cat => 
+                    cat.items.some(si => si.item.toLowerCase() === matchingPantryItem.item.toLowerCase())
+                );
+                if (!alreadyInList) {
+                    this.movePantryItemToShoppingList(matchingPantryItem, false);
+                }
+            }
+
             this.saveToDB();
         }
     }
@@ -338,7 +347,6 @@ export class MealPlanStore {
         this.genericPlanPreferences[day][sectionKey] = selectedIndices;
         this.saveToDB();
         
-        // Dynamic re-aggregation of shopping list for Generic Plans
         if (this.isGenericPlan) {
             await this.regenerateGenericShoppingList();
         }
@@ -361,14 +369,13 @@ export class MealPlanStore {
             });
         };
 
-        // Filter options based on all days' preferences
         const getAllPreferredMeals = () => {
             DAY_KEYWORDS.forEach(day => {
                 const prefs = this.genericPlanPreferences[day] || {};
                 
                 const addFromSection = (sectionKey: string, source: Meal[]) => {
                     const sel = prefs[sectionKey];
-                    if (sel === undefined) { // "All" selected
+                    if (sel === undefined) { 
                         source.forEach(processMeal);
                     } else {
                         sel.forEach(idx => { if (source[idx]) processMeal(source[idx]); });
@@ -395,7 +402,6 @@ export class MealPlanStore {
         const uniqueNames = Array.from(aggregatedIngredients.keys());
         const categoryMap = new Map<string, string>();
         
-        // Fetch categories for new items if needed
         const uncachedNames = uniqueNames.filter(name => !this.shoppingList.some(cat => cat.items.some(i => i.item === name)));
         if (uncachedNames.length > 0 && this.onlineMode) {
             try {
@@ -431,7 +437,6 @@ export class MealPlanStore {
         this.saveToDB();
     }
 
-    // Fix: Implement updateCurrentDayProgress method
     updateCurrentDayProgress(metric: keyof ProgressRecord, value: any) {
         if (this.currentDayProgress) {
             (this.currentDayProgress as any)[metric] = value;
@@ -440,7 +445,6 @@ export class MealPlanStore {
         }
     }
 
-    // Fix: Implement updateCurrentDayProgressObject method
     updateCurrentDayProgressObject(updates: Partial<ProgressRecord>) {
         if (this.currentDayProgress) {
             Object.assign(this.currentDayProgress, updates);
@@ -449,7 +453,6 @@ export class MealPlanStore {
         }
     }
 
-    // Fix: Implement updateHydrationStatus method
     updateHydrationStatus() {
         if (!this.currentDayProgress) return;
         const goalMl = this.hydrationGoalLiters * 1000;
@@ -473,7 +476,6 @@ export class MealPlanStore {
         }
     }
 
-    // Fix: Implement getDayNutritionSummary method
     getDayNutritionSummary(day: DayPlan): NutritionInfo {
         const summary: NutritionInfo = { carbs: 0, protein: 0, fat: 0, calories: 0 };
         day.meals.forEach(m => {
@@ -487,7 +489,6 @@ export class MealPlanStore {
         return summary;
     }
 
-    // Fix: Implement toggleAllItemsInMeal method
     toggleAllItemsInMeal(mealIndex: number) {
         if (this.currentDayPlan && this.currentDayPlan.meals[mealIndex]) {
             const meal = this.currentDayPlan.meals[mealIndex];
@@ -500,7 +501,6 @@ export class MealPlanStore {
         }
     }
 
-    // Fix: Implement resetMealToPreset method
     resetMealToPreset(dayIndex: number, mealIndex: number) {
         runInAction(() => {
             if (dayIndex === -1 && this.currentDayPlan) {
@@ -523,7 +523,6 @@ export class MealPlanStore {
         });
     }
 
-    // Fix: Implement updateItemDescription method
     updateItemDescription(dayIndex: number, mealIndex: number, itemIndex: number, newDescription: string) {
         runInAction(() => {
             const meal = this.masterMealPlan[dayIndex]?.meals[mealIndex];
@@ -540,7 +539,6 @@ export class MealPlanStore {
         });
     }
 
-    // Fix: Implement updateShoppingListCategoryOrder method
     updateShoppingListCategoryOrder(categoryName: string, direction: 'up' | 'down') {
         const index = this.shoppingList.findIndex(c => c.category === categoryName);
         if (index === -1) return;
@@ -554,7 +552,6 @@ export class MealPlanStore {
         this.saveToDB();
     }
 
-    // Fix: Implement updateArchivedPlanName method
     updateArchivedPlanName(id: string, newName: string) {
         const plan = this.archivedPlans.find(p => p.id === id);
         if (plan) {
@@ -563,7 +560,6 @@ export class MealPlanStore {
         }
     }
 
-    // Fix: Implement restorePlanFromArchive method
     restorePlanFromArchive(id: string) {
         const archive = this.archivedPlans.find(p => p.id === id);
         if (archive) {
@@ -579,7 +575,6 @@ export class MealPlanStore {
         }
     }
 
-    // Fix: Implement setWaterIntake method
     setWaterIntake(ml: number) {
         if (this.currentDayProgress) {
             this.currentDayProgress.waterIntakeMl = ml;
@@ -588,7 +583,6 @@ export class MealPlanStore {
         }
     }
 
-    // Fix: Implement logWaterIntake method
     logWaterIntake(ml: number) {
         if (this.currentDayProgress) {
             this.currentDayProgress.waterIntakeMl += ml;
@@ -597,14 +591,12 @@ export class MealPlanStore {
         }
     }
 
-    // Fix: Implement dismissHydrationSnackbar method
     dismissHydrationSnackbar() {
         if (this.hydrationSnackbar) {
             this.hydrationSnackbar.visible = false;
         }
     }
 
-    // Fix: Implement updateMealTime method
     updateMealTime(dayIndex: number, mealIndex: number, time: string) {
         runInAction(() => {
             const meal = this.masterMealPlan[dayIndex]?.meals[mealIndex];
@@ -619,7 +611,6 @@ export class MealPlanStore {
         });
     }
 
-    // Fix: Implement setSteps method
     setSteps(steps: number) {
         if (this.currentDayProgress) {
             this.currentDayProgress.stepsTaken = steps;
@@ -628,7 +619,6 @@ export class MealPlanStore {
         }
     }
 
-    // Fix: Implement logSteps method
     logSteps(steps: number) {
         if (this.currentDayProgress) {
             this.currentDayProgress.stepsTaken += steps;
@@ -887,7 +877,6 @@ export class MealPlanStore {
             const meal = this.currentDayPlan.meals[mealIndex];
             meal.done = !meal.done;
             
-            // Deduct or return items to pantry
             this.updatePantryFromMeal(meal, !meal.done);
             
             if (meal.done && !meal.cheat && !meal.actualNutrition && this.onlineMode) {
@@ -904,7 +893,6 @@ export class MealPlanStore {
             const item = this.currentDayPlan.meals[mealIndex].items[itemIndex];
             item.used = !item.used;
             
-            // Interaction with pantry for specific item
             this.updatePantryFromItem(item, !item.used);
             
             this.updateDailyLog(this.currentDayPlan);
@@ -993,7 +981,12 @@ export class MealPlanStore {
 
     addPantryItem(item: string, quantityValue: number | null, quantityUnit: string, category: string) {
         const existing = this.pantry.find(p => p.item === item);
-        if (existing) { existing.quantityValue = quantityValue; existing.quantityUnit = quantityUnit; }
+        if (existing) { 
+            existing.quantityValue = quantityValue; 
+            existing.quantityUnit = quantityUnit; 
+            existing.originalQuantityValue = quantityValue;
+            existing.originalQuantityUnit = quantityUnit;
+        }
         else {
             this.pantry.push({
                 item, quantityValue, quantityUnit, originalCategory: category,
@@ -1011,8 +1004,10 @@ export class MealPlanStore {
         }
     }
 
-    movePantryItemToShoppingList(pantryItem: PantryItem) {
-        this.pantry = this.pantry.filter(p => p.item !== pantryItem.item);
+    movePantryItemToShoppingList(pantryItem: PantryItem, removeFromPantry: boolean = true) {
+        if (removeFromPantry) {
+            this.pantry = this.pantry.filter(p => p.item !== pantryItem.item);
+        }
         let category = pantryItem.originalCategory || 'Altro';
         if (!this.shoppingList.find(c => c.category === category)) this.addShoppingListCategory(category);
         this.addShoppingListItem(category, {
@@ -1033,9 +1028,23 @@ export class MealPlanStore {
 
     get lowStockItems() {
         return this.pantry.filter(p => {
-            if (!p.lowStockThreshold || p.quantityValue === null) return false;
-            const threshold = parseQuantity(p.lowStockThreshold)?.value;
-            return threshold !== null && p.quantityValue <= threshold;
+            if (p.quantityValue === null) return false;
+            
+            // 1. Explicit threshold check
+            if (p.lowStockThreshold) {
+                const threshold = parseQuantity(p.lowStockThreshold)?.value;
+                if (threshold !== null && p.quantityValue <= threshold) return true;
+            }
+
+            // 2. Default 30% check (based on amount moving from shopping list)
+            if (p.originalQuantityValue !== undefined && p.originalQuantityValue !== null && p.originalQuantityValue > 0) {
+                if (p.quantityValue <= p.originalQuantityValue * 0.3) return true;
+            }
+
+            // 3. Finished (0 or less)
+            if (p.quantityValue <= 0) return true;
+
+            return false;
         });
     }
 

@@ -112,8 +112,12 @@ const AlertItem: React.FC<{ item: PantryItem, type: 'expired' | 'expiring' | 'st
             text: t('expiresOn', { date }),
         },
         stock: {
-            iconBg: 'bg-yellow-100 text-yellow-500 dark:bg-yellow-900/50',
-            text: formatQuantity(item.quantityValue, item.quantityUnit),
+            iconBg: item.quantityValue !== null && item.quantityValue <= 0 
+                ? 'bg-red-100 text-red-600 dark:bg-red-900/60 font-bold' 
+                : 'bg-yellow-100 text-yellow-500 dark:bg-yellow-900/50',
+            text: item.quantityValue !== null && item.quantityValue <= 0 
+                ? t('itemFinished') 
+                : formatQuantity(item.quantityValue, item.quantityUnit),
         }
     }[type];
 
@@ -176,7 +180,6 @@ const DashboardView: React.FC = observer(() => {
     });
     const weightData = last7DaysHistory.map(d => d.weightKg);
 
-    // Calculate focused Y-axis for weight chart
     const validWeightData = weightData.filter(w => w != null && !isNaN(w as number)) as number[];
     let yAxisMin: number | undefined = undefined;
     let yAxisMax: number | undefined = undefined;
@@ -188,8 +191,6 @@ const DashboardView: React.FC = observer(() => {
         yAxisMax = Math.ceil(maxWeight + 5);
     }
 
-    // Streaks & Alerts
-    // Fix: adherenceStreak and hydrationStreak are correctly accessed from store
     const { adherenceStreak, hydrationStreak, expiringSoonItems, lowStockItems, expiredItems } = store;
     const hasAlerts = expiredItems.length > 0 || expiringSoonItems.length > 0 || lowStockItems.length > 0;
 
@@ -201,9 +202,7 @@ const DashboardView: React.FC = observer(() => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main Content Column */}
                 <div className="lg:col-span-2 space-y-6">
-                    {/* Upcoming Meals */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300">{t('upcomingMeals')}</h2>
@@ -225,7 +224,6 @@ const DashboardView: React.FC = observer(() => {
                         )}
                     </div>
 
-                     {/* Pantry Alerts */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
                          <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300">{t('dashboardPantryAlerts')}</h2>
@@ -270,7 +268,6 @@ const DashboardView: React.FC = observer(() => {
                         )}
                     </div>
                     
-                    {/* Streaks & Achievements */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
                          <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300">{t('streaksAndAchievements')}</h2>
@@ -282,7 +279,6 @@ const DashboardView: React.FC = observer(() => {
                             </button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {/* Fix: Streaks correctly passed to items */}
                             <StreakItem count={adherenceStreak} label={t('adherenceStreak')} icon={<FlameIcon />} />
                             <StreakItem count={hydrationStreak} label={t('hydrationStreak')} icon={<WaterDropIcon />} />
                         </div>
@@ -290,7 +286,6 @@ const DashboardView: React.FC = observer(() => {
 
                 </div>
 
-                {/* Sidebar Column */}
                 <div className="space-y-6">
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
                         <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4">{t('todaysProgress')}</h2>
