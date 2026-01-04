@@ -20,7 +20,7 @@ import {
     GenericPlanPreferences,
     PlanCreationData
 } from '../types';
-import {categorizeIngredient, extractIngredientInfo, singularize, DAY_KEYWORDS} from '../services/offlineParser';
+import {categorizeIngredient, extractIngredientInfo, DAY_KEYWORDS, MEAL_KEYWORDS, MEAL_TIMES} from '../services/offlineParser';
 import {getPlanDetailsAndShoppingList, isQuotaError, getCategoriesForIngredients} from '../services/geminiService';
 import {parseQuantity, subtractQuantities} from '../utils/quantityParser';
 import {db} from '../services/db';
@@ -212,9 +212,7 @@ export class MealPlanStore {
             const newVal = subtractQuantities(oldVal, item.fullDescription, reverse);
             matchingPantryItem.quantityValue = newVal;
             
-            // If item reached 0 or less during a regular deduction (not undo)
             if (newVal <= 0 && !reverse) {
-                // Automatically add back to shopping list if not already present
                 const alreadyInList = this.shoppingList.some(cat => 
                     cat.items.some(si => si.item.toLowerCase() === matchingPantryItem.item.toLowerCase())
                 );
@@ -1040,18 +1038,15 @@ export class MealPlanStore {
         return this.pantry.filter(p => {
             if (p.quantityValue === null) return false;
             
-            // 1. Explicit threshold check
             if (p.lowStockThreshold) {
                 const threshold = parseQuantity(p.lowStockThreshold)?.value;
                 if (threshold !== null && p.quantityValue <= threshold) return true;
             }
 
-            // 2. Default 30% check (based on amount moving from shopping list)
             if (p.originalQuantityValue !== undefined && p.originalQuantityValue !== null && p.originalQuantityValue > 0) {
                 if (p.quantityValue <= p.originalQuantityValue * 0.3) return true;
             }
 
-            // 3. Finished (0 or less)
             if (p.quantityValue <= 0) return true;
 
             return false;
@@ -1068,9 +1063,116 @@ export class MealPlanStore {
         newAchievements.forEach(a => { if (!this.earnedAchievements.includes(a)) this.earnedAchievements.push(a); });
     }
 
-    public startSimulationClassic = async () => { /* Mock logic */ }
-    public startSimulationGeneric = async () => { /* Mock logic */ }
-    public exitSimulation = async () => { await db.appState.clear(); window.location.reload(); }
+    public startSimulationClassic = async () => {
+        const today = getTodayDateString();
+        const nextMonth = new Date();
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        const endDateStr = nextMonth.toISOString().split('T')[0];
+
+        const samplePlan: DayPlan[] = DAY_KEYWORDS.map(day => ({
+            day,
+            meals: [
+                { 
+                    name: 'COLAZIONE', title: 'Yogurt e Avena', time: '08:00', done: false,
+                    items: [
+                        { ingredientName: 'Yogurt Greco', fullDescription: '150g Yogurt Greco', used: false },
+                        { ingredientName: 'Avena', fullDescription: '40g Avena', used: false }
+                    ],
+                    nutrition: { calories: 250, carbs: 30, protein: 18, fat: 5 }
+                },
+                { 
+                    name: 'PRANZO', title: 'Riso e Pollo', time: '13:00', done: false,
+                    items: [
+                        { ingredientName: 'Riso Basmati', fullDescription: '80g Riso Basmati', used: false },
+                        { ingredientName: 'Petto di Pollo', fullDescription: '120g Petto di Pollo', used: false },
+                        { ingredientName: 'Zucchine', fullDescription: '200g Zucchine', used: false }
+                    ],
+                    nutrition: { calories: 450, carbs: 60, protein: 35, fat: 8 }
+                },
+                { 
+                    name: 'CENA', title: 'Salmone e Patate', time: '20:00', done: false,
+                    items: [
+                        { ingredientName: 'Salmone', fullDescription: '150g Salmone fresco', used: false },
+                        { ingredientName: 'Patate', fullDescription: '200g Patate al vapore', used: false }
+                    ],
+                    nutrition: { calories: 500, carbs: 40, protein: 30, fat: 22 }
+                }
+            ]
+        }));
+
+        runInAction(() => {
+            this.isGenericPlan = false;
+            this.genericPlanData = null;
+            this.masterMealPlan = samplePlan;
+            this.presetMealPlan = JSON.parse(JSON.stringify(samplePlan));
+            this.startDate = today;
+            this.endDate = endDateStr;
+            this.currentPlanId = 'sim_classic_' + Date.now();
+            this.currentPlanName = 'Simulazione Piano Classico';
+            this.status = AppStatus.SUCCESS;
+            this.showMacros = true;
+            this.shoppingList = [
+                { category: 'Carne', items: [{ item: 'Petto di Pollo', quantityValue: 840, quantityUnit: 'g' }] },
+                { category: 'Pesce', items: [{ item: 'Salmone fresco', quantityValue: 1050, quantityUnit: 'g' }] },
+                { category: 'Latticini e Derivati', items: [{ item: 'Yogurt Greco', quantityValue: 1050, quantityUnit: 'g' }] },
+            ];
+        });
+        await db.dailyLogs.clear();
+        await this.saveToDB();
+        await this.loadPlanForDate(this.currentDate);
+        this.navigateTo('dashboard');
+    }
+
+    public startSimulationGeneric = async () => {
+        const today = getTodayDateString();
+        const nextMonth = new Date();
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        
+        const genericData: GenericPlanData = {
+            breakfast: [
+                { name: 'Opzione 1', title: 'Yogurt', items: [{ ingredientName: 'Yogurt', fullDescription: '150g Yogurt', used: false }], done: false, time: '08:00' },
+                { name: 'Opzione 2', title: 'Uova', items: [{ ingredientName: 'Uova', fullDescription: '2 Uova', used: false }], done: false, time: '08:00' }
+            ],
+            snacks: [
+                { name: 'Opzione 1', title: 'Frutto', items: [{ ingredientName: 'Mela', fullDescription: '1 Mela', used: false }], done: false, time: '10:30' }
+            ],
+            lunch: {
+                carbs: [{ name: 'Riso', items: [{ ingredientName: 'Riso', fullDescription: '80g Riso', used: false }], done: false }],
+                protein: [{ name: 'Pollo', items: [{ ingredientName: 'Pollo', fullDescription: '150g Pollo', used: false }], done: false }],
+                vegetables: [{ name: 'Miste', items: [{ ingredientName: 'Insalata', fullDescription: '100g Insalata', used: false }], done: false }],
+                fats: [{ name: 'Olio', items: [{ ingredientName: 'Olio EVO', fullDescription: '10g Olio EVO', used: false }], done: false }],
+                suggestions: [],
+                time: '13:00'
+            },
+            dinner: {
+                carbs: [{ name: 'Pane', items: [{ ingredientName: 'Pane', fullDescription: '50g Pane', used: false }], done: false }],
+                protein: [{ name: 'Pesce', items: [{ ingredientName: 'Merluzzo', fullDescription: '200g Merluzzo', used: false }], done: false }],
+                vegetables: [{ name: 'Grigliate', items: [{ ingredientName: 'Verdure', fullDescription: '200g Verdure', used: false }], done: false }],
+                fats: [{ name: 'Noci', items: [{ ingredientName: 'Noci', fullDescription: '15g Noci', used: false }], done: false }],
+                suggestions: [],
+                time: '20:00'
+            }
+        };
+
+        runInAction(() => {
+            this.isGenericPlan = true;
+            this.genericPlanData = genericData;
+            this.masterMealPlan = [];
+            this.presetMealPlan = [];
+            this.startDate = today;
+            this.endDate = nextMonth.toISOString().split('T')[0];
+            this.currentPlanId = 'sim_generic_' + Date.now();
+            this.currentPlanName = 'Simulazione Piano Generico';
+            this.status = AppStatus.SUCCESS;
+            this.showMacros = false;
+        });
+        await db.dailyLogs.clear();
+        await this.saveToDB();
+        await this.loadPlanForDate(this.currentDate);
+        this.navigateTo('dashboard');
+    }
+
+    public exitSimulation = async () => { await db.appState.clear(); await db.dailyLogs.clear(); window.location.reload(); }
 }
 
 export const mealPlanStore = new MealPlanStore();

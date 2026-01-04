@@ -169,6 +169,18 @@ const translations = {
     suggestionsLabel: "Suggerimenti / Ricette Consigliate",
     suggestionsPlaceholder: "Inserisci qui suggerimenti di ricette o note aggiuntive...",
 
+    // Generic Plan Specific
+    genericPlanPlanningTitle: "Pianificazione Settimanale",
+    genericPlanPlanningDesc: "Seleziona un giorno per personalizzare quali opzioni del tuo piano mostrare. Di default, vengono mostrate tutte le opzioni.",
+    genericPlanOptionsForDay: "Opzioni per {day}",
+    genericPlanExpandSections: "Espandi le sezioni per configurare il piano.",
+    genericPlanNoOptionsSelected: "Nessuna opzione selezionata",
+    genericPlanAllOptionsActive: "Tutte le opzioni attive",
+    genericPlanOptionsSelectedCount: "{count} opzioni selezionate",
+    genericPlanAll: "Tutti",
+    genericPlanNone: "Nessuno",
+    genericPlanOption: "Opzione",
+
     // Homepage
     homeTitle: "LifePulse: Il Tuo Assistente Intelligente per la Dieta",
     homeSubtitle: "Trasforma il tuo piano dietetico in una guida pratica e quotidiana. Rimani organizzato, monitora i tuoi progressi e raggiungi i tuoi obiettivi di salute con facilità.",
@@ -665,6 +677,18 @@ const translations = {
     nutritionVegetables: "Vegetables",
     suggestionsLabel: "Suggestions / Recommended Recipes",
     suggestionsPlaceholder: "Enter recipe suggestions or notes here...",
+
+    // Generic Plan Specific
+    genericPlanPlanningTitle: "Weekly Planning",
+    genericPlanPlanningDesc: "Select a day to customize which options from your plan to show. By default, all options are shown.",
+    genericPlanOptionsForDay: "Options for {day}",
+    genericPlanExpandSections: "Expand sections to configure your plan.",
+    genericPlanNoOptionsSelected: "No options selected",
+    genericPlanAllOptionsActive: "All options active",
+    genericPlanOptionsSelectedCount: "{count} options selected",
+    genericPlanAll: "All",
+    genericPlanNone: "None",
+    genericPlanOption: "Option",
 
     // Homepage
     homeTitle: "LifePulse: Your Intelligent Diet Companion",
