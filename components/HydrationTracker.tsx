@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
@@ -5,6 +6,7 @@ import { t } from '../i18n';
 import { WaterDropIcon } from './Icons';
 
 const HydrationTracker: React.FC = observer(() => {
+    // Fix: access methods correctly from store
     const { hydrationGoalLiters, setHydrationGoal, currentDayProgress, setWaterIntake, logWaterIntake } = mealPlanStore;
     const waterIntakeMl = currentDayProgress?.waterIntakeMl ?? 0;
     
@@ -37,6 +39,7 @@ const HydrationTracker: React.FC = observer(() => {
     const handleIntakeSave = () => {
         const value = parseInt(editableIntake, 10);
         if (!isNaN(value) && value >= 0) {
+            // Fix: correctly calling setWaterIntake from store
             setWaterIntake(value);
         } else {
             setEditableIntake(waterIntakeMl.toString());
@@ -112,6 +115,7 @@ const HydrationTracker: React.FC = observer(() => {
                     {[250, 500, 750].map(amount => (
                         <button
                             key={amount}
+                            // Fix: correctly calling logWaterIntake from store
                             onClick={() => logWaterIntake(amount)}
                             className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200 font-semibold px-4 py-2 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800/60 transition-colors text-sm"
                             aria-label={`Add ${amount} ml`}

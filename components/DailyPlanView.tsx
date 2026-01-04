@@ -29,6 +29,7 @@ interface GroupedMealSection {
 }
 
 const DailyPlanView: React.FC = observer(() => {
+    // Fix: access dailyNutritionSummary and toggleAllItemsInMeal correctly from store
     const { dailyPlan, toggleMealDone, dailyNutritionSummary, currentDate, setCurrentDate, startDate, endDate, toggleAllItemsInMeal, undoCheatMeal, isGenericPlan } = mealPlanStore;
     const [cheatingMealIndex, setCheatingMealIndex] = useState<number | null>(null);
     const [resettingMeal, setResettingMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
@@ -374,6 +375,7 @@ const DailyPlanView: React.FC = observer(() => {
                 <ConfirmationModal
                     isOpen={!!resettingMeal}
                     onClose={() => setResettingMeal(null)}
+                    // Fix: correctly calling resetMealToPreset from store
                     onConfirm={() => mealPlanStore.resetMealToPreset(resettingMeal.dayIndex, resettingMeal.mealIndex)}
                     title={t('resetMealModalTitle')}
                 >

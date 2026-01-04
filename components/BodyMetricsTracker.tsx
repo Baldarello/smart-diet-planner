@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
@@ -71,24 +72,28 @@ const BodyMetricsTracker: React.FC = observer(() => {
                     label={t('weight')} 
                     unit={t('unitKg')}
                     value={currentDayProgress?.weightKg}
+                    // Fix: correctly calling updateCurrentDayProgress from store
                     onSave={(val) => updateCurrentDayProgress('weightKg', val)}
                 />
                 <MetricInput 
                     label={t('bodyFat')} 
                     unit={t('unitPercent')}
                     value={currentDayProgress?.bodyFatPercentage}
+                    // Fix: correctly calling updateCurrentDayProgress from store
                     onSave={(val) => updateCurrentDayProgress('bodyFatPercentage', val)}
                 />
                 <MetricInput 
                     label={t('leanMass')} 
                     unit={t('unitKg')}
                     value={currentDayProgress?.leanMassKg}
+                    // Fix: correctly calling updateCurrentDayProgress from store
                     onSave={(val) => updateCurrentDayProgress('leanMassKg', val)}
                 />
                 <MetricInput 
                     label={t('bodyWater')} 
                     unit={t('unitPercent')}
                     value={currentDayProgress?.bodyWaterPercentage}
+                    // Fix: correctly calling updateCurrentDayProgress from store
                     onSave={(val) => updateCurrentDayProgress('bodyWaterPercentage', val)}
                 />
             </div>

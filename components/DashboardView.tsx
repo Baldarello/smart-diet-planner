@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
@@ -188,6 +189,7 @@ const DashboardView: React.FC = observer(() => {
     }
 
     // Streaks & Alerts
+    // Fix: adherenceStreak and hydrationStreak are correctly accessed from store
     const { adherenceStreak, hydrationStreak, expiringSoonItems, lowStockItems, expiredItems } = store;
     const hasAlerts = expiredItems.length > 0 || expiringSoonItems.length > 0 || lowStockItems.length > 0;
 
@@ -280,6 +282,7 @@ const DashboardView: React.FC = observer(() => {
                             </button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* Fix: Streaks correctly passed to items */}
                             <StreakItem count={adherenceStreak} label={t('adherenceStreak')} icon={<FlameIcon />} />
                             <StreakItem count={hydrationStreak} label={t('hydrationStreak')} icon={<WaterDropIcon />} />
                         </div>

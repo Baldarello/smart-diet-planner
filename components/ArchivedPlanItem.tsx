@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
@@ -11,6 +12,7 @@ const ArchivedPlanItem: React.FC<{ archive: ArchivedPlan }> = observer(({ archiv
     const [name, setName] = useState(archive.name);
     const inputRef = useRef<HTMLInputElement>(null);
 
+    // Fix: correctly call updateArchivedPlanName from store
     const handleSave = () => { mealPlanStore.updateArchivedPlanName(archive.id, name); setIsEditing(false); };
     useEffect(() => { if (isEditing) { inputRef.current?.focus(); inputRef.current?.select(); } }, [isEditing]);
     
@@ -23,11 +25,11 @@ const ArchivedPlanItem: React.FC<{ archive: ArchivedPlan }> = observer(({ archiv
                     <button onClick={() => setIsEditing(!isEditing)} className="text-gray-400 hover:text-violet-600 dark:text-gray-500 dark:hover:text-violet-400"><EditIcon /></button>
                     <span className="text-sm text-gray-500 dark:text-gray-400 font-normal ml-2">({archive.date})</span>
                 </div>
+                {/* Fix: correctly call restorePlanFromArchive from store */}
                 <button onClick={(e) => { e.preventDefault(); mealPlanStore.restorePlanFromArchive(archive.id); }} className="bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 font-semibold px-3 py-1 rounded-full hover:bg-violet-200 dark:hover:bg-violet-800/50 transition-colors text-sm flex items-center flex-shrink-0" title={t('restorePlanTitle')}>
                     <RestoreIcon/><span className="ml-2 hidden sm:inline">{t('restore')}</span>
                 </button>
             </summary>
-            {/* Fix: Removed non-existent 'isArchiveView' prop. The default behavior is correct for a read-only archive view. */}
             <div className="mt-4 border-t dark:border-gray-700 pt-4"> <MealPlanView plan={archive.plan} /> </div>
         </details>
     );

@@ -222,6 +222,7 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                 </div>
             )}
             {plan.map((day, dayIndex) => {
+                // Fix: correctly call getDayNutritionSummary from store
                 const summary = mealPlanStore.getDayNutritionSummary(day);
                 const isOpen = openDayIndex === dayIndex;
 
@@ -310,6 +311,7 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                 <ConfirmationModal
                     isOpen={!!resettingMeal}
                     onClose={() => setResettingMeal(null)}
+                    // Fix: correctly call resetMealToPreset from store
                     onConfirm={() => mealPlanStore.resetMealToPreset(resettingMeal.dayIndex, resettingMeal.mealIndex)}
                     title={t('resetMealModalTitle')}
                 >

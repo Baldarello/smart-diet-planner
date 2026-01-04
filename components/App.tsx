@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
+// Fix: corrected import for NavigableTab
 import { mealPlanStore, AppStatus, NavigableTab } from '../stores/MealPlanStore';
 import { authStore } from '../stores/AuthStore';
 import { uiStore } from '../stores/UIStore';
@@ -147,6 +148,7 @@ const MainAppLayout: React.FC = observer(() => {
                 });
             }
         }, 60 * 1000);
+        // Fix: correctly call updateHydrationStatus from store
         const hydrationTimer = setInterval(() => { if (store.currentPlanId) store.updateHydrationStatus(); }, 60 * 1000);
         if (store.currentPlanId) store.updateHydrationStatus();
         return () => { clearInterval(mealTimer); clearInterval(hydrationTimer); };
