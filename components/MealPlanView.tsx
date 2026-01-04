@@ -44,8 +44,8 @@ const GenericPlanDayConfig: React.FC<{ dayName: string; onClose: () => void }> =
         <div className="fixed inset-0 z-[60] bg-white dark:bg-gray-900 flex flex-col" onClick={e => e.stopPropagation()}>
             <header className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800 shadow-sm shrink-0">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 capitalize">Opzioni per {dayName.toLowerCase()}</h2>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Espandi le sezioni per configurare il piano.</p>
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 capitalize">{t('genericPlanOptionsForDay', { day: dayName.toLowerCase() })}</h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('genericPlanExpandSections')}</p>
                 </div>
                 <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                     <CloseIcon />
@@ -55,7 +55,6 @@ const GenericPlanDayConfig: React.FC<{ dayName: string; onClose: () => void }> =
                 {sections.map((section, idx) => {
                     if (section.items.length === 0) return null;
                     const selectedIndices = preferences[section.key];
-                    // If undefined, it means "Show All"
                     const isAllSelected = selectedIndices === undefined;
                     const selectionCount = isAllSelected ? section.items.length : selectedIndices.length;
                     
@@ -69,9 +68,9 @@ const GenericPlanDayConfig: React.FC<{ dayName: string; onClose: () => void }> =
                                     <div>
                                         <h3 className="font-bold text-gray-700 dark:text-gray-300 text-sm">{section.title}</h3>
                                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                            {selectionCount === 0 ? "Nessuna opzione selezionata" : 
-                                             isAllSelected ? "Tutte le opzioni attive" : 
-                                             `${selectionCount} opzioni selezionate`}
+                                            {selectionCount === 0 ? t('genericPlanNoOptionsSelected') : 
+                                             isAllSelected ? t('genericPlanAllOptionsActive') : 
+                                             t('genericPlanOptionsSelectedCount', { count: selectionCount })}
                                         </p>
                                     </div>
                                 </div>
@@ -81,14 +80,14 @@ const GenericPlanDayConfig: React.FC<{ dayName: string; onClose: () => void }> =
                                         onClick={(e) => { e.stopPropagation(); setGenericPlanPreference(dayName, section.key, undefined as any); }} 
                                         className={`text-xs px-2 py-1 rounded border transition-colors ${isAllSelected ? 'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-700' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500'}`}
                                     >
-                                        Tutti
+                                        {t('genericPlanAll')}
                                     </button>
                                     <button 
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); clearSection(section.key); }} 
                                         className="text-xs px-2 py-1 rounded border border-gray-300 bg-white text-red-500 hover:bg-red-50 hover:border-red-200 dark:bg-gray-700 dark:border-gray-500 dark:hover:bg-red-900/20 transition-colors"
                                     >
-                                        Nessuno
+                                        {t('genericPlanNone')}
                                     </button>
                                 </div>
                             </summary>
@@ -119,7 +118,7 @@ const GenericPlanDayConfig: React.FC<{ dayName: string; onClose: () => void }> =
                                                     {isSelected && <CheckIcon className="w-3 h-3 text-white" />}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-medium text-gray-800 dark:text-gray-200 text-sm truncate">{item.name || `Opzione ${itemIdx + 1}`}</p>
+                                                    <p className="font-medium text-gray-800 dark:text-gray-200 text-sm truncate">{item.name || `${t('genericPlanOption')} ${itemIdx + 1}`}</p>
                                                     <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal leading-relaxed mt-1">
                                                         {item.items.map(i => i.ingredientName).join(', ')}
                                                     </p>
@@ -135,7 +134,7 @@ const GenericPlanDayConfig: React.FC<{ dayName: string; onClose: () => void }> =
             </div>
             <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0 text-right safe-area-bottom">
                 <button onClick={onClose} className="bg-violet-600 hover:bg-violet-700 text-white font-semibold px-6 py-2 rounded-full transition-colors shadow-sm">
-                    Chiudi
+                    {t('close')}
                 </button>
             </div>
         </div>
@@ -147,8 +146,6 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
     const [openDayIndex, setOpenDayIndex] = useState<number | null>(0);
     const [actionsMenu, setActionsMenu] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
     const [resettingMeal, setResettingMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
-    
-    // Generic Plan State
     const [configuringDay, setConfiguringDay] = useState<string | null>(null);
 
     const handleToggle = (dayIndex: number) => {
@@ -174,8 +171,8 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
         return (
             <div className="max-w-4xl mx-auto">
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Pianificazione Settimanale</h2>
-                    <p className="text-gray-600 dark:text-gray-400 mb-6">Seleziona un giorno per personalizzare quali opzioni del tuo piano mostrare. Di default, vengono mostrate tutte le opzioni.</p>
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">{t('genericPlanPlanningTitle')}</h2>
+                    <p className="text-gray-600 dark:text-gray-400 mb-6">{t('genericPlanPlanningDesc')}</p>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {DAY_KEYWORDS.map(day => (
@@ -222,7 +219,6 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                 </div>
             )}
             {plan.map((day, dayIndex) => {
-                // Fix: correctly call getDayNutritionSummary from store
                 const summary = mealPlanStore.getDayNutritionSummary(day);
                 const isOpen = openDayIndex === dayIndex;
 
@@ -247,7 +243,6 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
 
                             <div className="space-y-4">
                                 {day.meals.map((meal, mealIndex) => {
-                                    const isMenuOpen = actionsMenu?.dayIndex === dayIndex && actionsMenu.mealIndex === mealIndex;
                                     return (
                                         <div key={mealIndex} className={`border-t border-gray-100 dark:border-gray-700 pt-3`}>
                                             <div className="flex justify-between items-start gap-2">
@@ -311,7 +306,6 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                 <ConfirmationModal
                     isOpen={!!resettingMeal}
                     onClose={() => setResettingMeal(null)}
-                    // Fix: correctly call resetMealToPreset from store
                     onConfirm={() => mealPlanStore.resetMealToPreset(resettingMeal.dayIndex, resettingMeal.mealIndex)}
                     title={t('resetMealModalTitle')}
                 >
