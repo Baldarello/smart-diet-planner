@@ -251,6 +251,7 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                                                     {meal.title && <p className={`text-sm font-medium text-violet-600 dark:text-violet-400 truncate`}>{meal.title}</p>}
                                                      {meal.cheat && <span className="text-xs font-bold uppercase text-orange-500 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50 px-2 py-1 rounded-full mt-1 inline-block">{t('cheatMealBadge')}</span>}
                                                 </div>
+                                                {/* In standard weekly view, time is only shown here per meal */}
                                                 {meal.time && !meal.cheat && (
                                                     <div className="flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
                                                         <ClockIcon />
@@ -261,12 +262,6 @@ const MealPlanView: React.FC<{ plan: DayPlan[], isMasterPlanView?: boolean }> = 
                                             
                                             {meal.cheat && meal.cheatMealDescription ? (
                                                 <div className="mt-2 p-3 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
-                                                    {meal.time && (
-                                                        <div className="flex items-center font-semibold text-sm text-orange-800 dark:text-orange-300 mb-2">
-                                                            <ClockIcon />
-                                                            <span>{meal.time}</span>
-                                                        </div>
-                                                    )}
                                                     <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{meal.cheatMealDescription}</p>
                                                 </div>
                                             ) : (

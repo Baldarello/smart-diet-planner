@@ -63,18 +63,30 @@ const CircularProgress: React.FC<{
 };
 
 
-const UpcomingMealCard: React.FC<{ meal: Meal }> = ({ meal }) => (
-    <div className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-xl flex items-start gap-4">
-        <div className="bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-300 p-2 rounded-full mt-1">
-            <ClockIcon />
+const UpcomingMealCard: React.FC<{ meal: Meal, isGeneric?: boolean }> = ({ meal, isGeneric }) => {
+    // For generic plans, the 'name' might be an ingredient (e.g. Bread).
+    // We want to show the section name (e.g. Dinner) instead.
+    const displayTitle = isGeneric && meal.section 
+        ? meal.section.split(' - ')[0] 
+        : meal.name;
+    
+    const displaySubtitle = isGeneric && meal.section 
+        ? meal.name 
+        : meal.title;
+
+    return (
+        <div className="bg-slate-50 dark:bg-gray-700/50 p-4 rounded-xl flex items-start gap-4">
+            <div className="bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-300 p-2 rounded-full mt-1">
+                <ClockIcon />
+            </div>
+            <div>
+                <p className="font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide">{displayTitle}</p>
+                {displaySubtitle && <p className="text-sm text-violet-600 dark:text-violet-400 font-medium">{displaySubtitle}</p>}
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{meal.time}</p>
+            </div>
         </div>
-        <div>
-            <p className="font-semibold text-gray-800 dark:text-gray-200">{meal.name}</p>
-            <p className="text-sm text-violet-600 dark:text-violet-400 font-medium">{meal.title}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{meal.time}</p>
-        </div>
-    </div>
-);
+    );
+};
 
 const StreakItem: React.FC<{ count: number, label: string, icon: React.ReactNode }> = ({ count, label, icon }) => {
     if (count < 2) return null;
@@ -164,32 +176,24 @@ const DashboardView: React.FC = observer(() => {
         return t('dashboardWelcome').split(',')[0] + '!';
     };
 
-    // Corrected Upcoming meals logic:
-    // Show the next meal that is not done. 
-    // If multiple meals have the same time (like in Generic Plans), show the first one.
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     
     const pendingMeals = store.dailyPlan?.meals
         .filter(meal => !meal.done && !meal.cheat) || [];
     
-    // Sort pending meals by time to find the chronologically first one
     const sortedPending = [...pendingMeals].sort((a, b) => (a.time ?? '00:00').localeCompare(b.time ?? '00:00'));
     
-    // Try to find the first one that is >= current time
     let nextMeals = sortedPending.filter(meal => (meal.time ?? '00:00') >= currentTime).slice(0, 1);
     
-    // If no future meals are pending, but there are past meals still pending (overdue), show the first overdue one
     if (nextMeals.length === 0 && sortedPending.length > 0) {
         nextMeals = [sortedPending[0]];
     }
 
-    // Progress data
     const stepsProgress = store.currentDayProgress?.stepsTaken ?? 0;
     const waterProgress = store.currentDayProgress?.waterIntakeMl ?? 0;
     const waterGoalMl = store.hydrationGoalLiters * 1000;
     
-    // Chart data
     const last7DaysHistory = store.progressHistory.slice(-7);
     const weightLabels = last7DaysHistory.map(d => {
         try {
@@ -241,7 +245,7 @@ const DashboardView: React.FC = observer(() => {
                         </div>
                         {nextMeals && nextMeals.length > 0 ? (
                             <div className="space-y-3">
-                                {nextMeals.map((meal, index) => <UpcomingMealCard key={index} meal={meal} />)}
+                                {nextMeals.map((meal, index) => <UpcomingMealCard key={index} meal={meal} isGeneric={store.isGenericPlan} />)}
                             </div>
                         ) : (
                             <p className="text-center text-gray-500 dark:text-gray-400 py-4">{t('noUpcomingMeals')}</p>
