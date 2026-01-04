@@ -1,19 +1,17 @@
+
 import React, { useState, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
-import { StepsIcon, FlameIcon } from './Icons';
+import { StepsIcon } from './Icons';
 
 const StepTracker: React.FC = observer(() => {
-    const { stepGoal, setStepGoal, currentDayProgress, setSteps, logSteps, setActivityHours } = mealPlanStore;
+    const { stepGoal, setStepGoal, currentDayProgress, setSteps, logSteps } = mealPlanStore;
     const stepsTaken = currentDayProgress?.stepsTaken ?? 0;
-    const activityHours = currentDayProgress?.activityHours ?? 1;
-    const caloriesBurned = currentDayProgress?.estimatedCaloriesBurned;
     
     const [isEditingIntake, setIsEditingIntake] = useState(false);
     const [editableIntake, setEditableIntake] = useState(stepsTaken.toString());
     const [editableGoal, setEditableGoal] = useState(stepGoal.toString());
-    const [editableHours, setEditableHours] = useState(activityHours.toString());
 
     useEffect(() => {
         if (!isEditingIntake) {
@@ -24,11 +22,6 @@ const StepTracker: React.FC = observer(() => {
     useEffect(() => {
         setEditableGoal(stepGoal.toString());
     }, [stepGoal]);
-
-    useEffect(() => {
-        setEditableHours(activityHours.toString());
-    }, [activityHours]);
-
 
     const goal = parseInt(editableGoal, 10);
     const progressPercentage = goal > 0 ? Math.min((stepsTaken / goal) * 100, 100) : 0;
@@ -60,48 +53,34 @@ const StepTracker: React.FC = observer(() => {
             setIsEditingIntake(false);
         }
     };
-    
-    const handleAddDuration = (minutes: number) => {
-        const currentHours = activityHours || 0;
-        const newTotalHours = Math.round((currentHours + (minutes / 60)) * 100) / 100;
-        setActivityHours(newTotalHours);
-    };
-
-    const handleHoursSave = () => {
-        const numericHours = parseFloat(editableHours.replace(',', '.'));
-        if (!isNaN(numericHours) && numericHours >= 0) {
-            setActivityHours(numericHours);
-        } else {
-            setEditableHours(activityHours.toString());
-        }
-    };
-
 
     return (
         <div className="bg-teal-50 dark:bg-teal-900/20 p-4 rounded-lg mt-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 gap-y-3 sm:gap-y-0">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-y-2 sm:gap-y-0">
                  <div className="flex items-center flex-shrink-0">
                     <StepsIcon />
                     <h4 className="font-semibold text-teal-800 dark:text-teal-300 ml-3">{t('stepTrackerTitle')}</h4>
                 </div>
-                 <div className="flex items-center self-end sm:self-center">
-                    <label className="text-sm text-teal-600 dark:text-teal-400 mr-2 whitespace-nowrap">{t('stepGoal')}</label>
-                    <input
-                        type="text"
-                        inputMode="numeric"
-                        value={editableGoal}
-                        onChange={(e) => setEditableGoal(e.target.value)}
-                        onBlur={handleGoalSave}
-                        className="w-24 text-right font-bold bg-transparent border-b-2 border-teal-200 dark:border-teal-700 focus:border-teal-500 dark:focus:border-teal-400 outline-none text-teal-700 dark:text-teal-200"
-                        aria-label={t('stepGoal')}
-                    />
-                    <span className="ml-2 font-semibold text-teal-700 dark:text-teal-200">{t('stepsUnit')}</span>
+                 <div className="flex items-center gap-1">
+                    <label className="text-sm text-teal-600 dark:text-teal-400 whitespace-nowrap">{t('stepGoal')}</label>
+                    <div className="flex items-center">
+                        <input
+                            type="text"
+                            inputMode="numeric"
+                            value={editableGoal}
+                            onChange={(e) => setEditableGoal(e.target.value)}
+                            onBlur={handleGoalSave}
+                            className="w-16 text-right font-bold bg-transparent border-b-2 border-teal-200 dark:border-teal-700 focus:border-teal-500 dark:focus:border-teal-400 outline-none text-teal-700 dark:text-teal-200 p-0"
+                            aria-label={t('stepGoal')}
+                        />
+                        <span className="ml-1 text-sm font-semibold text-teal-700 dark:text-teal-200">{t('stepsUnit')}</span>
+                    </div>
                 </div>
             </div>
             <div>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline mb-1">
-                    <span className="text-sm font-medium text-teal-700 dark:text-teal-300 whitespace-nowrap">{t('stepsTaken')}</span>
-                    <span className="text-sm font-bold text-teal-800 dark:text-teal-200 self-end sm:self-auto">
+                <div className="flex justify-between items-baseline mb-1">
+                    <span className="text-sm font-medium text-teal-700 dark:text-teal-300">{t('stepsTaken')}</span>
+                    <span className="text-sm font-bold text-teal-800 dark:text-teal-200">
                         {isEditingIntake ? (
                             <input
                                 type="text"
@@ -111,7 +90,7 @@ const StepTracker: React.FC = observer(() => {
                                 onBlur={handleIntakeSave}
                                 onKeyDown={handleIntakeKeyDown}
                                 autoFocus
-                                className="w-20 text-right font-bold bg-white dark:bg-gray-700 border-b-2 border-teal-400 dark:border-teal-500 outline-none text-teal-700 dark:text-teal-200"
+                                className="w-16 text-right font-bold bg-white dark:bg-gray-700 border-b-2 border-teal-400 dark:border-teal-500 outline-none text-teal-700 dark:text-teal-200"
                                 aria-label={t('stepsTaken')}
                             />
                         ) : (
@@ -123,7 +102,7 @@ const StepTracker: React.FC = observer(() => {
                                 {stepsTaken}
                             </span>
                         )}
-                        &nbsp;/ {isNaN(goal) ? '...' : goal} {t('stepsUnit')}
+                        &nbsp;/ {isNaN(goal) ? '...' : goal}
                     </span>
                 </div>
                 <div className="w-full bg-teal-200 dark:bg-teal-800 rounded-full h-2.5">
@@ -137,62 +116,13 @@ const StepTracker: React.FC = observer(() => {
                         <button
                             key={amount}
                             onClick={() => logSteps(amount)}
-                            className="bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-200 font-semibold px-4 py-2 rounded-full hover:bg-teal-200 dark:hover:bg-teal-800/60 transition-colors text-sm"
+                            className="bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-200 font-semibold px-4 py-2 rounded-full hover:bg-teal-200 dark:hover:bg-teal-800/60 transition-colors text-xs"
                             aria-label={`Add ${amount} steps`}
                         >
                             +{amount}
                         </button>
                     ))}
                 </div>
-            </div>
-            
-            {/* Calorie Estimation Section */}
-            <div className="mt-4 border-t border-teal-200 dark:border-teal-700/50 pt-4 space-y-3">
-                {/* Hours Input */}
-                <div className="flex items-center justify-between">
-                    <label htmlFor="activity-hours" className="text-sm font-medium text-teal-700 dark:text-teal-300">{t('activityHours')}</label>
-                    <div className="flex items-center">
-                         <input
-                            id="activity-hours"
-                            type="text"
-                            inputMode="decimal"
-                            value={editableHours}
-                            onChange={(e) => setEditableHours(e.target.value)}
-                            onBlur={handleHoursSave}
-                            className="w-16 text-right font-bold bg-transparent border-b-2 border-teal-200 dark:border-teal-700 focus:border-teal-500 dark:focus:border-teal-400 outline-none text-teal-700 dark:text-teal-200"
-                            aria-label={t('activityHours')}
-                        />
-                        <span className="ml-2 font-semibold text-teal-700 dark:text-teal-200">{t('hoursUnit')}</span>
-                    </div>
-                </div>
-                
-                {/* Quick Add Duration */}
-                <div className="text-center pt-2">
-                    <span className="text-sm font-medium text-teal-700 dark:text-teal-300">{t('quickAddDurationTitle')}</span>
-                    <div className="flex justify-center gap-2 mt-2">
-                        {[15, 30, 45].map(minutes => (
-                            <button
-                                key={minutes}
-                                onClick={() => handleAddDuration(minutes)}
-                                className="bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-200 font-semibold px-3 py-1.5 rounded-full hover:bg-teal-200 dark:hover:bg-teal-800/60 transition-colors text-sm"
-                                aria-label={`Add ${minutes} minutes`}
-                            >
-                                +{minutes}m
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-
-                {/* Estimated Calories Display */}
-                {caloriesBurned !== null && caloriesBurned > 0 && (
-                    <div className="!mt-4 flex items-center justify-center bg-teal-100 dark:bg-teal-800/60 p-3 rounded-lg">
-                        <FlameIcon />
-                        <span className="ml-2 font-semibold text-teal-800 dark:text-teal-200">{t('estimatedCalories')}</span>
-                        <span className="ml-1 font-bold text-lg text-teal-600 dark:text-teal-100">{caloriesBurned}</span>
-                        <span className="ml-1 font-semibold text-teal-800 dark:text-teal-200">{t('caloriesUnit')}</span>
-                    </div>
-                )}
             </div>
         </div>
     );

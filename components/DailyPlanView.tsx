@@ -4,7 +4,7 @@ import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import MealItemChecklist from './MealItemChecklist';
 import { t } from '../i18n';
-import { CheckCircleIcon, UndoIcon, WarningIcon, MoreVertIcon, ClockIcon } from './Icons';
+import { CheckCircleIcon, UndoIcon, WarningIcon, ClockIcon } from './Icons';
 import HydrationTracker from './HydrationTracker';
 import MealTimeEditor from './MealTimeEditor';
 import DailyNutritionSummary from './DailyNutritionSummary';
@@ -16,7 +16,6 @@ import StepTracker from './StepTracker';
 import BodyMetricsTracker from './BodyMetricsTracker';
 import SkeletonLoader from './SkeletonLoader';
 import CheatMealModal from './CheatMealModal';
-import MealActionsPopup from './MealActionsPopup';
 import ConfirmationModal from './ConfirmationModal';
 
 interface GroupedMealSection {
@@ -32,10 +31,8 @@ interface GroupedMealSection {
 const DailyPlanView: React.FC = observer(() => {
     const { dailyPlan, toggleMealDone, dailyNutritionSummary, currentDate, setCurrentDate, startDate, endDate, toggleAllItemsInMeal, undoCheatMeal, isGenericPlan } = mealPlanStore;
     const [cheatingMealIndex, setCheatingMealIndex] = useState<number | null>(null);
-    const [actionsMenuMealIndex, setActionsMenuMealIndex] = useState<number | null>(null);
     const [resettingMeal, setResettingMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
     const [activeMobileTab, setActiveMobileTab] = useState<'meals' | 'trackers'>('meals');
-
 
     const todayDateString = new Date().toLocaleDateString('en-CA');
     const isToday = currentDate === todayDateString;
@@ -60,7 +57,6 @@ const DailyPlanView: React.FC = observer(() => {
 
     const sortedMealsRaw = [...dailyPlan.meals].map((meal, index) => ({ ...meal, originalIndex: index }));
 
-    // --- Robust Logic for Grouping Meals by Section ---
     const getMainMealType = (sectionName: string): 'PRANZO' | 'CENA' | null => {
         const sn = sectionName.toUpperCase();
         if (sn.startsWith('PRANZO')) return 'PRANZO';
@@ -69,7 +65,7 @@ const DailyPlanView: React.FC = observer(() => {
     };
 
     const sectionMap = new Map<string, GroupedMealSection>();
-    const sectionKeys: string[] = []; // To preserve appearance order
+    const sectionKeys: string[] = [];
 
     sortedMealsRaw.forEach(meal => {
         const fullSectionName = (meal.section || 'General').trim();
@@ -107,7 +103,6 @@ const DailyPlanView: React.FC = observer(() => {
 
     const sections = sectionKeys.map(key => sectionMap.get(key)!);
 
-    // Requirement: Within each sub-section, move completed meals to the bottom
     sections.forEach(s => {
         s.subSections.forEach(sub => {
             sub.meals.sort((a, b) => {
@@ -119,18 +114,13 @@ const DailyPlanView: React.FC = observer(() => {
 
     const isSectionDone = (s: GroupedMealSection) => {
         if (s.subSections.length === 0) return false;
-
         if (isGenericPlan) {
-            if (s.isMainMeal) {
-                return s.subSections.every(sub => sub.meals.some(m => m.done));
-            }
+            if (s.isMainMeal) return s.subSections.every(sub => sub.meals.some(m => m.done));
             return s.subSections.some(sub => sub.meals.some(m => m.done));
         }
-
         return s.subSections.every(sub => sub.meals.every(m => m.done));
     };
 
-    // Requirement: Sort sections so completed ones move to bottom
     const availableSections = sections.filter(s => !isSectionDone(s));
     const completedSections = sections.filter(s => isSectionDone(s));
     const sortedSections = [...availableSections, ...completedSections];
@@ -188,7 +178,7 @@ const DailyPlanView: React.FC = observer(() => {
                         {meal.title && <p className={`text-md font-medium text-violet-600 dark:text-violet-400 mt-1 transition-all truncate ${meal.done ? 'line-through' : ''}`}>{meal.title}</p>}
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2">
-                        <div className="hidden sm:flex items-center gap-2">
+                        <div className="flex items-center gap-1 sm:gap-2">
                             {!isGenericPlan && <MealTimeEditor dayIndex={dayIndex} mealIndex={meal.originalIndex} />}
                             {!meal.cheat && 
                                 <>
@@ -210,23 +200,6 @@ const DailyPlanView: React.FC = observer(() => {
                             <button onClick={() => toggleMealDone(meal.originalIndex)} title={meal.done ? t('markAsToDo') : t('markAsDone')} className={`p-1.5 rounded-full transition-all flex-shrink-0 ${meal.done ? 'text-violet-500 bg-violet-100 dark:bg-violet-900/40' : 'hover:bg-gray-200 dark:hover:bg-gray-600'}`} aria-label={meal.done ? t('markAsToDo') : t('markAsDone')}>
                                 {meal.done ? <UndoIcon /> : <CheckCircleIcon />}
                             </button>
-                        )}
-                        
-                        {!meal.done && !isGenericPlan && (
-                            <div className="relative sm:hidden">
-                                <button onClick={(e) => { e.stopPropagation(); setActionsMenuMealIndex(meal.originalIndex); }} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
-                                    <MoreVertIcon />
-                                </button>
-                                {actionsMenuMealIndex === meal.originalIndex && (
-                                    <MealActionsPopup 
-                                        dayIndex={dayIndex}
-                                        mealIndex={meal.originalIndex}
-                                        onClose={() => setActionsMenuMealIndex(null)}
-                                        onLogCheatMeal={!meal.cheat ? () => setCheatingMealIndex(meal.originalIndex) : undefined}
-                                        onResetClick={!meal.cheat ? () => setResettingMeal({ dayIndex, mealIndex: meal.originalIndex }) : undefined}
-                                    />
-                                )}
-                            </div>
                         )}
                     </div>
                 </div>
@@ -261,6 +234,9 @@ const DailyPlanView: React.FC = observer(() => {
     const MealsContent = (
         <div className="space-y-6 mt-6">
             {sortedSections.map((section, idx) => {
+                // Goal: Hide the header if it's a standard plan with just "General" section
+                const hideSectionHeader = !isGenericPlan && section.title.toUpperCase() === 'GENERAL';
+
                 if (section.isMainMeal) {
                     return (
                         <div key={idx} className="bg-white dark:bg-gray-700/20 border border-violet-100 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
@@ -274,7 +250,6 @@ const DailyPlanView: React.FC = observer(() => {
                             </div>
                             <div>
                                 {section.subSections.map((sub, subIdx) => {
-                                    // EXCLUSIVE SELECTION LOGIC ONLY for Generic Plans
                                     const selectedMeal = isGenericPlan ? sub.meals.find(m => m.done) : null;
                                     const availableMeals = selectedMeal ? [selectedMeal] : sub.meals;
                                     
@@ -297,14 +272,16 @@ const DailyPlanView: React.FC = observer(() => {
                 } else {
                     return (
                         <div key={idx} className="space-y-3">
-                            <div className="flex justify-between items-center pl-2 border-l-4 border-violet-500 mb-1">
-                                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{section.title}</h3>
-                                {section.sectionTime && (
-                                    <div className="flex items-center gap-1 text-xs font-bold text-violet-600 dark:text-violet-400">
-                                        <ClockIcon /> {section.sectionTime}
-                                    </div>
-                                )}
-                            </div>
+                            {!hideSectionHeader && (
+                                <div className="flex justify-between items-center pl-2 border-l-4 border-violet-500 mb-1">
+                                    <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{section.title}</h3>
+                                    {section.sectionTime && (
+                                        <div className="flex items-center gap-1 text-xs font-bold text-violet-600 dark:text-violet-400">
+                                            <ClockIcon /> {section.sectionTime}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             <div className="space-y-3">
                                 {section.subSections.flatMap(sub => {
                                     const selectedMeal = isGenericPlan ? sub.meals.find(m => m.done) : null;
