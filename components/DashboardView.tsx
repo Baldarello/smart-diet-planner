@@ -164,12 +164,25 @@ const DashboardView: React.FC = observer(() => {
         return t('dashboardWelcome').split(',')[0] + '!';
     };
 
-    // Upcoming meals
+    // Corrected Upcoming meals logic:
+    // Show the next meal that is not done. 
+    // If multiple meals have the same time (like in Generic Plans), show the first one.
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const upcomingMeals = store.dailyPlan?.meals
-        .filter(meal => !meal.done && !meal.cheat && (meal.time ?? '00:00') >= currentTime)
-        .slice(0, 1);
+    
+    const pendingMeals = store.dailyPlan?.meals
+        .filter(meal => !meal.done && !meal.cheat) || [];
+    
+    // Sort pending meals by time to find the chronologically first one
+    const sortedPending = [...pendingMeals].sort((a, b) => (a.time ?? '00:00').localeCompare(b.time ?? '00:00'));
+    
+    // Try to find the first one that is >= current time
+    let nextMeals = sortedPending.filter(meal => (meal.time ?? '00:00') >= currentTime).slice(0, 1);
+    
+    // If no future meals are pending, but there are past meals still pending (overdue), show the first overdue one
+    if (nextMeals.length === 0 && sortedPending.length > 0) {
+        nextMeals = [sortedPending[0]];
+    }
 
     // Progress data
     const stepsProgress = store.currentDayProgress?.stepsTaken ?? 0;
@@ -226,9 +239,9 @@ const DashboardView: React.FC = observer(() => {
                                 <span className="hidden sm:inline">{t('goToToday')}</span>
                             </button>
                         </div>
-                        {upcomingMeals && upcomingMeals.length > 0 ? (
+                        {nextMeals && nextMeals.length > 0 ? (
                             <div className="space-y-3">
-                                {upcomingMeals.map((meal, index) => <UpcomingMealCard key={index} meal={meal} />)}
+                                {nextMeals.map((meal, index) => <UpcomingMealCard key={index} meal={meal} />)}
                             </div>
                         ) : (
                             <p className="text-center text-gray-500 dark:text-gray-400 py-4">{t('noUpcomingMeals')}</p>

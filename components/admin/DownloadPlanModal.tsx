@@ -90,8 +90,8 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
                 return sectionHtml;
             };
 
-            const renderModularSection = (title: string, data: { carbs: Meal[], protein: Meal[], vegetables: Meal[], fats: Meal[], suggestions?: any }) => {
-                let sectionHtml = `<h2>${title}</h2>`;
+            const renderModularSection = (title: string, data: { carbs: Meal[], protein: Meal[], vegetables: Meal[], fats: Meal[], suggestions?: any, time?: string }) => {
+                let sectionHtml = `<div class="modular-section-header"><h2>${title}</h2>${data.time ? `<span class="section-time">${data.time}</span>` : ''}</div>`;
                 sectionHtml += `<div class="modular-grid">`;
                 
                 const categories = [
@@ -129,18 +129,13 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
                         sectionHtml += `</li>`;
                     });
                     sectionHtml += `</ul></div>`;
-                } else if (typeof data.suggestions === 'string' && data.suggestions.trim()) {
-                     // Fallback for legacy string suggestions
-                     sectionHtml += `<div class="suggestions-box"><strong>${t('suggestionsLabel')}:</strong><br/>${data.suggestions.replace(/\n/g, '<br/>')}</div>`;
                 }
                 
                 return sectionHtml;
             };
 
             mainContentHtml += renderOptionsSection("COLAZIONE", genericPlan.breakfast);
-            mainContentHtml += renderOptionsSection("SPUNTINO MATTINA", genericPlan.snack1);
             mainContentHtml += renderModularSection("PRANZO", genericPlan.lunch);
-            mainContentHtml += renderOptionsSection("MERENDA", genericPlan.snack2);
             mainContentHtml += renderModularSection("CENA", genericPlan.dinner);
 
         } else {
@@ -257,7 +252,10 @@ const DownloadPlanModal: React.FC<DownloadPlanModalProps> = ({ plan, onClose }) 
                     .daily-summary { display: flex; justify-content: space-around; background: #f3f4f6; padding: 10px; border-radius: 8px; margin: 10px 0; font-size: 0.9em; }
                     
                     /* Generic Plan Styles */
-                    .modular-grid { display: flex; flex-wrap: wrap; gap: 20px; }
+                    .modular-section-header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #ddd; margin-top: 30px; }
+                    .modular-section-header h2 { margin: 0; border: none; }
+                    .section-time { font-weight: bold; color: ${primaryColor}; font-size: 1.1em; }
+                    .modular-grid { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 10px; }
                     .modular-column { flex: 1; min-width: 200px; border: 1px solid #eee; padding: 10px; border-radius: 8px; }
                     .modular-column h3 { margin-top: 0; font-size: ${fontSizeH3}px; text-align: center; color: ${primaryColor}; }
                     .meal-nutrition-inline { font-size: 0.8em; color: #888; margin-left: 5px; }

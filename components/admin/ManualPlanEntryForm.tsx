@@ -1,5 +1,4 @@
 
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem, NutritionistPlan, NutritionInfo, Patient, AssignedPlan, PlanCreationData, GenericPlanData, ModularMealData, Recipe, FormDayPlan, FormMeal, FormMealItem, FormGenericPlan, FormModularMeal, FormSuggestion } from '../../types';
@@ -40,14 +39,16 @@ const createInitialGenericPlan = (): FormGenericPlan => ({
         protein: [],
         vegetables: [],
         fats: [],
-        suggestions: []
+        suggestions: [],
+        time: '13:00'
     },
     dinner: {
         carbs: [],
         protein: [],
         vegetables: [],
         fats: [],
-        suggestions: []
+        suggestions: [],
+        time: '20:00'
     }
 });
 
@@ -327,7 +328,18 @@ const ModularMealEditor: React.FC<{
 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 mb-4">
-            <h3 className="font-bold text-lg text-violet-700 dark:text-violet-400 mb-4">{title}</h3>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                <h3 className="font-bold text-lg text-violet-700 dark:text-violet-400">{title}</h3>
+                <div className="flex items-center gap-2 bg-slate-50 dark:bg-gray-700 p-1.5 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight">{t('mealTime')}</span>
+                    <input 
+                        type="time" 
+                        value={data.time} 
+                        onChange={e => onChange({...data, time: e.target.value})} 
+                        className="bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm p-0.5"
+                    />
+                </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <ModularMealSectionEditor 
                     sectionTitle={t('nutritionCarbs')} 
@@ -758,7 +770,8 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                     fats: mod.fats.map(mapToFormMeal),
                     suggestions: Array.isArray(mod.suggestions) 
                         ? mod.suggestions.map(mapToFormSuggestion) 
-                        : [] // Handle legacy if needed
+                        : [], // Handle legacy if needed
+                    time: mod.time || (mod === pd.genericPlan!.lunch ? '13:00' : '20:00')
                 });
 
                 const typedGenericPlan = pd.genericPlan as GenericPlanData;
@@ -1029,14 +1042,16 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                         protein: genericPlanData.lunch.protein.map(toMeal),
                         vegetables: genericPlanData.lunch.vegetables.map(toMeal),
                         fats: genericPlanData.lunch.fats.map(toMeal),
-                        suggestions: genericPlanData.lunch.suggestions.map(toRecipe)
+                        suggestions: genericPlanData.lunch.suggestions.map(toRecipe),
+                        time: genericPlanData.lunch.time
                     },
                     dinner: {
                         carbs: genericPlanData.dinner.carbs.map(toMeal),
                         protein: genericPlanData.dinner.protein.map(toMeal),
                         vegetables: genericPlanData.dinner.vegetables.map(toMeal),
                         fats: genericPlanData.dinner.fats.map(toMeal),
-                        suggestions: genericPlanData.dinner.suggestions.map(toRecipe)
+                        suggestions: genericPlanData.dinner.suggestions.map(toRecipe),
+                        time: genericPlanData.dinner.time
                     }
                 };
 

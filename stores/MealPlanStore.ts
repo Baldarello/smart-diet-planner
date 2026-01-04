@@ -792,7 +792,8 @@ export class MealPlanStore {
         if (!this.genericPlanData) throw new Error("No generic plan data available");
         const preferences = this.genericPlanPreferences[dayName.toUpperCase()] || {};
         const generatedMeals: Meal[] = [];
-        const processSection = (sectionTitle: string, sectionKey: string, options: Meal[]) => {
+
+        const processSection = (sectionTitle: string, sectionKey: string, options: Meal[], sectionTime?: string) => {
             const selectedIndices = preferences[sectionKey];
             options.forEach((option, index) => {
                 if (selectedIndices && !selectedIndices.includes(index)) return;
@@ -801,22 +802,31 @@ export class MealPlanStore {
                     done: false,
                     cheat: false,
                     section: sectionTitle,
+                    time: option.time || sectionTime,
                     items: option.items.map(i => ({ ...toJS(i), used: false }))
                 });
             });
         };
+
+        const processModular = (sectionTitle: string, modularData: any, sectionKeyPrefix: string) => {
+            const time = modularData.time;
+            processSection(`${sectionTitle} - CARBOIDRATI`, `${sectionKeyPrefix}_carbs`, modularData.carbs, time);
+            processSection(`${sectionTitle} - PROTEINE`, `${sectionKeyPrefix}_protein`, modularData.protein, time);
+            processSection(`${sectionTitle} - VERDURE`, `${sectionKeyPrefix}_vegetables`, modularData.vegetables, time);
+            processSection(`${sectionTitle} - GRASSI`, `${sectionKeyPrefix}_fats`, modularData.fats, time);
+        };
+
         const allSnacks = [...(this.genericPlanData.snacks || []), ...(this.genericPlanData.snack1 || []), ...(this.genericPlanData.snack2 || [])];
+        
         processSection("COLAZIONE", "breakfast", this.genericPlanData.breakfast);
-        if (allSnacks.length > 0) processSection("SPUNTINO", "snacks_morning", allSnacks);
-        processSection("PRANZO - CARBOIDRATI", "lunch_carbs", this.genericPlanData.lunch.carbs);
-        processSection("PRANZO - PROTEINE", "lunch_protein", this.genericPlanData.lunch.protein);
-        processSection("PRANZO - VERDURE", "lunch_vegetables", this.genericPlanData.lunch.vegetables);
-        processSection("PRANZO - GRASSI", "lunch_fats", this.genericPlanData.lunch.fats);
+        if (allSnacks.length > 0) processSection("SPUNTINO MATTINA", "snacks_morning", allSnacks);
+        
+        processModular("PRANZO", this.genericPlanData.lunch, "lunch");
+        
         if (allSnacks.length > 0) processSection("MERENDA", "snacks_afternoon", allSnacks);
-        processSection("CENA - CARBOIDRATI", "dinner_carbs", this.genericPlanData.dinner.carbs);
-        processSection("CENA - PROTEINE", "dinner_protein", this.genericPlanData.dinner.protein);
-        processSection("CENA - VERDURE", "dinner_vegetables", this.genericPlanData.dinner.vegetables);
-        processSection("CENA - GRASSI", "dinner_fats", this.genericPlanData.dinner.fats);
+        
+        processModular("CENA", this.genericPlanData.dinner, "dinner");
+
         return { date: dateStr, day: dayName, meals: generatedMeals };
     }
 

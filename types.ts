@@ -1,5 +1,4 @@
 
-
 export interface NutritionInfo {
   carbs: number;
   protein: number;
@@ -183,6 +182,7 @@ export interface ModularMealData {
     vegetables: Meal[];
     fats: Meal[];
     suggestions: Recipe[];
+    time?: string;
 }
 
 export interface GenericPlanData {
@@ -281,6 +281,7 @@ export interface FormModularMeal {
     vegetables: FormMeal[];
     fats: FormMeal[];
     suggestions: FormSuggestion[];
+    time: string;
 }
 
 export interface FormGenericPlan {
