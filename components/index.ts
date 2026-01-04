@@ -1,3 +1,4 @@
+
 export { default as FileUpload } from './FileUpload';
 export { default as Loader } from './Loader';
 export { default as ErrorMessage } from './ErrorMessage';
@@ -39,6 +40,7 @@ export { default as Switch } from './Switch';
 export { default as ShareLinkModal } from './ShareLinkModal';
 export { default as InfoModal } from './InfoModal';
 export { default as HomePage } from './HomePage';
+export { default as ItemEditModal } from './ItemEditModal';
 export * from './Icons';
 export { default as AdminLoginPage } from './admin/AdminLoginPage';
 export { default as NutritionistPage } from './admin/NutritionistPage';

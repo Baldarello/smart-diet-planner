@@ -7,13 +7,14 @@ import { PantryIcon, EditIcon, TrashIcon, CheckIcon, CloseIcon, PlusCircleIcon, 
 import { t } from '../i18n';
 import UnitPicker from './UnitPicker';
 import { formatQuantity } from '../utils/quantityParser';
+import ItemEditModal from './ItemEditModal';
 
 const ShoppingListView: React.FC = observer(() => {
     const store = mealPlanStore;
     const { shoppingList, shoppingListManaged } = store;
     
     const [checkedItems, setCheckedItems] = useState<Map<string, { item: ShoppingListItem, category: string }>>(new Map());
-    const [editingItem, setEditingItem] = useState<{ catIndex: number, itemIndex: number, item: string, quantityValue: string, quantityUnit: string } | null>(null);
+    const [editingItem, setEditingItem] = useState<{ category: string, itemIndex: number, item: ShoppingListItem } | null>(null);
     const [addingToCategory, setAddingToCategory] = useState<string | null>(null);
     const [newItem, setNewItem] = useState({ item: '', quantityValue: '', quantityUnit: 'g' });
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -56,19 +57,12 @@ const ShoppingListView: React.FC = observer(() => {
         setCheckedItems(new Map());
     };
 
-    const handleStartEdit = (catIndex: number, itemIndex: number, item: ShoppingListItem) => {
-        setEditingItem({ catIndex, itemIndex, item: item.item, quantityValue: item.quantityValue?.toString() ?? '', quantityUnit: item.quantityUnit });
-    };
-
-    const handleCancelEdit = () => { setEditingItem(null); };
-
-    const handleSaveEdit = () => {
+    const handleSaveEdit = (quantityValue: number | null, quantityUnit: string) => {
         if (editingItem) {
-            const category = shoppingList[editingItem.catIndex];
-            store.updateShoppingListItem(category.category, editingItem.itemIndex, { 
-                item: editingItem.item, 
-                quantityValue: parseFloat(editingItem.quantityValue) || null,
-                quantityUnit: editingItem.quantityUnit
+            store.updateShoppingListItem(editingItem.category, editingItem.itemIndex, { 
+                ...editingItem.item,
+                quantityValue,
+                quantityUnit
             });
             setEditingItem(null);
         }
@@ -124,9 +118,8 @@ const ShoppingListView: React.FC = observer(() => {
     
     const renderCategoryList = (categories: ShoppingListCategory[], isCompletedList = false) => (
         <div className="space-y-6">
-            {categories.map((category, catIndex) => {
+            {categories.map((category) => {
                 if (category.items.length === 0) return null;
-                const originalCatIndex = store.shoppingList.findIndex(c => c.category === category.category);
 
                 return (
                     <details key={category.category} className="group" open={!isCompletedList}>
@@ -137,7 +130,6 @@ const ShoppingListView: React.FC = observer(() => {
                             </div>
                             {!isShoppingMode && !isCompletedList && (
                                 <div className="opacity-0 group-hover/summary:opacity-100 transition-opacity">
-                                    {/* Fix: correctly calling updateShoppingListCategoryOrder from store */}
                                     <button onClick={(e) => { e.preventDefault(); store.updateShoppingListCategoryOrder(category.category, 'up'); }} title={t('reorderCategoryUp')} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-gray-700"><ArrowUpIcon /></button>
                                     <button onClick={(e) => { e.preventDefault(); store.updateShoppingListCategoryOrder(category.category, 'down'); }} title={t('reorderCategoryDown')} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-gray-700"><ArrowDownIcon /></button>
                                 </div>
@@ -146,30 +138,17 @@ const ShoppingListView: React.FC = observer(() => {
                         <ul className="mt-4 pl-6 border-l-2 border-violet-100 dark:border-gray-700 space-y-3">
                             {category.items.map((item, itemIndex) => {
                                 const key = `${category.category}-${item.item}`;
-                                const isEditing = editingItem?.catIndex === originalCatIndex && editingItem?.itemIndex === itemIndex;
                                 return (
                                     <li key={itemIndex} className="flex items-center group/item shopping-list-item-container">
-                                        <input type="checkbox" id={`item-${catIndex}-${itemIndex}`} className="shopping-list-item-checkbox h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500 cursor-pointer bg-transparent dark:bg-gray-600 flex-shrink-0" onChange={() => handleCheck(item, category.category)} checked={checkedItems.has(key)} aria-labelledby={`label-item-${catIndex}-${itemIndex}`} />
-                                        {isEditing ? (
-                                            <div className="ml-3 flex-grow flex items-center gap-2">
-                                                <input type="text" value={editingItem.item} onChange={(e) => setEditingItem({...editingItem, item: e.target.value})} className="p-1 rounded bg-white dark:bg-gray-700 border border-violet-300 dark:border-violet-500 w-full" />
-                                                <input type="number" value={editingItem.quantityValue} onChange={(e) => setEditingItem({...editingItem, quantityValue: e.target.value})} className="p-1 rounded bg-white dark:bg-gray-700 border border-violet-300 dark:border-violet-500 w-20" />
-                                                <UnitPicker value={editingItem.quantityUnit} onChange={(unit) => setEditingItem({...editingItem, quantityUnit: unit})} />
-                                                <button onClick={handleSaveEdit} className="p-1 text-green-500 hover:bg-green-100 dark:hover:bg-gray-600 rounded-full"><CheckIcon /></button>
-                                                <button onClick={handleCancelEdit} className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-gray-600 rounded-full"><CloseIcon /></button>
+                                        <input type="checkbox" id={`item-${category.category}-${itemIndex}`} className="shopping-list-item-checkbox h-5 w-5 rounded border-gray-300 dark:border-gray-500 text-violet-600 focus:ring-violet-500 cursor-pointer bg-transparent dark:bg-gray-600 flex-shrink-0" onChange={() => handleCheck(item, category.category)} checked={checkedItems.has(key)} aria-labelledby={`label-item-${category.category}-${itemIndex}`} />
+                                        <div id={`label-item-${category.category}-${itemIndex}`} className={`shopping-list-item-label ml-3 flex-grow cursor-pointer ${checkedItems.has(key) ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                                            <span className="font-medium">{item.item}</span>: <span className="text-gray-600 dark:text-gray-400">{formatQuantity(item.quantityValue, item.quantityUnit)}</span>
+                                        </div>
+                                        {!isShoppingMode && (
+                                            <div className="flex items-center opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                                <button onClick={() => setEditingItem({ category: category.category, itemIndex, item })} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full" title={t('editItemTitle')}><EditIcon /></button>
+                                                <button onClick={() => store.deleteShoppingListItem(category.category, itemIndex)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full" title={t('deleteItemTitle')}><TrashIcon /></button>
                                             </div>
-                                        ) : (
-                                            <>
-                                                <div id={`label-item-${catIndex}-${itemIndex}`} className={`shopping-list-item-label ml-3 flex-grow cursor-pointer ${checkedItems.has(key) ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
-                                                    <span className="font-medium">{item.item}</span>: <span className="text-gray-600 dark:text-gray-400">{formatQuantity(item.quantityValue, item.quantityUnit)}</span>
-                                                </div>
-                                                {!isShoppingMode && (
-                                                    <div className="flex items-center opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                                        <button onClick={() => handleStartEdit(originalCatIndex, itemIndex, item)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full" title={t('editItemTitle')}><EditIcon /></button>
-                                                        <button onClick={() => store.deleteShoppingListItem(category.category, itemIndex)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full" title={t('deleteItemTitle')}><TrashIcon /></button>
-                                                    </div>
-                                                )}
-                                            </>
                                         )}
                                     </li>
                                 );
@@ -283,6 +262,16 @@ const ShoppingListView: React.FC = observer(() => {
                     )}
                 </div>
             )}
+
+            <ItemEditModal
+                isOpen={!!editingItem}
+                onClose={() => setEditingItem(null)}
+                onSave={handleSaveEdit}
+                title={t('editItemTitle')}
+                itemName={editingItem?.item.item ?? ''}
+                initialQuantityValue={editingItem?.item.quantityValue ?? null}
+                initialQuantityUnit={editingItem?.item.quantityUnit ?? 'g'}
+            />
         </div>
     );
 });
