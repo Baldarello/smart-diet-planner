@@ -1144,7 +1144,26 @@ export class MealPlanStore {
     }
 
     get adherenceStreak() { return 0; }
-    get hydrationStreak() { return 0; }
+    
+    get hydrationStreak() {
+        let streak = 0;
+        const sortedHistory = [...this.progressHistory].sort((a, b) => b.date.localeCompare(a.date));
+        for (const record of sortedHistory) {
+            if (record.waterIntakeMl >= this.hydrationGoalLiters * 1000) streak++;
+            else break;
+        }
+        return streak;
+    }
+
+    get stepsStreak() {
+        let streak = 0;
+        const sortedHistory = [...this.progressHistory].sort((a, b) => b.date.localeCompare(a.date));
+        for (const record of sortedHistory) {
+            if (record.stepsTaken >= this.stepGoal) streak++;
+            else break;
+        }
+        return streak;
+    }
 
     get expiringSoonItems() {
         return this.pantry.filter(p => {
@@ -1172,11 +1191,20 @@ export class MealPlanStore {
 
     updateAchievements() {
         const newAchievements: string[] = [];
-        if (this.progressHistory.length > 0) newAchievements.push('firstDayComplete');
-        if (this.progressHistory.length >= 7) newAchievements.push('firstWeekComplete');
-        if (this.progressHistory.length >= 30) newAchievements.push('achievementMonthComplete');
-        if (this.progressHistory.some(p => new Date(p.date).getDay() === 1)) newAchievements.push('firstMondayComplete');
-        if (this.pantry.length >= 5) newAchievements.push('pantryOrganized');
+        
+        // Hydration Achievements
+        if (this.progressHistory.some(p => p.waterIntakeMl > 0)) newAchievements.push('firstHydration');
+        if (this.hydrationStreak >= 7) newAchievements.push('perfectWeekHydration');
+        const totalWaterMl = this.progressHistory.reduce((acc, p) => acc + (p.waterIntakeMl || 0), 0);
+        if (totalWaterMl >= 50000) newAchievements.push('totalWater50L');
+
+        // Step Achievements
+        if (this.progressHistory.some(p => p.stepsTaken > 0)) newAchievements.push('firstSteps');
+        if (this.progressHistory.some(p => p.stepsTaken >= this.stepGoal)) newAchievements.push('dailyStepGoalReached');
+        const totalSteps = this.progressHistory.reduce((acc, p) => acc + (p.stepsTaken || 0), 0);
+        if (totalSteps >= 250000) newAchievements.push('stepMarathon');
+        if (this.stepsStreak >= 7) newAchievements.push('perfectWeekSteps');
+
         newAchievements.forEach(a => { if (!this.earnedAchievements.includes(a)) this.earnedAchievements.push(a); });
     }
 }

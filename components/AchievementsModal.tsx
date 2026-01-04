@@ -1,8 +1,9 @@
+
 import React, { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { t } from '../i18n';
-import { TrophyIcon, FootprintIcon, CloseIcon, PantryIcon, CalendarCheckIcon, CookieIcon, MedalIcon } from './Icons';
+import { TrophyIcon, FootprintIcon, CloseIcon, WaterDropIcon, CalendarCheckIcon, MedalIcon } from './Icons';
 
 interface AchievementsModalProps {
     isOpen: boolean;
@@ -10,17 +11,13 @@ interface AchievementsModalProps {
 }
 
 const allAchievementsConfig: { [key: string]: { icon: React.ReactNode; color: string } } = {
-    firstDayComplete: { icon: <MedalIcon />, color: 'amber' },
-    firstWeekComplete: { icon: <TrophyIcon />, color: 'amber' },
-    achievementMonthComplete: { icon: <TrophyIcon />, color: 'red' },
-    fiveKgLost: { icon: <TrophyIcon />, color: 'blue' },
-    achievement10kgLost: { icon: <TrophyIcon />, color: 'blue' },
-    perfectWeekAdherence: { icon: <TrophyIcon />, color: 'green' },
-    perfectWeekHydration: { icon: <TrophyIcon />, color: 'green' },
-    achievementStepMarathon: { icon: <FootprintIcon />, color: 'teal' },
-    firstMondayComplete: { icon: <CalendarCheckIcon />, color: 'indigo' },
-    pantryOrganized: { icon: <PantryIcon />, color: 'orange' },
-    firstCheatMeal: { icon: <CookieIcon />, color: 'yellow' },
+    firstHydration: { icon: <WaterDropIcon />, color: 'blue' },
+    perfectWeekHydration: { icon: <TrophyIcon />, color: 'blue' },
+    totalWater50L: { icon: <MedalIcon />, color: 'blue' },
+    firstSteps: { icon: <FootprintIcon />, color: 'teal' },
+    dailyStepGoalReached: { icon: <CalendarCheckIcon />, color: 'teal' },
+    stepMarathon: { icon: <TrophyIcon />, color: 'teal' },
+    perfectWeekSteps: { icon: <TrophyIcon />, color: 'teal' },
 };
 
 const AchievementItem: React.FC<{
@@ -43,14 +40,8 @@ const AchievementItem: React.FC<{
     return (
         <div className={`${baseClasses} ${isUnlocked ? unlockedClasses : ''} ${!isUnlocked ? lockedClasses : ''}`}>
              <div className="hidden">
-                <span className="border-amber-500 text-amber-500"></span>
-                <span className="border-red-500 text-red-500"></span>
                 <span className="border-blue-500 text-blue-500"></span>
-                <span className="border-green-500 text-green-500"></span>
                 <span className="border-teal-500 text-teal-500"></span>
-                <span className="border-indigo-500 text-indigo-500"></span>
-                <span className="border-orange-500 text-orange-500"></span>
-                <span className="border-yellow-500 text-yellow-500"></span>
             </div>
             <div className={`flex-shrink-0 text-${config.color}-500`}>{config.icon}</div>
             <div>
@@ -70,7 +61,6 @@ const AchievementsModal: React.FC<AchievementsModalProps> = observer(({ isOpen, 
         } else {
             document.body.style.overflow = '';
         }
-        // Cleanup function to reset the style when the component unmounts
         return () => {
             document.body.style.overflow = '';
         };
