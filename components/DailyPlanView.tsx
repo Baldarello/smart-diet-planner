@@ -274,8 +274,8 @@ const DailyPlanView: React.FC = observer(() => {
                             </div>
                             <div>
                                 {section.subSections.map((sub, subIdx) => {
-                                    // EXCLUSIVE SELECTION LOGIC for Generic Plans
-                                    const selectedMeal = sub.meals.find(m => m.done);
+                                    // EXCLUSIVE SELECTION LOGIC ONLY for Generic Plans
+                                    const selectedMeal = isGenericPlan ? sub.meals.find(m => m.done) : null;
                                     const availableMeals = selectedMeal ? [selectedMeal] : sub.meals;
                                     
                                     return (
@@ -307,7 +307,7 @@ const DailyPlanView: React.FC = observer(() => {
                             </div>
                             <div className="space-y-3">
                                 {section.subSections.flatMap(sub => {
-                                    const selectedMeal = sub.meals.find(m => m.done);
+                                    const selectedMeal = isGenericPlan ? sub.meals.find(m => m.done) : null;
                                     return selectedMeal ? [selectedMeal] : sub.meals;
                                 }).map(meal => renderMealCard(meal))}
                             </div>
