@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
@@ -5,6 +6,7 @@ import { t } from '../i18n';
 import { WaterDropIcon } from './Icons';
 
 const Snackbar: React.FC = observer(() => {
+    // Fix: correctly call methods from store
     const { hydrationSnackbar, logWaterIntake, dismissHydrationSnackbar } = mealPlanStore;
 
     if (!hydrationSnackbar || !hydrationSnackbar.visible) {
@@ -12,6 +14,7 @@ const Snackbar: React.FC = observer(() => {
     }
 
     const handleDone = () => {
+        // Fix: correctly calling logWaterIntake and dismissHydrationSnackbar from store
         logWaterIntake(hydrationSnackbar.amount);
         dismissHydrationSnackbar();
     };

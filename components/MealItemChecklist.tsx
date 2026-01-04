@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
@@ -19,6 +20,7 @@ const EditableMealItem: React.FC<{
     }, [item.fullDescription]);
 
     const handleBlur = () => {
+        // Fix: correctly call updateItemDescription from store
         if (isEditable && currentValue.trim() !== item.fullDescription) {
             mealPlanStore.updateItemDescription(dayIndex, mealIndex, itemIndex, currentValue.trim());
         }

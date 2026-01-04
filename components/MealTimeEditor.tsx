@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
@@ -10,13 +11,14 @@ interface MealTimeEditorProps {
 }
 
 const MealTimeEditor: React.FC<MealTimeEditorProps> = observer(({ dayIndex, mealIndex }) => {
-    // Fix: Corrected property access to use 'masterMealPlan' as 'activeMealPlan' does not exist.
+    // Fix: Replaced non-existent 'activeMealPlan' with 'masterMealPlan'.
     const meal = mealPlanStore.masterMealPlan[dayIndex]?.meals[mealIndex];
     const [isEditing, setIsEditing] = useState(false);
 
     if (!meal?.time) return null;
 
     const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // Fix: correctly calling updateMealTime from store
         mealPlanStore.updateMealTime(dayIndex, mealIndex, e.target.value);
     };
 

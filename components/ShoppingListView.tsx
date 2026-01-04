@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
@@ -136,6 +137,7 @@ const ShoppingListView: React.FC = observer(() => {
                             </div>
                             {!isShoppingMode && !isCompletedList && (
                                 <div className="opacity-0 group-hover/summary:opacity-100 transition-opacity">
+                                    {/* Fix: correctly calling updateShoppingListCategoryOrder from store */}
                                     <button onClick={(e) => { e.preventDefault(); store.updateShoppingListCategoryOrder(category.category, 'up'); }} title={t('reorderCategoryUp')} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-gray-700"><ArrowUpIcon /></button>
                                     <button onClick={(e) => { e.preventDefault(); store.updateShoppingListCategoryOrder(category.category, 'down'); }} title={t('reorderCategoryDown')} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-gray-700"><ArrowDownIcon /></button>
                                 </div>

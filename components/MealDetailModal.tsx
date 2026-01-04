@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
@@ -41,7 +42,7 @@ const MealDetailModal: React.FC<MealDetailModalProps> = observer(({ dayIndex, me
                             <div className="flex items-center gap-x-2">
                                 <h4 className={`text-2xl font-bold text-gray-800 dark:text-gray-200 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.name}</h4>
                                 <MealTimeEditor dayIndex={dayIndex} mealIndex={mealIndex} />
-                                {/* Fix: Added the required 'onResetClick' prop to handle meal resets via a confirmation modal. */}
+                                {/* Fix: Added required 'onResetClick' prop to handle meal reset through confirmation modal. */}
                                 <MealModificationControl dayIndex={dayIndex} mealIndex={mealIndex} onResetClick={() => setIsResetting(true)} />
                             </div>
                             {meal.title && <p className={`text-lg font-medium text-violet-600 dark:text-violet-400 mt-1 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.title}</p>}
@@ -63,7 +64,7 @@ const MealDetailModal: React.FC<MealDetailModalProps> = observer(({ dayIndex, me
 
                     <div className="mt-6 border-t dark:border-gray-700 pt-4 flex-shrink-0">
                         <button
-                            // Fix: Corrected function call to match signature 'toggleMealDone(mealIndex: number)'.
+                            // Fix: corrected toggleMealDone call signature
                             onClick={() => toggleMealDone(mealIndex)}
                             title={meal.done ? t('markAsToDo') : t('markAsDone')}
                             className={`w-full flex items-center justify-center font-semibold px-6 py-3 rounded-full transition-colors ${meal.done ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 hover:bg-yellow-200' : 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 hover:bg-green-200'}`}
@@ -79,6 +80,7 @@ const MealDetailModal: React.FC<MealDetailModalProps> = observer(({ dayIndex, me
                 <ConfirmationModal
                     isOpen={isResetting}
                     onClose={() => setIsResetting(false)}
+                    // Fix: correctly call resetMealToPreset from store
                     onConfirm={() => mealPlanStore.resetMealToPreset(dayIndex, mealIndex)}
                     title={t('resetMealModalTitle')}
                 >

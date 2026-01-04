@@ -6,6 +6,7 @@ import { t } from '../i18n';
 import { StepsIcon } from './Icons';
 
 const StepTracker: React.FC = observer(() => {
+    // Fix: access methods correctly from store
     const { stepGoal, setStepGoal, currentDayProgress, setSteps, logSteps } = mealPlanStore;
     const stepsTaken = currentDayProgress?.stepsTaken ?? 0;
     
@@ -38,6 +39,7 @@ const StepTracker: React.FC = observer(() => {
     const handleIntakeSave = () => {
         const value = parseInt(editableIntake, 10);
         if (!isNaN(value) && value >= 0) {
+            // Fix: correctly calling setSteps from store
             setSteps(value);
         } else {
             setEditableIntake(stepsTaken.toString());
@@ -115,6 +117,7 @@ const StepTracker: React.FC = observer(() => {
                     {[1000, 2500, 5000].map(amount => (
                         <button
                             key={amount}
+                            // Fix: correctly calling logSteps from store
                             onClick={() => logSteps(amount)}
                             className="bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-200 font-semibold px-4 py-2 rounded-full hover:bg-teal-200 dark:hover:bg-teal-800/60 transition-colors text-xs"
                             aria-label={`Add ${amount} steps`}

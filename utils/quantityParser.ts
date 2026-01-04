@@ -1,5 +1,4 @@
 
-
 export interface ParsedQuantity {
   value: number | null;
   unit: string;
@@ -15,21 +14,14 @@ function normalizeString(s: string): string {
     return s.toLowerCase().trim();
 }
 
-/**
- * Parses a quantity string (e.g., "100g", "1 banana") into a value and unit.
- * It intelligently extracts the number and the word immediately following it as the unit.
- * Returns null for complex strings with ranges or if no parsable number is found at the start.
- */
 export function parseQuantity(description: string): ParsedQuantity | null {
     if (!description) return null;
     const desc = normalizeString(description);
 
-    // Skip ranges or hyphenated descriptions to avoid incorrect parsing.
     if (/^\d+.*-/.test(desc)) {
         return null;
     }
 
-    // Handle number words like "un vasetto", "mezza cipolla"
     const words = desc.split(/\s+/);
     if (numberWords[words[0]]) {
         return {
@@ -38,12 +30,10 @@ export function parseQuantity(description: string): ParsedQuantity | null {
         };
     }
 
-    // Regex to capture a leading number and the optional word immediately after it.
     const standardMatch = desc.match(/^(\d+[\.,]?\d*)\s*([a-zA-ZÀ-ú]+)?/);
     
     if (standardMatch) {
         const value = parseFloat(standardMatch[1].replace(',', '.'));
-        // The unit is the word following the number, or 'units' if it's just a number.
         const unit = (standardMatch[2] || 'unità').trim();
         return { value, unit };
     }
@@ -51,16 +41,20 @@ export function parseQuantity(description: string): ParsedQuantity | null {
     return null;
 }
 
-/**
- * Formats a parsed quantity back into a string.
- */
 export function formatQuantity(value: number | null, unit: string): string {
     if (value === null) return '-';
-    // Round to 2 decimal places to avoid floating point issues
     const roundedValue = Math.round(value * 100) / 100;
     return `${roundedValue} ${unit}`;
 }
 
+export function subtractQuantities(pantryValue: number, mealDescription: string, reverse: boolean = false): number {
+    const parsed = parseQuantity(mealDescription);
+    if (!parsed || parsed.value === null) return pantryValue;
+    
+    const factor = reverse ? -1 : 1;
+    const newValue = pantryValue - (parsed.value * factor);
+    return Math.max(0, newValue);
+}
 
 export function splitQuantityAndName(description: string): { quantity: string | null; name: string } {
     if (!description) {
@@ -68,12 +62,10 @@ export function splitQuantityAndName(description: string): { quantity: string | 
     }
     const desc = description.trim();
 
-    // Handle number words like "un vasetto", "mezza mela"
     const words = desc.split(/\s+/);
     if (Object.prototype.hasOwnProperty.call(numberWords, words[0].toLowerCase())) {
         let quantity = words[0];
         let nameStartIndex = 1;
-        // Check if the second word is part of the quantity (e.g., "un vasetto")
         if (words.length > 1 && !['di', 'd\''].includes(words[1].toLowerCase())) {
             quantity += ` ${words[1]}`;
             nameStartIndex = 2;
@@ -84,32 +76,24 @@ export function splitQuantityAndName(description: string): { quantity: string | 
         return { quantity, name: name.charAt(0).toUpperCase() + name.slice(1) };
     }
 
-    // Regex to capture a leading quantity/unit part, and the rest as the name.
     const match = desc.match(/^(\d+[\.,]?\d*\s*[a-zA-ZÀ-ú\/]+|\d+[\.,]?\d*)\s*(.*)/);
 
     if (match) {
         let quantity = match[1].trim();
-        
-        // Check if quantity is a number followed by letters without a space.
         const quantityMatch = quantity.match(/^(\d+[\.,]?\d*)([a-zA-ZÀ-ú\/]+)$/);
         if (quantityMatch) {
             const unitPart = quantityMatch[2];
-            // Add a space if the unit is not a standard short abbreviation (e.g. g, kg, ml)
             if (unitPart.length > 2) {
                 quantity = `${quantityMatch[1]} ${unitPart}`;
             }
         }
-        
         let name = match[2].trim();
-        
         if (name.toLowerCase().startsWith('di ')) {
             name = name.substring(3).trim();
         } else if (name.toLowerCase().startsWith("d'")) {
             name = name.substring(2).trim();
         }
-
         name = name ? name.charAt(0).toUpperCase() + name.slice(1) : '';
-
         return { quantity, name };
     }
 
