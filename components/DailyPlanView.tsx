@@ -120,15 +120,28 @@ const DailyPlanView: React.FC = observer(() => {
         });
     });
 
-    // Requirement: Sort sections so fully completed ones move to bottom
-    const availableSections = sections.filter(s => {
-        const allSubMeals = s.subSections.flatMap(sub => sub.meals);
-        return !allSubMeals.every(m => m.done);
-    });
-    const completedSections = sections.filter(s => {
-        const allSubMeals = s.subSections.flatMap(sub => sub.meals);
-        return allSubMeals.length > 0 && allSubMeals.every(m => m.done);
-    });
+    // --- LOGIC UPDATED FOR GENERIC PLANS ---
+    // In Generic Plans, options are alternatives. Selecting one completes the whole slot.
+    const isSectionDone = (s: GroupedMealSection) => {
+        if (s.subSections.length === 0) return false;
+
+        if (isGenericPlan) {
+            if (s.isMainMeal) {
+                // For Main modular meals (Lunch/Dinner), it's done only if EVERY sub-section 
+                // (Carbs, Protein, etc.) has at least one item checked.
+                return s.subSections.every(sub => sub.meals.some(m => m.done));
+            }
+            // For simple sections (Breakfast/Snacks), it's done if ANY option is checked.
+            return s.subSections.some(sub => sub.meals.some(m => m.done));
+        }
+
+        // Standard Weekly Plan: all items must be done.
+        return s.subSections.every(sub => sub.meals.every(m => m.done));
+    };
+
+    // Requirement: Sort sections so completed ones move to bottom
+    const availableSections = sections.filter(s => !isSectionDone(s));
+    const completedSections = sections.filter(s => isSectionDone(s));
     const sortedSections = [...availableSections, ...completedSections];
 
     const changeDate = (offset: number) => {
