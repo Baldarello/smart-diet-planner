@@ -29,7 +29,6 @@ interface GroupedMealSection {
 }
 
 const DailyPlanView: React.FC = observer(() => {
-    // Fix: access dailyNutritionSummary and toggleAllItemsInMeal correctly from store
     const { dailyPlan, toggleMealDone, dailyNutritionSummary, currentDate, setCurrentDate, startDate, endDate, toggleAllItemsInMeal, undoCheatMeal, isGenericPlan } = mealPlanStore;
     const [cheatingMealIndex, setCheatingMealIndex] = useState<number | null>(null);
     const [resettingMeal, setResettingMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
@@ -139,7 +138,7 @@ const DailyPlanView: React.FC = observer(() => {
     const displayDate = `${day}/${month}/${year}`;
     const formattedDayName = dailyPlan.day.charAt(0) + dailyPlan.day.slice(1).toLowerCase();
 
-    const renderMealCard = (meal: typeof sortedMealsRaw[0], isCompact: boolean = false) => {
+    const renderMealCard = (meal: typeof sortedMealsRaw[0], isCompact: boolean = false, hideTime: boolean = false) => {
         const allItemsUsed = meal.items.length > 0 && meal.items.every(item => item.used);
         const someItemsUsed = meal.items.some(item => item.used) && !allItemsUsed;
 
@@ -170,7 +169,7 @@ const DailyPlanView: React.FC = observer(() => {
                             <h4 className={`text-lg font-semibold text-gray-800 dark:text-gray-200 transition-all ${meal.done ? 'line-through' : ''}`}>{meal.name}</h4>
                             {meal.cheat && <span className="text-xs font-bold uppercase text-orange-500 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50 px-2 py-1 rounded-full">{t('cheatMealBadge')}</span>}
                             
-                            {isGenericPlan && meal.time && (
+                            {!hideTime && meal.time && (
                                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
                                     <ClockIcon /> {meal.time}
                                 </span>
@@ -235,8 +234,9 @@ const DailyPlanView: React.FC = observer(() => {
     const MealsContent = (
         <div className="space-y-6 mt-6">
             {sortedSections.map((section, idx) => {
-                // Goal: Hide the header if it's a standard plan with just "General" section
                 const hideSectionHeader = !isGenericPlan && section.title.toUpperCase() === 'GENERAL';
+                // If the main section header has a time, we hide it in the cards below to avoid redundancy.
+                const shouldHideCardTimes = !!section.sectionTime;
 
                 if (section.isMainMeal) {
                     return (
@@ -262,7 +262,7 @@ const DailyPlanView: React.FC = observer(() => {
                                                 </div>
                                             )}
                                             <div className="flex flex-col">
-                                                {availableMeals.map(meal => renderMealCard(meal, true))}
+                                                {availableMeals.map(meal => renderMealCard(meal, true, shouldHideCardTimes))}
                                             </div>
                                         </div>
                                     );
@@ -287,7 +287,7 @@ const DailyPlanView: React.FC = observer(() => {
                                 {section.subSections.flatMap(sub => {
                                     const selectedMeal = isGenericPlan ? sub.meals.find(m => m.done) : null;
                                     return selectedMeal ? [selectedMeal] : sub.meals;
-                                }).map(meal => renderMealCard(meal))}
+                                }).map(meal => renderMealCard(meal, false, shouldHideCardTimes))}
                             </div>
                         </div>
                     );
@@ -375,7 +375,6 @@ const DailyPlanView: React.FC = observer(() => {
                 <ConfirmationModal
                     isOpen={!!resettingMeal}
                     onClose={() => setResettingMeal(null)}
-                    // Fix: correctly calling resetMealToPreset from store
                     onConfirm={() => mealPlanStore.resetMealToPreset(resettingMeal.dayIndex, resettingMeal.mealIndex)}
                     title={t('resetMealModalTitle')}
                 >
