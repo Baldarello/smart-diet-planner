@@ -1,9 +1,8 @@
-
 import React, { useState, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { ShoppingListItem, ShoppingListCategory } from '../types';
-import { PantryIcon, EditIcon, TrashIcon, CheckIcon, CloseIcon, PlusCircleIcon, TodayIcon, ShareIcon, ArrowUpIcon, ArrowDownIcon } from './Icons';
+import { PantryIcon, EditIcon, CheckIcon, CloseIcon, PlusCircleIcon, TodayIcon, ShareIcon, ArrowUpIcon, ArrowDownIcon } from './Icons';
 import { t } from '../i18n';
 import UnitPicker from './UnitPicker';
 import { formatQuantity } from '../utils/quantityParser';
@@ -147,7 +146,6 @@ const ShoppingListView: React.FC = observer(() => {
                                         {!isShoppingMode && (
                                             <div className="flex items-center opacity-0 group-hover/item:opacity-100 transition-opacity">
                                                 <button onClick={() => setEditingItem({ category: category.category, itemIndex, item })} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full" title={t('editItemTitle')}><EditIcon /></button>
-                                                <button onClick={() => store.deleteShoppingListItem(category.category, itemIndex)} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full" title={t('deleteItemTitle')}><TrashIcon /></button>
                                             </div>
                                         )}
                                     </li>
