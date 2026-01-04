@@ -89,7 +89,7 @@ const StreakItem: React.FC<{ count: number, label: string, icon: React.ReactNode
     );
 };
 
-const AlertItem: React.FC<{ item: PantryItem, type: 'expired' | 'expiring' | 'stock', onClick: () => void }> = ({ item, type, onClick }) => {
+const AlertItem: React.FC<{ item: any, type: 'expired' | 'expiring' | 'stock' | 'shopping', onClick: () => void }> = ({ item, type, onClick }) => {
     const isDateAlert = type === 'expiring' || type === 'expired';
     
     let date = '';
@@ -118,6 +118,10 @@ const AlertItem: React.FC<{ item: PantryItem, type: 'expired' | 'expiring' | 'st
             text: item.quantityValue !== null && item.quantityValue <= 0 
                 ? t('itemFinished') 
                 : formatQuantity(item.quantityValue, item.quantityUnit),
+        },
+        shopping: {
+            iconBg: 'bg-blue-100 text-blue-500 dark:bg-blue-900/50',
+            text: t('shoppingListAlert'),
         }
     }[type];
 
@@ -127,7 +131,7 @@ const AlertItem: React.FC<{ item: PantryItem, type: 'expired' | 'expiring' | 'st
                 <WarningIcon />
             </div>
             <div>
-                <p className="font-semibold text-sm text-gray-800 dark:text-gray-200">{item.item}</p>
+                <p className="font-semibold text-sm text-gray-800 dark:text-gray-200">{item.item || item.item}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{config.text}</p>
             </div>
         </button>
@@ -147,6 +151,10 @@ const DashboardView: React.FC = observer(() => {
     
     const handleGoToPantry = () => {
         store.navigateTo('pantry');
+    };
+    
+    const handleGoToShoppingList = () => {
+        store.navigateTo('list');
     };
 
     const welcomeMessage = () => {
@@ -191,8 +199,11 @@ const DashboardView: React.FC = observer(() => {
         yAxisMax = Math.ceil(maxWeight + 5);
     }
 
-    const { adherenceStreak, hydrationStreak, expiringSoonItems, lowStockItems, expiredItems } = store;
-    const hasAlerts = expiredItems.length > 0 || expiringSoonItems.length > 0 || lowStockItems.length > 0;
+    const { adherenceStreak, hydrationStreak, expiringSoonItems, lowStockItems, expiredItems, shoppingList } = store;
+    
+    const shoppingItems = shoppingList.flatMap(cat => cat.items);
+    
+    const hasAlerts = expiredItems.length > 0 || expiringSoonItems.length > 0 || lowStockItems.length > 0 || shoppingItems.length > 0;
 
     return (
         <div className="max-w-6xl mx-auto space-y-6">
@@ -238,6 +249,16 @@ const DashboardView: React.FC = observer(() => {
                         </div>
                         {hasAlerts ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                                {shoppingItems.length > 0 && (
+                                    <div className="sm:col-span-2">
+                                        <h3 className="font-semibold text-blue-600 dark:text-blue-400 mb-2">{t('dashboardMissingItems')}</h3>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            {shoppingItems.map((item, idx) => (
+                                                <AlertItem key={`${item.item}-${idx}`} item={item} type="shopping" onClick={handleGoToShoppingList} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                                 {expiredItems.length > 0 && (
                                     <div className="sm:col-span-2 md:col-span-1">
                                         <h3 className="font-semibold text-red-600 dark:text-red-400 mb-2">{t('dashboardExpired')}</h3>
