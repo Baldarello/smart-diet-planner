@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
@@ -6,6 +7,7 @@ import { t } from '../i18n';
 import { PantryItem } from '../types';
 import UnitPicker from './UnitPicker';
 import { formatQuantity, parseQuantity } from '../utils/quantityParser';
+import ItemEditModal from './ItemEditModal';
 
 const getExpiryStatus = (dateStr?: string): 'expired' | 'soon' | 'ok' => {
     if (!dateStr) return 'ok';
@@ -21,13 +23,8 @@ const getExpiryStatus = (dateStr?: string): 'expired' | 'soon' | 'ok' => {
     return 'ok';
 };
 
-const PantryItemRow: React.FC<{pantryItem: PantryItem}> = observer(({pantryItem}) => {
+const PantryItemRow: React.FC<{pantryItem: PantryItem, onEdit: (item: PantryItem) => void}> = observer(({pantryItem, onEdit}) => {
     const { movePantryItemToShoppingList, updatePantryItem } = mealPlanStore;
-    const [isEditing, setIsEditing] = useState(false);
-    const [editState, setEditState] = useState({
-        quantityValue: pantryItem.quantityValue?.toString() ?? '',
-        quantityUnit: pantryItem.quantityUnit
-    });
     
     const [thresholdValue, setThresholdValue] = useState('');
     const [thresholdUnit, setThresholdUnit] = useState(pantryItem.quantityUnit);
@@ -61,20 +58,9 @@ const PantryItemRow: React.FC<{pantryItem: PantryItem}> = observer(({pantryItem}
 
     const handleThresholdChange = (value: string, unit: string) => {
         const newThresholdString = value.trim() ? `${value.trim()} ${unit}` : '';
-        // We call update directly instead of waiting for blur to provide a more responsive feel,
-        // especially when the unit is changed.
         if (newThresholdString !== (pantryItem.lowStockThreshold || '')) {
             updatePantryItem(pantryItem.item, { lowStockThreshold: newThresholdString });
         }
-    };
-
-
-    const handleSave = () => {
-        updatePantryItem(pantryItem.item, {
-            quantityValue: parseFloat(editState.quantityValue) || null,
-            quantityUnit: editState.quantityUnit,
-        });
-        setIsEditing(false);
     };
 
     const expiryStatus = getExpiryStatus(pantryItem.expiryDate);
@@ -85,45 +71,31 @@ const PantryItemRow: React.FC<{pantryItem: PantryItem}> = observer(({pantryItem}
     }[expiryStatus];
 
     return (
-        <li className={`p-3 rounded-md group/item ${statusClasses}`}>
-            <div className="flex items-center justify-between">
-                <span className="font-medium text-gray-800 dark:text-gray-200">{pantryItem.item}</span>
-                <div className="flex items-center gap-2">
-                    {isEditing ? (
-                        <>
-                            <input 
-                                type="number" 
-                                value={editState.quantityValue} 
-                                onChange={(e) => setEditState({...editState, quantityValue: e.target.value})} 
-                                className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-2 py-1 w-20 text-right"
-                            />
-                            <UnitPicker value={editState.quantityUnit} onChange={(unit) => setEditState({...editState, quantityUnit: unit})} />
-                            <button onClick={handleSave} className="p-1.5 text-green-500 hover:bg-green-100 dark:hover:bg-gray-600 rounded-full"><CheckIcon /></button>
-                            <button onClick={() => setIsEditing(false)} className="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-gray-600 rounded-full"><CloseIcon /></button>
-                        </>
-                    ) : (
-                         <>
-                            <span className="font-semibold text-gray-700 dark:text-gray-300">{formatQuantity(pantryItem.quantityValue, pantryItem.quantityUnit)}</span>
-                            <button onClick={() => setIsEditing(true)} className="text-gray-400 dark:text-gray-500 hover:text-violet-500 dark:hover:text-violet-400 transition-colors opacity-0 group-hover/item:opacity-100" title={t('editItemTitle')}><EditIcon /></button>
-                            <button onClick={() => movePantryItemToShoppingList(pantryItem)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors opacity-0 group-hover/item:opacity-100" title={t('moveToShoppingListTitle')}><SendToShoppingListIcon /></button>
-                         </>
-                    )}
+        <li className={`p-3 rounded-md group/item transition-colors ${statusClasses}`}>
+            <div className="flex items-center justify-between gap-2 overflow-hidden">
+                <span className="font-medium text-gray-800 dark:text-gray-200 truncate">{pantryItem.item}</span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="font-semibold text-gray-700 dark:text-gray-300">{formatQuantity(pantryItem.quantityValue, pantryItem.quantityUnit)}</span>
+                    <button onClick={() => onEdit(pantryItem)} className="text-gray-400 dark:text-gray-500 hover:text-violet-500 dark:hover:text-violet-400 transition-colors opacity-0 group-hover/item:opacity-100" title={t('editItemTitle')}><EditIcon /></button>
+                    <button onClick={() => movePantryItemToShoppingList(pantryItem)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors opacity-0 group-hover/item:opacity-100" title={t('moveToShoppingListTitle')}><SendToShoppingListIcon /></button>
                 </div>
             </div>
-            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div>
+            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm overflow-hidden">
+                <div className="min-w-0">
                     <label htmlFor={`expiry-${pantryItem.item}`} className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('pantryExpiryDate')}</label>
                     <input 
                         type={isExpiryDateFocused ? 'date' : 'text'}
                         id={`expiry-${pantryItem.item}`} 
                         value={isExpiryDateFocused ? pantryItem.expiryDate || '' : formattedExpiryDate} 
+                        // Fix: correctly calling setIsExpiryDateFocused (replaces non-existent setIsDateFocused)
                         onFocus={() => setIsExpiryDateFocused(true)}
+                        // Fix: correctly calling setIsExpiryDateFocused (replaces non-existent setIsDateFocused)
                         onBlur={() => setIsExpiryDateFocused(false)}
                         onChange={(e) => updatePantryItem(pantryItem.item, { expiryDate: e.target.value })} 
-                        className="w-full bg-transparent p-1 rounded-md"
+                        className="w-full bg-transparent p-1 rounded-md border-b border-transparent focus:border-violet-500 outline-none transition-colors"
                     />
                 </div>
-                <div>
+                <div className="min-w-0">
                     <label htmlFor={`threshold-value-${pantryItem.item}`} className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('pantryLowStockThreshold')}</label>
                     <div className="flex items-center gap-2 mt-1">
                         <input
@@ -135,7 +107,7 @@ const PantryItemRow: React.FC<{pantryItem: PantryItem}> = observer(({pantryItem}
                                 setThresholdValue(e.target.value);
                                 handleThresholdChange(e.target.value, thresholdUnit);
                             }}
-                            className="w-full bg-transparent p-1 rounded-md placeholder:text-gray-400 dark:placeholder:text-gray-500 border-b border-gray-300 dark:border-gray-600 focus:border-violet-500 outline-none"
+                            className="w-full min-w-0 bg-transparent p-1 rounded-md placeholder:text-gray-400 dark:placeholder:text-gray-500 border-b border-gray-300 dark:border-gray-600 focus:border-violet-500 outline-none"
                         />
                         <UnitPicker
                             value={thresholdUnit}
@@ -154,12 +126,13 @@ const PantryItemRow: React.FC<{pantryItem: PantryItem}> = observer(({pantryItem}
 });
 
 const PantryView: React.FC = observer(() => {
-    const { pantry, shoppingList, addPantryItem } = mealPlanStore;
+    const { pantry, shoppingList, addPantryItem, updatePantryItem } = mealPlanStore;
     
     const [showAddItemForm, setShowAddItemForm] = useState(false);
     const [newItem, setNewItem] = useState({ item: '', quantityValue: '', quantityUnit: 'g', category: '' });
     const [isNewCategory, setIsNewCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
+    const [editingItem, setEditingItem] = useState<PantryItem | null>(null);
 
     const uniqueCategories = Array.from(new Set([
         ...shoppingList.map(c => c.category),
@@ -203,9 +176,18 @@ const PantryView: React.FC = observer(() => {
         setNewCategoryName('');
     };
 
+    const handleSaveEdit = (quantityValue: number | null, quantityUnit: string) => {
+        if (editingItem) {
+            updatePantryItem(editingItem.item, {
+                quantityValue,
+                quantityUnit
+            });
+            setEditingItem(null);
+        }
+    };
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-4xl mx-auto">
+        <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg transition-all duration-300 max-w-4xl mx-auto overflow-x-hidden">
             <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6 border-b dark:border-gray-700 pb-4">{t('pantryTitle')}</h2>
             {pantry.length === 0 ? (
                 <p className="text-gray-500 dark:text-gray-400 text-center py-8">{t('pantryEmpty')}</p>
@@ -217,9 +199,9 @@ const PantryView: React.FC = observer(() => {
                                 <span className="transform transition-transform duration-200 group-open:rotate-90 text-violet-400 dark:text-violet-500 mr-2">&#9656;</span>
                                 <span>{category}</span>
                             </summary>
-                            <ul className="mt-4 pl-6 border-l-2 border-violet-100 dark:border-gray-700 space-y-3">
+                            <ul className="mt-4 pl-0 sm:pl-6 border-l-0 sm:border-l-2 border-violet-100 dark:border-gray-700 space-y-3">
                                 {groupedPantry[category].map((pantryItem, index) => (
-                                    <PantryItemRow key={index} pantryItem={pantryItem} />
+                                    <PantryItemRow key={index} pantryItem={pantryItem} onEdit={setEditingItem} />
                                 ))}
                             </ul>
                         </details>
@@ -256,6 +238,16 @@ const PantryView: React.FC = observer(() => {
                     </button>
                 )}
             </div>
+
+            <ItemEditModal
+                isOpen={!!editingItem}
+                onClose={() => setEditingItem(null)}
+                onSave={handleSaveEdit}
+                title={t('editItemTitle')}
+                itemName={editingItem?.item ?? ''}
+                initialQuantityValue={editingItem?.quantityValue ?? null}
+                initialQuantityUnit={editingItem?.quantityUnit ?? 'g'}
+            />
         </div>
     );
 });
