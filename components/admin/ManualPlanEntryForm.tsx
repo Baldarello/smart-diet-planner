@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { DayPlan, Meal, MealItem, ShoppingListCategory, ShoppingListItem, NutritionistPlan, NutritionInfo, Patient, AssignedPlan, PlanCreationData, GenericPlanData, ModularMealData, Recipe, FormDayPlan, FormMeal, FormMealItem, FormGenericPlan, FormModularMeal, FormSuggestion } from '../../types';
@@ -17,6 +16,7 @@ import { patientStore } from '../../stores/PatientStore';
 import SelectMealToCopyModal from './SelectMealToCopyModal';
 import Switch from '../Switch';
 import ViewRecipeModal from './ViewRecipeModal';
+import { allUnits } from '../../utils/units';
 
 const createInitialPlan = (): FormDayPlan[] => 
     DAY_KEYWORDS.map(day => ({
@@ -749,6 +749,14 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
 
     const isForPatient = !!patientForPlan || (!!planToEdit && 'patientId' in planToEdit);
 
+    const getCanonicalUnit = (rawUnit: string) => {
+        if (!rawUnit) return 'g';
+        const lower = rawUnit.toLowerCase();
+        return allUnits.find(u => u.toLowerCase() === lower) || 
+               allUnits.find(u => u.toLowerCase().startsWith(lower)) || 
+               rawUnit;
+    };
+
     useEffect(() => {
         let initialName = '';
         
@@ -776,7 +784,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                         return { 
                             ingredientName: i.ingredientName, 
                             quantityValue: parsed?.value?.toString() || '', 
-                            quantityUnit: parsed?.unit || 'g' 
+                            quantityUnit: getCanonicalUnit(parsed?.unit || 'g')
                         };
                     }),
                     procedure: m.procedure || '',
@@ -790,7 +798,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                     ingredients: r.ingredients.map(i => ({
                         ingredientName: i.ingredientName,
                         quantityValue: i.quantityValue?.toString() || '',
-                        quantityUnit: i.quantityUnit
+                        quantityUnit: getCanonicalUnit(i.quantityUnit)
                     }))
                 });
 
@@ -841,10 +849,9 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                                         return {
                                             ingredientName: item.ingredientName,
                                             quantityValue: parsed?.value?.toString() ?? '',
-                                            quantityUnit: parsed?.unit ?? 'g',
+                                            quantityUnit: getCanonicalUnit(parsed?.unit ?? 'g'),
                                         };
                                     });
-                                    formItems.forEach(fi => { if(!fi.quantityUnit) fi.quantityUnit = 'g'; });
                                     formMeal.items = formItems.length > 0 ? formItems : [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }];
                                 }
                             }
@@ -936,7 +943,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
         const recipeId = parseInt(recipeIdStr, 10);
         const selectedRecipe = recipeStore.recipes.find(r => r.id === recipeId);
         if (selectedRecipe) {
-            setPlanData(current => current.map((d, i) => i !== dayIndex ? d : { ...d, meals: d.meals.map((m, j) => j !== mealIndex ? m : { ...m, title: selectedRecipe.name, procedure: selectedRecipe.procedure || m.procedure, items: selectedRecipe.ingredients.map(ing => ({ ingredientName: ing.ingredientName, quantityValue: ing.quantityValue?.toString() || '', quantityUnit: ing.quantityUnit })) }) }));
+            setPlanData(current => current.map((d, i) => i !== dayIndex ? d : { ...d, meals: d.meals.map((m, j) => j !== mealIndex ? m : { ...m, title: selectedRecipe.name, procedure: selectedRecipe.procedure || m.procedure, items: selectedRecipe.ingredients.map(ing => ({ ingredientName: ing.ingredientName, quantityValue: ing.quantityValue?.toString() || '', quantityUnit: getCanonicalUnit(ing.quantityUnit) })) }) }));
         }
     };
     const handleSelectMealToCopy = (copiedMealData: any) => {
