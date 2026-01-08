@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
@@ -29,7 +28,7 @@ interface GroupedMealSection {
 }
 
 const DailyPlanView: React.FC = observer(() => {
-    const { dailyPlan, toggleMealDone, dailyNutritionSummary, currentDate, setCurrentDate, startDate, endDate, toggleAllItemsInMeal, undoCheatMeal, isGenericPlan } = mealPlanStore;
+    const { dailyPlan, toggleMealDone, toggleSectionDone, dailyNutritionSummary, currentDate, setCurrentDate, startDate, endDate, toggleAllItemsInMeal, undoCheatMeal, isGenericPlan } = mealPlanStore;
     const [cheatingMealIndex, setCheatingMealIndex] = useState<number | null>(null);
     const [resettingMeal, setResettingMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
     const [activeMobileTab, setActiveMobileTab] = useState<'meals' | 'trackers'>('meals');
@@ -114,6 +113,11 @@ const DailyPlanView: React.FC = observer(() => {
 
     const isSectionDone = (s: GroupedMealSection) => {
         if (s.subSections.length === 0) return false;
+        
+        // Manual completion check
+        const isManuallyDone = s.subSections.some(sub => sub.meals.some(m => m.sectionDone));
+        if (isManuallyDone) return true;
+
         if (isGenericPlan) {
             if (s.isMainMeal) return s.subSections.every(sub => sub.meals.some(m => m.done));
             return s.subSections.some(sub => sub.meals.some(m => m.done));
@@ -184,7 +188,7 @@ const DailyPlanView: React.FC = observer(() => {
                                 <>
                                     {!isGenericPlan && <MealModificationControl dayIndex={dayIndex} mealIndex={meal.originalIndex} onResetClick={() => setResettingMeal({ dayIndex, mealIndex: meal.originalIndex })} />}
                                     {mealPlanStore.showCheatMealButton && !meal.done && !isGenericPlan && (
-                                        <button onClick={() => setCheatingMealIndex(meal.originalIndex)} title={t('logCheatMealTitle')} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={t('logCheatMealTitle')}>
+                                        <button onClick={() => setCheatingMealIndex(meal.originalIndex)} title={t('logCheatMealTitle')} className="p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={t('logCheatMealTitle')}>
                                             <WarningIcon />
                                         </button>
                                     )}
@@ -193,7 +197,7 @@ const DailyPlanView: React.FC = observer(() => {
                         </div>
 
                         {meal.cheat ? (
-                            <button onClick={() => undoCheatMeal(meal.originalIndex)} title={t('undoCheatMealTitle')} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={t('undoCheatMealTitle')}>
+                            <button onClick={() => undoCheatMeal(meal.originalIndex)} title={t('undoCheatMealTitle')} className="p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex-shrink-0" aria-label={t('undoCheatMealTitle')}>
                                 <UndoIcon />
                             </button>
                         ) : (
@@ -232,21 +236,8 @@ const DailyPlanView: React.FC = observer(() => {
     };
 
     const handleToggleSectionDone = (section: GroupedMealSection) => {
-        const isCurrentlyDone = isSectionDone(section);
-        
-        section.subSections.forEach(sub => {
-            if (isCurrentlyDone) {
-                // If the section is done, uncheck any meal that is marked done in this subsection
-                sub.meals.forEach(m => {
-                    if (m.done) toggleMealDone(m.originalIndex);
-                });
-            } else {
-                // If the section is NOT done, ensure at least one meal is done in this subsection
-                if (!sub.meals.some(m => m.done) && sub.meals.length > 0) {
-                    toggleMealDone(sub.meals[0].originalIndex);
-                }
-            }
-        });
+        const mealIndices = section.subSections.flatMap(sub => sub.meals.map(m => m.originalIndex));
+        toggleSectionDone(mealIndices);
     };
 
     const MealsContent = (
@@ -391,6 +382,7 @@ const DailyPlanView: React.FC = observer(() => {
             </div>
 
             <div className="hidden sm:block">
+                {/* Fix: changed 'dailyNutritionSummary' prop to 'summary' to match component definition */}
                 {mealPlanStore.showMacros && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
                 {TrackersContent}
                 {MealsContent}
@@ -399,6 +391,7 @@ const DailyPlanView: React.FC = observer(() => {
             <div className="sm:hidden">
                 {activeMobileTab === 'meals' && (
                     <>
+                        {/* Fix: changed 'dailyNutritionSummary' prop to 'summary' to match component definition */}
                         {mealPlanStore.showMacros && <DailyNutritionSummary summary={dailyNutritionSummary} className="my-6" />}
                         {MealsContent}
                     </>

@@ -1,4 +1,3 @@
-
 export interface NutritionInfo {
   carbs: number;
   protein: number;
@@ -24,6 +23,7 @@ export interface Meal {
   cheat?: boolean;
   cheatMealDescription?: string;
   section?: string; // New field for grouping Generic Plan options (e.g., "lunch-carbs")
+  sectionDone?: boolean; // Flag to indicate the whole section is manually completed
 }
 
 export interface DayPlan {
