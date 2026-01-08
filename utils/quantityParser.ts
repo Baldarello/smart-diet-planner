@@ -1,4 +1,3 @@
-
 export interface ParsedQuantity {
   value: number | null;
   unit: string;
@@ -30,7 +29,8 @@ export function parseQuantity(description: string): ParsedQuantity | null {
         };
     }
 
-    const standardMatch = desc.match(/^(\d+[\.,]?\d*)\s*([a-zA-ZÀ-ú]+)?/);
+    // Updated regex to include forward slash / in units (e.g., cucchiaino/i)
+    const standardMatch = desc.match(/^(\d+[\.,]?\d*)\s*([a-zA-ZÀ-ú/]+)?/);
     
     if (standardMatch) {
         const value = parseFloat(standardMatch[1].replace(',', '.'));
