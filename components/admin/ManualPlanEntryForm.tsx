@@ -33,7 +33,9 @@ const createInitialPlan = (): FormDayPlan[] =>
 
 const createInitialGenericPlan = (): FormGenericPlan => ({
     breakfast: [{ name: 'Opzione 1', title: '', procedure: '', items: [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }], time: '08:00' }],
+    breakfastTime: '08:00',
     snacks: [{ name: 'Opzione 1', title: '', procedure: '', items: [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }], time: '10:30' }],
+    snacksTime: '10:30',
     lunch: {
         carbs: [],
         protein: [],
@@ -141,15 +143,18 @@ const OverlapError: React.FC<{ plans: AssignedPlan[] }> = ({ plans }) => (
 const GenericMealEditor: React.FC<{
     title: string;
     options: FormMeal[];
+    time: string;
     onChange: (newOptions: FormMeal[]) => void;
-}> = observer(({ title, options, onChange }) => {
+    onTimeChange: (newTime: string) => void;
+}> = observer(({ title, options, time, onChange, onTimeChange }) => {
     
     const handleAddOption = () => {
         onChange([...options, { 
             name: `Opzione ${options.length + 1}`, 
             title: '', 
             procedure: '', 
-            items: [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }]
+            items: [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }],
+            time: time
         }]);
     };
 
@@ -184,21 +189,31 @@ const GenericMealEditor: React.FC<{
 
     const handleCloneOption = (index: number) => {
         const optionToClone = options[index];
-        // Deep copy the option and its items
         const newOption: FormMeal = {
             ...optionToClone,
-            name: `Opzione ${options.length + 1}`, // Will be rendered with correct label by parent index, this is internal
+            name: `Opzione ${options.length + 1}`,
             items: optionToClone.items.map(item => ({ ...item }))
         };
         
         const newOptions = [...options];
-        newOptions.splice(index + 1, 0, newOption); // Insert immediately after
+        newOptions.splice(index + 1, 0, newOption);
         onChange(newOptions);
     };
 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 mb-4">
-            <h3 className="font-bold text-lg text-violet-700 dark:text-violet-400 mb-4">{title}</h3>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                <h3 className="font-bold text-lg text-violet-700 dark:text-violet-400">{title}</h3>
+                <div className="flex items-center gap-2 bg-slate-50 dark:bg-gray-700 p-1.5 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight">{t('mealTime')}</span>
+                    <input 
+                        type="time" 
+                        value={time} 
+                        onChange={e => onTimeChange(e.target.value)} 
+                        className="bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm p-0.5"
+                    />
+                </div>
+            </div>
             <div className="space-y-4">
                 {options.map((option, idx) => (
                     <MealEditor 
@@ -225,7 +240,7 @@ const ModularMealSectionEditor: React.FC<{
 }> = observer(({ sectionTitle, items, onChange }) => {
     const handleAddItem = () => {
         onChange([...items, { 
-            name: '', // Used for simple item name or recipe name
+            name: '', 
             title: '', 
             procedure: '', 
             items: [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }]
@@ -270,7 +285,7 @@ const ModularMealSectionEditor: React.FC<{
                         onChange={(m) => handleUpdateItem(idx, m)} 
                         onRemove={() => handleRemoveItem(idx)}
                         simpleMode={true}
-                        hideRecipePicker={true} // Goal 2: Removed picker for macros
+                        hideRecipePicker={true} 
                     />
                 ))}
                 <button type="button" onClick={handleAddItem} className="text-xs font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-1 mt-2">
@@ -293,7 +308,6 @@ const ModularMealEditor: React.FC<{
         const recipeId = parseInt(selectedRecipeId, 10);
         const recipe = recipeStore.recipes.find(r => r.id === recipeId);
         if (recipe) {
-            // Convert Recipe to FormSuggestion to allow instance editing
             const newSuggestion: FormSuggestion = {
                 id: recipe.id,
                 name: recipe.name,
@@ -616,7 +630,6 @@ const MealEditor: React.FC<{
                         className="flex-grow p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm"
                     />
                 )}
-                {/* Recipe Picker - Conditionally Rendered */}
                 {!hideRecipePicker && (
                     <select 
                         className="p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-xs w-6" 
@@ -631,7 +644,7 @@ const MealEditor: React.FC<{
 
             <div className="space-y-2">
                 {meal.items.map((item, idx) => (
-                    <div key={idx} className="flex gap-1 items-center relative">
+                    <div key={idx} className="flex gap-1 items-center relative pr-8">
                         <input 
                             type="text" 
                             placeholder={t('ingredientPlaceholder')}
@@ -708,7 +721,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
     const [endDate, setEndDate] = useState('');
     const initialPlanState = useRef<string | null>(null);
 
-    // Autocomplete & Copy Logic (retained for Weekly view)
+    // Autocomplete & Copy Logic
     const [activeAutocomplete, setActiveAutocomplete] = useState<{ dayIndex: number; mealIndex: number; itemIndex: number } | null>(null);
     const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
     const autocompleteRef = useRef<HTMLDivElement>(null);
@@ -737,7 +750,6 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
             
             if (pd.type === 'generic' && pd.genericPlan) {
                 setPlanType('generic');
-                // Map API data back to Form data for Generic Plan
                 const mapToFormMeal = (m: Meal): FormMeal => ({
                     ...m,
                     items: m.items.map(i => {
@@ -770,7 +782,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                     fats: mod.fats.map(mapToFormMeal),
                     suggestions: Array.isArray(mod.suggestions) 
                         ? mod.suggestions.map(mapToFormSuggestion) 
-                        : [], // Handle legacy if needed
+                        : [], 
                     time: mod.time || (mod === pd.genericPlan!.lunch ? '13:00' : '20:00')
                 });
 
@@ -779,15 +791,16 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                 const allSnacks = [...(typedGenericPlan.snacks || []), ...snacksFromOldPlan];
 
                 setGenericPlanData({
-                    breakfast: pd.genericPlan.breakfast.map(mapToFormMeal),
+                    breakfast: typedGenericPlan.breakfast.map(mapToFormMeal),
+                    breakfastTime: typedGenericPlan.breakfast?.[0]?.time || '08:00',
                     snacks: allSnacks.map(mapToFormMeal),
-                    lunch: mapToFormModular(pd.genericPlan.lunch),
-                    dinner: mapToFormModular(pd.genericPlan.dinner),
+                    snacksTime: allSnacks?.[0]?.time || '10:30',
+                    lunch: mapToFormModular(typedGenericPlan.lunch),
+                    dinner: mapToFormModular(typedGenericPlan.dinner),
                 });
 
             } else {
                 setPlanType('weekly');
-                // Existing logic to map Weekly plan...
                 let initialPlan = createInitialPlan();
                 const planMap = new Map<string, DayPlan>(pd.weeklyPlan.map(d => [d.day.toUpperCase(), d]));
                 initialPlan.forEach(formDay => {
@@ -812,7 +825,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                                             quantityUnit: parsed?.unit ?? 'g',
                                         };
                                     });
-                                    formItems.forEach(fi => { if(!fi.quantityUnit) fi.quantityUnit = 'g'; }); // Safety default
+                                    formItems.forEach(fi => { if(!fi.quantityUnit) fi.quantityUnit = 'g'; });
                                     formMeal.items = formItems.length > 0 ? formItems : [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }];
                                 }
                             }
@@ -830,24 +843,10 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
         }
 
         setPlanName(initialName);
-        // Snapshot for dirty checking
         initialPlanState.current = JSON.stringify({ planName: initialName, type: planToEdit?.planData?.type || 'weekly' });
         onDirtyStateChange(false);
-    }, [planToEdit, patientForPlan]);
+    }, [planToEdit, patientForPlan, onDirtyStateChange]);
 
-    useEffect(() => {
-        // Dirty check
-        if (initialPlanState.current === null) return;
-        // Simple check just on plan type/name for now to avoid deep compare lag
-        // A real implementation would deep compare planData/genericPlanData
-        // const currentState = JSON.stringify({ planName, planType });
-        // onDirtyStateChange(currentState !== initialPlanState.current);
-    }, [planName, planType]);
-
-    // ... (Keep existing Weekly Plan Helper functions: handleMealTitleChange, etc. inside specific sections or use them here)
-    // For brevity, I'm assuming the existing Weekly logic remains largely the same, I will focus on the Switch and Generic rendering.
-
-    // Calculate Weekly Summaries (Only for Weekly mode)
     useEffect(() => {
         if (planType !== 'weekly') return;
         const calculateSummaries = () => {
@@ -876,8 +875,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
     }, [debouncedPlanData, ingredientStore.status, planType]);
 
 
-    // --- WEEKLY PLAN HANDLERS (Existing) ---
-    // (Pasting the existing handlers here to ensure they are available for the Weekly View)
+    // --- WEEKLY PLAN HANDLERS ---
     const handleMealTitleChange = (dayIndex: number, mealIndex: number, value: string) => {
         setPlanData(current => current.map((d, i) => i !== dayIndex ? d : { ...d, meals: d.meals.map((m, j) => j !== mealIndex ? m : { ...m, title: value }) }));
     };
@@ -938,7 +936,6 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
         e.preventDefault();
         setIsLoading(true);
 
-        // --- Date Validation for Assigned Plans ---
         if (isForPatient) {
             if (!startDate || !endDate || new Date(endDate) <= new Date(startDate)) {
                 uiStore.showInfoModal(t('errorOccurred'), t('dateValidationError'));
@@ -956,11 +953,9 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
         }
 
         try {
-            // Build PlanCreationData
             let finalData: PlanCreationData;
 
             if (planType === 'weekly') {
-                // 1. Build weekly plan
                 const aggregatedIngredients = new Map<string, { totalValue: number; unit: string }>();
                 const weeklyPlan: DayPlan[] = planData.map(day => ({
                     day: day.day,
@@ -981,7 +976,6 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                     })
                 }));
 
-                // Shopping List Logic (Common)
                 const categoryMap = new Map<string, string>();
                 const uniqueNames = Array.from(aggregatedIngredients.keys());
                 const uncachedNames = uniqueNames.filter(name => !ingredientStore.getCategoryForIngredient(name));
@@ -1008,8 +1002,6 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                 };
 
             } else {
-                // Generic Plan logic
-                // Helper to convert FormMeal to Meal
                 const toMeal = (fm: FormMeal): Meal => ({
                     name: fm.name,
                     title: fm.title,
@@ -1055,7 +1047,6 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                     }
                 };
 
-                // For Generic Plans, aggregate EVERYTHING for potential shopping list.
                 const aggregatedIngredients = new Map<string, { totalValue: number; unit: string }>();
                 const processMeal = (m: FormMeal) => {
                     m.items.forEach(item => {
@@ -1073,7 +1064,6 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                 [...genericPlanData.lunch.carbs, ...genericPlanData.lunch.protein, ...genericPlanData.lunch.vegetables, ...genericPlanData.lunch.fats].forEach(processMeal);
                 [...genericPlanData.dinner.carbs, ...genericPlanData.dinner.protein, ...genericPlanData.dinner.vegetables, ...genericPlanData.dinner.fats].forEach(processMeal);
 
-                // Build list
                 const categoryMap = new Map<string, string>();
                 const uniqueNames = Array.from(aggregatedIngredients.keys());
                 const uncachedNames = uniqueNames.filter(name => !ingredientStore.getCategoryForIngredient(name));
@@ -1090,24 +1080,23 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
 
                 finalData = {
                     planName: planName.trim(),
-                    weeklyPlan: [], // Empty for generic
+                    weeklyPlan: [],
                     shoppingList: Object.entries(shoppingListByCategory).map(([category, items]) => ({ category, items })).sort((a, b) => a.category.localeCompare(b.category)),
                     type: 'generic',
                     genericPlan
                 };
             }
 
-            // Save Logic
-            if (planToEdit && 'patientId' in planToEdit) { // Assigned Plan
+            if (planToEdit && 'patientId' in planToEdit) {
                 await patientStore.updateAssignedPlanData(planToEdit.id!, finalData, startDate, endDate);
                 onPlanSaved(planToEdit.id);
-            } else if (patientForPlan) { // New Assigned Plan
+            } else if (patientForPlan) {
                 await patientStore.createAndAssignPlan(patientForPlan.id!, finalData, startDate, endDate);
                 onPlanSaved();
-            } else if (planToEdit && 'creationDate' in planToEdit) { // Edit Template
+            } else if (planToEdit && 'creationDate' in planToEdit) {
                 await nutritionistStore.updatePlan(planToEdit.id!, finalData);
                 onPlanSaved(planToEdit.id);
-            } else { // New Template
+            } else {
                 const newPlanId = await nutritionistStore.addPlan(finalData);
                 onPlanSaved(newPlanId as number);
             }
@@ -1141,7 +1130,6 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                         required
                     />
                     
-                    {/* Plan Type Switch */}
                     <div className="mt-4 flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-700/50 rounded-lg">
                         <span className="font-medium text-gray-700 dark:text-gray-300">Modalità Piano: {planType === 'weekly' ? 'Settimanale (Standard)' : 'Generico (Opzioni)'}</span>
                         <Switch 
@@ -1180,7 +1168,6 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                 )}
                 
                 {planType === 'weekly' ? (
-                    // --- WEEKLY VIEW RENDER ---
                     planData.map((day, dayIndex) => (
                         <details key={day.day} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm transition-all duration-300 group">
                             <summary className="font-semibold text-lg text-violet-700 dark:text-violet-400 cursor-pointer list-none flex items-center p-4">
@@ -1277,12 +1264,24 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                         <GenericMealEditor 
                             title="Colazione - Opzioni" 
                             options={genericPlanData.breakfast} 
+                            time={genericPlanData.breakfastTime}
                             onChange={(opts) => setGenericPlanData({...genericPlanData, breakfast: opts})} 
+                            onTimeChange={(newTime) => setGenericPlanData({
+                                ...genericPlanData, 
+                                breakfastTime: newTime,
+                                breakfast: genericPlanData.breakfast.map(m => ({ ...m, time: newTime }))
+                            })}
                         />
                         <GenericMealEditor 
                             title="Spuntini - Opzioni" 
                             options={genericPlanData.snacks} 
+                            time={genericPlanData.snacksTime}
                             onChange={(opts) => setGenericPlanData({...genericPlanData, snacks: opts})} 
+                            onTimeChange={(newTime) => setGenericPlanData({
+                                ...genericPlanData, 
+                                snacksTime: newTime,
+                                snacks: genericPlanData.snacks.map(m => ({ ...m, time: newTime }))
+                            })}
                         />
                         
                         <ModularMealEditor
