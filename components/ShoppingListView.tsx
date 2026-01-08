@@ -22,6 +22,7 @@ const ShoppingListView: React.FC = observer(() => {
     const [isShoppingMode, setIsShoppingMode] = useState(false);
     const [showCopiedMessage, setShowCopiedMessage] = useState(false);
 
+    // Calcoliamo tutti gli articoli per determinare se la lista è realmente vuota
     const allItems = useMemo(() => shoppingList.flatMap(cat => cat.items.map(item => ({ item, category: cat.category }))), [shoppingList]);
     const allItemsCount = allItems.length;
     const isAllChecked = allItemsCount > 0 && checkedItems.size === allItemsCount;
@@ -195,7 +196,7 @@ const ShoppingListView: React.FC = observer(() => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b dark:border-gray-700 pb-4 mb-6 gap-4">
                 <div className="flex items-center gap-4">
                     <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{t('shoppingListTitle')}</h2>
-                    {shoppingList.length > 0 && !isShoppingMode && (
+                    {allItemsCount > 0 && !isShoppingMode && (
                         <div className="flex items-center pt-2">
                             <input
                                 type="checkbox"
@@ -218,12 +219,12 @@ const ShoppingListView: React.FC = observer(() => {
 
             <div className="flex items-center justify-end mb-6">
                 <label htmlFor="shopping-mode-toggle" className="font-semibold text-gray-700 dark:text-gray-300 mr-3">{t('shoppingMode')}</label>
-                <button onClick={() => setIsShoppingMode(!isShoppingMode)} id="shopping-mode-toggle" className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isShoppingMode ? 'bg-violet-600' : 'bg-gray-200 dark:bg-gray-600'}`}>
+                <button onClick={() => setIsShoppingMode(!isShoppingMode)} id="shopping-mode-toggle" className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isShoppingMode ? 'bg-violet-600' : 'bg-gray-200 dark:bg-gray-700'}`}>
                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isShoppingMode ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
             </div>
             
-            {shoppingList.length === 0 ? (
+            {allItemsCount === 0 ? (
                 <div className="text-center py-12 px-4 bg-slate-50 dark:bg-gray-700/30 rounded-2xl border-2 border-dashed border-slate-200 dark:border-gray-700">
                     <div className="w-20 h-20 bg-green-100 dark:bg-green-900/40 rounded-full mx-auto flex items-center justify-center mb-6 text-green-600 dark:text-green-400 shadow-inner">
                         <CheckIcon className="w-10 h-10" />
