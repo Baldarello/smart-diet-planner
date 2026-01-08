@@ -1,4 +1,3 @@
-
 import {makeAutoObservable, runInAction, toJS, computed} from 'mobx';
 import {
     ArchivedPlan,
@@ -893,6 +892,23 @@ export class MealPlanStore {
             this.updateDailyLog(this.currentDayPlan);
             this.updateAchievements();
             trackEvent('meal_toggled', { status: meal.done ? 'done' : 'todo', mealName: meal.name });
+        }
+    }
+
+    toggleSectionDone = (mealIndices: number[]) => {
+        if (this.currentDayPlan && mealIndices.length > 0) {
+            const firstMeal = this.currentDayPlan.meals[mealIndices[0]];
+            const newState = !firstMeal.sectionDone;
+            
+            runInAction(() => {
+                mealIndices.forEach(idx => {
+                    const meal = this.currentDayPlan!.meals[idx];
+                    meal.sectionDone = newState;
+                });
+            });
+            
+            this.updateDailyLog(this.currentDayPlan);
+            trackEvent('section_toggled', { status: newState ? 'done' : 'todo', section: firstMeal.section });
         }
     }
 
