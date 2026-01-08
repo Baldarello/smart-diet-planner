@@ -231,18 +231,48 @@ const DailyPlanView: React.FC = observer(() => {
         );
     };
 
+    const handleToggleSectionDone = (section: GroupedMealSection) => {
+        const isCurrentlyDone = isSectionDone(section);
+        
+        section.subSections.forEach(sub => {
+            if (isCurrentlyDone) {
+                // If the section is done, uncheck any meal that is marked done in this subsection
+                sub.meals.forEach(m => {
+                    if (m.done) toggleMealDone(m.originalIndex);
+                });
+            } else {
+                // If the section is NOT done, ensure at least one meal is done in this subsection
+                if (!sub.meals.some(m => m.done) && sub.meals.length > 0) {
+                    toggleMealDone(sub.meals[0].originalIndex);
+                }
+            }
+        });
+    };
+
     const MealsContent = (
         <div className="space-y-6 mt-6">
             {sortedSections.map((section, idx) => {
                 const hideSectionHeader = !isGenericPlan && section.title.toUpperCase() === 'GENERAL';
-                // If the main section header has a time, we hide it in the cards below to avoid redundancy.
                 const shouldHideCardTimes = !!section.sectionTime;
+                const sectionIsDone = isSectionDone(section);
 
                 if (section.isMainMeal) {
                     return (
                         <div key={idx} className="bg-white dark:bg-gray-700/20 border border-violet-100 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
                             <div className="bg-violet-50 dark:bg-gray-700/50 p-3 border-b border-violet-100 dark:border-gray-600 flex justify-between items-center px-6">
-                                <h3 className="text-lg font-bold text-violet-700 dark:text-violet-300 uppercase tracking-wide">{section.title}</h3>
+                                <div className="flex items-center gap-3">
+                                    {isGenericPlan && (
+                                        <button
+                                            onClick={() => handleToggleSectionDone(section)}
+                                            className={`p-1 rounded-full transition-all flex-shrink-0 ${sectionIsDone ? 'text-violet-600 bg-violet-100 dark:bg-violet-900/40' : 'text-gray-400 hover:bg-violet-100 dark:hover:bg-gray-700'}`}
+                                            title={sectionIsDone ? t('markAsToDo') : t('markAsDone')}
+                                            aria-label={sectionIsDone ? t('markAsToDo') : t('markAsDone')}
+                                        >
+                                            {sectionIsDone ? <UndoIcon /> : <CheckCircleIcon />}
+                                        </button>
+                                    )}
+                                    <h3 className="text-lg font-bold text-violet-700 dark:text-violet-300 uppercase tracking-wide">{section.title}</h3>
+                                </div>
                                 {section.sectionTime && (
                                     <div className="flex items-center gap-1 text-sm font-semibold text-violet-600 dark:text-violet-400">
                                         <ClockIcon /> {section.sectionTime}
@@ -275,7 +305,18 @@ const DailyPlanView: React.FC = observer(() => {
                         <div key={idx} className="space-y-3">
                             {!hideSectionHeader && (
                                 <div className="flex justify-between items-center pl-2 border-l-4 border-violet-500 mb-1">
-                                    <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{section.title}</h3>
+                                    <div className="flex items-center gap-2">
+                                        {isGenericPlan && (
+                                            <button
+                                                onClick={() => handleToggleSectionDone(section)}
+                                                className={`p-1 rounded-full transition-all flex-shrink-0 ${sectionIsDone ? 'text-violet-600 bg-violet-100 dark:bg-violet-900/40' : 'text-gray-400 hover:bg-violet-100 dark:hover:bg-gray-700'}`}
+                                                title={sectionIsDone ? t('markAsToDo') : t('markAsDone')}
+                                            >
+                                                {sectionIsDone ? <UndoIcon /> : <CheckCircleIcon />}
+                                            </button>
+                                        )}
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{section.title}</h3>
+                                    </div>
                                     {section.sectionTime && (
                                         <div className="flex items-center gap-1 text-xs font-bold text-violet-600 dark:text-violet-400">
                                             <ClockIcon /> {section.sectionTime}
