@@ -1,8 +1,9 @@
+
 import React, { useState, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import { mealPlanStore } from '../stores/MealPlanStore';
 import { ShoppingListItem, ShoppingListCategory } from '../types';
-import { PantryIcon, EditIcon, CheckIcon, CloseIcon, PlusCircleIcon, TodayIcon, ShareIcon, ArrowUpIcon, ArrowDownIcon } from './Icons';
+import { PantryIcon, EditIcon, CheckIcon, CloseIcon, PlusCircleIcon, DashboardIcon, ShareIcon, ArrowUpIcon, ArrowDownIcon } from './Icons';
 import { t } from '../i18n';
 import UnitPicker from './UnitPicker';
 import { formatQuantity } from '../utils/quantityParser';
@@ -223,12 +224,20 @@ const ShoppingListView: React.FC = observer(() => {
             </div>
             
             {shoppingList.length === 0 ? (
-                <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-green-100 dark:bg-green-900/40 rounded-full mx-auto flex items-center justify-center mb-4"><CheckIcon /></div>
-                    <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">{t('shoppingListEmptyTitle')}</h3>
-                    <p className="text-gray-500 dark:text-gray-400 mt-2 mb-6">{t('shoppingListEmptyMessage')}</p>
-                    <button onClick={() => store.navigateTo('daily')} className="bg-violet-600 text-white font-semibold px-6 py-3 rounded-full hover:bg-violet-700 transition-colors shadow-md flex items-center mx-auto">
-                        <TodayIcon /><span className="ml-2">{t('shoppingListEmptyButton')}</span>
+                <div className="text-center py-12 px-4 bg-slate-50 dark:bg-gray-700/30 rounded-2xl border-2 border-dashed border-slate-200 dark:border-gray-700">
+                    <div className="w-20 h-20 bg-green-100 dark:bg-green-900/40 rounded-full mx-auto flex items-center justify-center mb-6 text-green-600 dark:text-green-400 shadow-inner">
+                        <CheckIcon className="w-10 h-10" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-3">{t('shoppingListEmptyTitle')}</h3>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2 mb-8 max-w-sm mx-auto leading-relaxed">
+                        {t('shoppingListEmptyMessage')}
+                    </p>
+                    <button 
+                        onClick={() => store.navigateTo('dashboard')} 
+                        className="bg-violet-600 text-white font-bold px-8 py-4 rounded-full hover:bg-violet-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center mx-auto gap-3"
+                    >
+                        <DashboardIcon />
+                        <span>{t('shoppingListEmptyButton')}</span>
                     </button>
                 </div>
             ) : (
