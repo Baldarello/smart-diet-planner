@@ -286,7 +286,9 @@ export interface FormModularMeal {
 
 export interface FormGenericPlan {
     breakfast: FormMeal[];
+    breakfastTime: string;
     snacks: FormMeal[];
+    snacksTime: string;
     lunch: FormModularMeal;
     dinner: FormModularMeal;
 }
