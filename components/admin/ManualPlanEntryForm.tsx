@@ -35,7 +35,8 @@ const createInitialGenericPlan = (): FormGenericPlan => ({
     breakfast: [{ name: 'Opzione 1', title: '', procedure: '', items: [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }], time: '08:00' }],
     breakfastTime: '08:00',
     snacks: [{ name: 'Opzione 1', title: '', procedure: '', items: [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }], time: '10:30' }],
-    snacksTime: '10:30',
+    morningSnackTime: '10:30',
+    afternoonSnackTime: '16:30',
     lunch: {
         carbs: [],
         protein: [],
@@ -138,15 +139,259 @@ const OverlapError: React.FC<{ plans: AssignedPlan[] }> = ({ plans }) => (
     </div>
 );
 
+// Reusable Meal Component
+const MealEditor: React.FC<{
+    meal: FormMeal;
+    onChange: (meal: FormMeal) => void;
+    onRemove?: () => void;
+    onClone?: () => void;
+    label?: string;
+    simpleMode?: boolean;
+    hideRecipePicker?: boolean;
+}> = observer(({ meal, onChange, onRemove, onClone, label, simpleMode = false, hideRecipePicker = false }) => {
+    const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+    const [activeAutocompleteIndex, setActiveAutocompleteIndex] = useState<number | null>(null);
+    const autocompleteRef = useRef<HTMLDivElement>(null);
+    const [showProcedure, setShowProcedure] = useState(!!meal.procedure);
+    
+    // Actions Menu State
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const updateSuggestions = (inputValue: string) => {
+        if (inputValue.length >= 3) {
+            const suggestions = ingredientStore.ingredients
+                .map(i => i.name)
+                .filter(s => s.toLowerCase().includes(inputValue.toLowerCase()));
+            setFilteredSuggestions(suggestions);
+        } else {
+            setFilteredSuggestions([]);
+        }
+    };
+
+    const handleItemChange = (itemIndex: number, field: keyof FormMealItem, value: string) => {
+        const newItems = [...meal.items];
+        newItems[itemIndex] = { ...newItems[itemIndex], [field]: value };
+        onChange({ ...meal, items: newItems });
+
+        if (field === 'ingredientName') {
+            setActiveAutocompleteIndex(itemIndex);
+            updateSuggestions(value);
+        }
+    };
+
+    const handleSuggestionClick = (itemIndex: number, suggestion: string) => {
+        handleItemChange(itemIndex, 'ingredientName', suggestion);
+        setActiveAutocompleteIndex(null);
+    };
+
+    const handleAddItem = () => {
+        onChange({ ...meal, items: [...meal.items, { ingredientName: '', quantityValue: '', quantityUnit: 'g' }] });
+    };
+
+    const handleRemoveItem = (index: number) => {
+        onChange({ ...meal, items: meal.items.filter((_, i) => i !== index) });
+    };
+
+    const handleRecipeSelect = (recipeIdStr: string) => {
+        if (!recipeIdStr) return;
+        const recipeId = parseInt(recipeIdStr, 10);
+        const selectedRecipe = recipeStore.recipes.find(r => r.id === recipeId);
+        if (!selectedRecipe) return;
+
+        const newItems: FormMealItem[] = selectedRecipe.ingredients.map(ing => ({
+            ingredientName: ing.ingredientName,
+            quantityValue: ing.quantityValue?.toString() ?? '',
+            quantityUnit: ing.quantityUnit,
+        }));
+
+        onChange({
+            ...meal,
+            title: selectedRecipe.name,
+            procedure: selectedRecipe.procedure ?? meal.procedure,
+            items: newItems.length > 0 ? newItems : [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }],
+        });
+    };
+    
+    const handleProcedureChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        onChange({...meal, procedure: e.target.value});
+    };
+
+    const handleProcedureBlur = () => {
+        if (meal.procedure && meal.procedure.trim() === '') {
+             onChange({...meal, procedure: ''});
+             setShowProcedure(false);
+        }
+    };
+
+    const toggleProcedure = () => {
+        if (showProcedure && (!meal.procedure || meal.procedure.trim() === '')) {
+            setShowProcedure(false);
+        } else {
+            setShowProcedure(true);
+        }
+    };
+
+    const summary = useMemo(() => {
+        const sum: NutritionInfo = { calories: 0, carbs: 0, protein: 0, fat: 0 };
+        const ingredientMap = new Map(ingredientStore.ingredients.map(i => [i.name.toLowerCase(), i]));
+        meal.items.forEach(item => {
+            const ingredient = ingredientMap.get(item.ingredientName.toLowerCase().trim());
+            const quantity = parseFloat(item.quantityValue);
+            if (ingredient && ingredient.calories !== undefined && !isNaN(quantity) && quantity > 0) {
+                const factor = quantity / 100;
+                sum.calories += (ingredient.calories || 0) * factor;
+                sum.carbs += (ingredient.carbs || 0) * factor;
+                sum.protein += (ingredient.protein || 0) * factor;
+                sum.fat += (ingredient.fat || 0) * factor;
+            }
+        });
+        return sum;
+    }, [meal.items, ingredientStore.ingredients]);
+
+    return (
+        <div className={`p-3 bg-slate-100 dark:bg-gray-700/50 rounded-lg relative group ${simpleMode ? 'border border-gray-200 dark:border-gray-600' : ''}`}>
+            {/* Actions Menu */}
+            {(onRemove || onClone) && (
+                <div className="absolute top-2 right-2 z-10" ref={menuRef}>
+                    <button 
+                        type="button" 
+                        onClick={() => setIsMenuOpen(!isMenuOpen)} 
+                        className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        title="Opzioni"
+                    >
+                        <MoreVertIcon />
+                    </button>
+                    
+                    {isMenuOpen && (
+                        <div className="absolute right-0 mt-1 w-36 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                            {onClone && (
+                                <button
+                                    type="button"
+                                    onClick={() => { onClone(); setIsMenuOpen(false); }}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                >
+                                    <CopyIcon className="w-4 h-4" /> Clona
+                                </button>
+                            )}
+                            {onRemove && (
+                                <button
+                                    type="button"
+                                    onClick={() => { onRemove(); setIsMenuOpen(false); }}
+                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 flex items-center gap-2 border-t border-gray-100 dark:border-gray-700"
+                                >
+                                    <TrashIcon className="w-4 h-4" /> Elimina
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+            
+            <div className="flex items-center gap-2 mb-2 pr-10">
+                {label && <span className="text-sm font-bold text-violet-600 dark:text-violet-400">{label}:</span>}
+                {!simpleMode && (
+                    <input 
+                        type="text" 
+                        placeholder={t('mealTitleLabel')} 
+                        value={meal.title} 
+                        onChange={e => onChange({...meal, title: e.target.value})} 
+                        className="flex-grow p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm"
+                    />
+                )}
+                {!hideRecipePicker && (
+                    <select 
+                        className="p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-xs w-6" 
+                        onChange={e => { handleRecipeSelect(e.target.value); e.target.value = ''; }}
+                        title="Importa Ricetta"
+                    >
+                        <option value="">+</option>
+                        {recipeStore.recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    </select>
+                )}
+            </div>
+
+            <div className="space-y-2">
+                {meal.items.map((item, idx) => (
+                    <div key={idx} className="flex gap-1 items-center relative pr-10">
+                        <input 
+                            type="text" 
+                            placeholder={t('ingredientPlaceholder')}
+                            value={item.ingredientName} 
+                            onChange={e => handleItemChange(idx, 'ingredientName', e.target.value)}
+                            className="flex-grow p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm min-w-0"
+                        />
+                        {activeAutocompleteIndex === idx && filteredSuggestions.length > 0 && (
+                            <div ref={autocompleteRef} className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-gray-800 border rounded-md shadow-lg z-20 max-h-32 overflow-y-auto">
+                                {filteredSuggestions.map((s, i) => (
+                                    <button key={i} type="button" onMouseDown={() => handleSuggestionClick(idx, s)} className="w-full text-left px-2 py-1 hover:bg-violet-100 dark:hover:bg-gray-700 text-sm">
+                                        {s}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        <input 
+                            type="text" 
+                            inputMode="decimal"
+                            placeholder="Qta" 
+                            value={item.quantityValue} 
+                            onChange={e => handleItemChange(idx, 'quantityValue', e.target.value)} 
+                            className="w-14 p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm text-right"
+                        />
+                        <UnitPicker value={item.quantityUnit} onChange={u => handleItemChange(idx, 'quantityUnit', u)} />
+                        {meal.items.length > 1 && (
+                            <button type="button" onClick={() => handleRemoveItem(idx)} className="text-gray-400 hover:text-red-500"><TrashIcon /></button>
+                        )}
+                    </div>
+                ))}
+                {!simpleMode && (
+                    <button type="button" onClick={handleAddItem} className="text-xs text-violet-500 flex items-center gap-1 mt-1"><PlusCircleIcon /> Agg. Ingrediente</button>
+                )}
+            </div>
+            
+            {showProcedure ? (
+                <div className="mt-2 pr-8">
+                    <textarea 
+                        placeholder={t('procedurePlaceholder')} 
+                        value={meal.procedure} 
+                        onChange={handleProcedureChange}
+                        onBlur={handleProcedureBlur}
+                        className="w-full p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md h-24 text-sm"
+                        autoFocus
+                    />
+                </div>
+            ) : (
+                <button type="button" onClick={toggleProcedure} className="text-xs text-violet-500 flex items-center gap-1 mt-2">
+                    <PlusCircleIcon /> {t('add')} Procedimento
+                </button>
+            )}
+
+            <MealNutritionSummaryDisplay summary={summary} />
+        </div>
+    );
+});
+
 // --- New Components for Generic Plan ---
 
 const GenericMealEditor: React.FC<{
     title: string;
     options: FormMeal[];
-    time: string;
+    time?: string;
+    timeLabel?: string;
+    times?: { label: string; value: string; onChange: (v: string) => void }[];
     onChange: (newOptions: FormMeal[]) => void;
-    onTimeChange: (newTime: string) => void;
-}> = observer(({ title, options, time, onChange, onTimeChange }) => {
+    onTimeChange?: (newTime: string) => void;
+}> = observer(({ title, options, time, timeLabel, times, onChange, onTimeChange }) => {
     
     const handleAddOption = () => {
         onChange([...options, { 
@@ -154,7 +399,7 @@ const GenericMealEditor: React.FC<{
             title: '', 
             procedure: '', 
             items: [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }],
-            time: time
+            time: time || (times && times.length > 0 ? times[0].value : '08:00')
         }]);
     };
 
@@ -202,16 +447,32 @@ const GenericMealEditor: React.FC<{
 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 mb-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 border-b dark:border-gray-700 pb-3">
                 <h3 className="font-bold text-lg text-violet-700 dark:text-violet-400">{title}</h3>
-                <div className="flex items-center gap-2 bg-slate-50 dark:bg-gray-700 p-1.5 rounded-lg border border-gray-200 dark:border-gray-600">
-                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight">{t('mealTime')}</span>
-                    <input 
-                        type="time" 
-                        value={time} 
-                        onChange={e => onTimeChange(e.target.value)} 
-                        className="bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm p-0.5"
-                    />
+                <div className="flex flex-wrap gap-2">
+                    {times ? (
+                        times.map((tItem, idx) => (
+                            <div key={idx} className="flex items-center gap-2 bg-slate-50 dark:bg-gray-700 p-1.5 rounded-lg border border-gray-200 dark:border-gray-600">
+                                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight">{tItem.label}</span>
+                                <input 
+                                    type="time" 
+                                    value={tItem.value} 
+                                    onChange={e => tItem.onChange(e.target.value)} 
+                                    className="bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-xs p-0.5"
+                                />
+                            </div>
+                        ))
+                    ) : (
+                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-gray-700 p-1.5 rounded-lg border border-gray-200 dark:border-gray-600">
+                            <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight">{timeLabel || t('mealTime')}</span>
+                            <input 
+                                type="time" 
+                                value={time} 
+                                onChange={e => onTimeChange?.(e.target.value)} 
+                                className="bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-xs p-0.5"
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
             <div className="space-y-4">
@@ -460,248 +721,6 @@ const ModularMealEditor: React.FC<{
     );
 });
 
-// Reusable Meal Component
-const MealEditor: React.FC<{
-    meal: FormMeal;
-    onChange: (meal: FormMeal) => void;
-    onRemove?: () => void;
-    onClone?: () => void;
-    label?: string;
-    simpleMode?: boolean;
-    hideRecipePicker?: boolean;
-}> = observer(({ meal, onChange, onRemove, onClone, label, simpleMode = false, hideRecipePicker = false }) => {
-    const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
-    const [activeAutocompleteIndex, setActiveAutocompleteIndex] = useState<number | null>(null);
-    const autocompleteRef = useRef<HTMLDivElement>(null);
-    const [showProcedure, setShowProcedure] = useState(!!meal.procedure);
-    
-    // Actions Menu State
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setIsMenuOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    const updateSuggestions = (inputValue: string) => {
-        if (inputValue.length >= 3) {
-            const suggestions = ingredientStore.ingredients
-                .map(i => i.name)
-                .filter(s => s.toLowerCase().includes(inputValue.toLowerCase()));
-            setFilteredSuggestions(suggestions);
-        } else {
-            setFilteredSuggestions([]);
-        }
-    };
-
-    const handleItemChange = (itemIndex: number, field: keyof FormMealItem, value: string) => {
-        const newItems = [...meal.items];
-        newItems[itemIndex] = { ...newItems[itemIndex], [field]: value };
-        onChange({ ...meal, items: newItems });
-
-        if (field === 'ingredientName') {
-            setActiveAutocompleteIndex(itemIndex);
-            updateSuggestions(value);
-        }
-    };
-
-    const handleSuggestionClick = (itemIndex: number, suggestion: string) => {
-        handleItemChange(itemIndex, 'ingredientName', suggestion);
-        setActiveAutocompleteIndex(null);
-    };
-
-    const handleAddItem = () => {
-        onChange({ ...meal, items: [...meal.items, { ingredientName: '', quantityValue: '', quantityUnit: 'g' }] });
-    };
-
-    const handleRemoveItem = (index: number) => {
-        onChange({ ...meal, items: meal.items.filter((_, i) => i !== index) });
-    };
-
-    const handleRecipeSelect = (recipeIdStr: string) => {
-        if (!recipeIdStr) return;
-        const recipeId = parseInt(recipeIdStr, 10);
-        const selectedRecipe = recipeStore.recipes.find(r => r.id === recipeId);
-        if (!selectedRecipe) return;
-
-        const newItems: FormMealItem[] = selectedRecipe.ingredients.map(ing => ({
-            ingredientName: ing.ingredientName,
-            quantityValue: ing.quantityValue?.toString() ?? '',
-            quantityUnit: ing.quantityUnit,
-        }));
-
-        onChange({
-            ...meal,
-            title: selectedRecipe.name,
-            procedure: selectedRecipe.procedure ?? meal.procedure,
-            items: newItems.length > 0 ? newItems : [{ ingredientName: '', quantityValue: '', quantityUnit: 'g' }],
-        });
-    };
-    
-    const handleProcedureChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        onChange({...meal, procedure: e.target.value});
-    };
-
-    const handleProcedureBlur = () => {
-        if (meal.procedure && meal.procedure.trim() === '') {
-             onChange({...meal, procedure: ''});
-             setShowProcedure(false);
-        }
-    };
-
-    const toggleProcedure = () => {
-        if (showProcedure && (!meal.procedure || meal.procedure.trim() === '')) {
-            setShowProcedure(false);
-        } else {
-            setShowProcedure(true);
-        }
-    };
-
-    const summary = useMemo(() => {
-        const sum: NutritionInfo = { calories: 0, carbs: 0, protein: 0, fat: 0 };
-        const ingredientMap = new Map(ingredientStore.ingredients.map(i => [i.name.toLowerCase(), i]));
-        meal.items.forEach(item => {
-            const ingredient = ingredientMap.get(item.ingredientName.toLowerCase().trim());
-            const quantity = parseFloat(item.quantityValue);
-            if (ingredient && ingredient.calories !== undefined && !isNaN(quantity) && quantity > 0) {
-                const factor = quantity / 100;
-                sum.calories += (ingredient.calories || 0) * factor;
-                sum.carbs += (ingredient.carbs || 0) * factor;
-                sum.protein += (ingredient.protein || 0) * factor;
-                sum.fat += (ingredient.fat || 0) * factor;
-            }
-        });
-        return sum;
-    }, [meal.items, ingredientStore.ingredients]);
-
-    return (
-        <div className={`p-3 bg-slate-100 dark:bg-gray-700/50 rounded-lg relative group ${simpleMode ? 'border border-gray-200 dark:border-gray-600' : ''}`}>
-            {/* Actions Menu */}
-            {(onRemove || onClone) && (
-                <div className="absolute top-2 right-2 z-10" ref={menuRef}>
-                    <button 
-                        type="button" 
-                        onClick={() => setIsMenuOpen(!isMenuOpen)} 
-                        className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                        title="Opzioni"
-                    >
-                        <MoreVertIcon />
-                    </button>
-                    
-                    {isMenuOpen && (
-                        <div className="absolute right-0 mt-1 w-36 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                            {onClone && (
-                                <button
-                                    type="button"
-                                    onClick={() => { onClone(); setIsMenuOpen(false); }}
-                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                                >
-                                    <CopyIcon className="w-4 h-4" /> Clona
-                                </button>
-                            )}
-                            {onRemove && (
-                                <button
-                                    type="button"
-                                    onClick={() => { onRemove(); setIsMenuOpen(false); }}
-                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 flex items-center gap-2 border-t border-gray-100 dark:border-gray-700"
-                                >
-                                    <TrashIcon className="w-4 h-4" /> Elimina
-                                </button>
-                            )}
-                        </div>
-                    )}
-                </div>
-            )}
-            
-            <div className="flex items-center gap-2 mb-2 pr-8">
-                {label && <span className="text-sm font-bold text-violet-600 dark:text-violet-400">{label}:</span>}
-                {!simpleMode && (
-                    <input 
-                        type="text" 
-                        placeholder={t('mealTitleLabel')} 
-                        value={meal.title} 
-                        onChange={e => onChange({...meal, title: e.target.value})} 
-                        className="flex-grow p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm"
-                    />
-                )}
-                {!hideRecipePicker && (
-                    <select 
-                        className="p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-xs w-6" 
-                        onChange={e => { handleRecipeSelect(e.target.value); e.target.value = ''; }}
-                        title="Importa Ricetta"
-                    >
-                        <option value="">+</option>
-                        {recipeStore.recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                    </select>
-                )}
-            </div>
-
-            <div className="space-y-2">
-                {meal.items.map((item, idx) => (
-                    <div key={idx} className="flex gap-1 items-center relative pr-8">
-                        <input 
-                            type="text" 
-                            placeholder={t('ingredientPlaceholder')}
-                            value={item.ingredientName} 
-                            onChange={e => handleItemChange(idx, 'ingredientName', e.target.value)}
-                            className="flex-grow p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm min-w-0"
-                        />
-                        {activeAutocompleteIndex === idx && filteredSuggestions.length > 0 && (
-                            <div ref={autocompleteRef} className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-gray-800 border rounded-md shadow-lg z-20 max-h-32 overflow-y-auto">
-                                {filteredSuggestions.map((s, i) => (
-                                    <button key={i} type="button" onMouseDown={() => handleSuggestionClick(idx, s)} className="w-full text-left px-2 py-1 hover:bg-violet-100 dark:hover:bg-gray-700 text-sm">
-                                        {s}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                        <input 
-                            type="text" 
-                            inputMode="decimal"
-                            placeholder="Qta" 
-                            value={item.quantityValue} 
-                            onChange={e => handleItemChange(idx, 'quantityValue', e.target.value)} 
-                            className="w-14 p-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-sm text-right"
-                        />
-                        <UnitPicker value={item.quantityUnit} onChange={u => handleItemChange(idx, 'quantityUnit', u)} />
-                        {meal.items.length > 1 && (
-                            <button type="button" onClick={() => handleRemoveItem(idx)} className="text-gray-400 hover:text-red-500"><TrashIcon /></button>
-                        )}
-                    </div>
-                ))}
-                {!simpleMode && (
-                    <button type="button" onClick={handleAddItem} className="text-xs text-violet-500 flex items-center gap-1 mt-1"><PlusCircleIcon /> Agg. Ingrediente</button>
-                )}
-            </div>
-            
-            {showProcedure ? (
-                <div className="mt-2">
-                    <textarea 
-                        placeholder={t('procedurePlaceholder')} 
-                        value={meal.procedure} 
-                        onChange={handleProcedureChange}
-                        onBlur={handleProcedureBlur}
-                        className="w-full p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md h-24 text-sm"
-                        autoFocus
-                    />
-                </div>
-            ) : (
-                <button type="button" onClick={toggleProcedure} className="text-xs text-violet-500 flex items-center gap-1 mt-2">
-                    <PlusCircleIcon /> {t('add')} Procedimento
-                </button>
-            )}
-
-            <MealNutritionSummaryDisplay summary={summary} />
-        </div>
-    );
-});
-
 
 const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCancel, onPlanSaved, planToEdit, patientForPlan, onDirtyStateChange }) => {
     const [planType, setPlanType] = useState<'weekly' | 'generic'>('weekly');
@@ -787,14 +806,14 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                 });
 
                 const typedGenericPlan = pd.genericPlan as GenericPlanData;
-                const snacksFromOldPlan = [...(typedGenericPlan.snack1 || []), ...(typedGenericPlan.snack2 || [])];
-                const allSnacks = [...(typedGenericPlan.snacks || []), ...snacksFromOldPlan];
+                const snacksFromOldPlan = [...(typedGenericPlan.snacks || []), ...(typedGenericPlan.snack1 || []), ...(typedGenericPlan.snack2 || [])];
 
                 setGenericPlanData({
                     breakfast: typedGenericPlan.breakfast.map(mapToFormMeal),
                     breakfastTime: typedGenericPlan.breakfast?.[0]?.time || '08:00',
-                    snacks: allSnacks.map(mapToFormMeal),
-                    snacksTime: allSnacks?.[0]?.time || '10:30',
+                    snacks: snacksFromOldPlan.map(mapToFormMeal),
+                    morningSnackTime: typedGenericPlan.morningSnackTime || '10:30',
+                    afternoonSnackTime: typedGenericPlan.afternoonSnackTime || '16:30',
                     lunch: mapToFormModular(typedGenericPlan.lunch),
                     dinner: mapToFormModular(typedGenericPlan.dinner),
                 });
@@ -1029,6 +1048,8 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                 const genericPlan: GenericPlanData = {
                     breakfast: genericPlanData.breakfast.map(toMeal),
                     snacks: genericPlanData.snacks.map(toMeal),
+                    morningSnackTime: genericPlanData.morningSnackTime,
+                    afternoonSnackTime: genericPlanData.afternoonSnackTime,
                     lunch: {
                         carbs: genericPlanData.lunch.carbs.map(toMeal),
                         protein: genericPlanData.lunch.protein.map(toMeal),
@@ -1235,7 +1256,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                                                     {meal.items.map((item, itemIndex) => (
                                                         <div key={itemIndex} className="grid grid-cols-1 sm:grid-cols-[1fr,auto,auto,auto] items-center gap-2">
                                                             <div className="relative">
-                                                                <input type="text" placeholder={t('ingredientPlaceholder')} value={item.ingredientName} onChange={e => handleItemChange(dayIndex, mealIndex, itemIndex, 'ingredientName', e.target.value)} onFocus={e => { setActiveAutocomplete({ dayIndex, mealIndex, itemIndex }); updateSuggestions(e.target.value); }} onBlur={() => handleIngredientBlur(item.ingredientName)} className="w-full p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md" autoComplete="off" />
+                                                                <input type="text" placeholder={t('ingredientPlaceholder')} value={item.ingredientName} onChange={e => handleItemChange(dayIndex, mealIndex, itemIndex, 'ingredientName', e.target.value)} onFocus={e => { setActiveAutocomplete({ dayIndex, mealIndex, itemIndex }); updateSuggestions(e.target.value); }} onBlur={() => handleIngredientBlur(item.ingredientName)} className="w-full p-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-md" autoComplete="off" />
                                                                 {activeAutocomplete?.dayIndex === dayIndex && activeAutocomplete?.mealIndex === mealIndex && activeAutocomplete?.itemIndex === itemIndex && filteredSuggestions.length > 0 && (
                                                                     <div ref={autocompleteRef} className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-gray-800 border rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
                                                                         {filteredSuggestions.map((suggestion, sIndex) => ( <button key={sIndex} type="button" onMouseDown={() => handleSuggestionClick(dayIndex, mealIndex, itemIndex, suggestion)} className="w-full text-left px-3 py-2 hover:bg-violet-100 dark:hover:bg-gray-700">{suggestion}</button> ))}
@@ -1265,6 +1286,7 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                             title="Colazione - Opzioni" 
                             options={genericPlanData.breakfast} 
                             time={genericPlanData.breakfastTime}
+                            timeLabel="Orario"
                             onChange={(opts) => setGenericPlanData({...genericPlanData, breakfast: opts})} 
                             onTimeChange={(newTime) => setGenericPlanData({
                                 ...genericPlanData, 
@@ -1275,13 +1297,11 @@ const ManualPlanEntryForm: React.FC<ManualPlanEntryFormProps> = observer(({ onCa
                         <GenericMealEditor 
                             title="Spuntini - Opzioni" 
                             options={genericPlanData.snacks} 
-                            time={genericPlanData.snacksTime}
+                            times={[
+                                { label: 'Spuntino Mattina', value: genericPlanData.morningSnackTime, onChange: (v) => setGenericPlanData({...genericPlanData, morningSnackTime: v}) },
+                                { label: 'Merenda', value: genericPlanData.afternoonSnackTime, onChange: (v) => setGenericPlanData({...genericPlanData, afternoonSnackTime: v}) }
+                            ]}
                             onChange={(opts) => setGenericPlanData({...genericPlanData, snacks: opts})} 
-                            onTimeChange={(newTime) => setGenericPlanData({
-                                ...genericPlanData, 
-                                snacksTime: newTime,
-                                snacks: genericPlanData.snacks.map(m => ({ ...m, time: newTime }))
-                            })}
                         />
                         
                         <ModularMealEditor

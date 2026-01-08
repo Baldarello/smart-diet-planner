@@ -817,11 +817,11 @@ export class MealPlanStore {
         const allSnacks = [...(this.genericPlanData.snacks || []), ...(this.genericPlanData.snack1 || []), ...(this.genericPlanData.snack2 || [])];
         
         processSection("COLAZIONE", "breakfast", this.genericPlanData.breakfast);
-        if (allSnacks.length > 0) processSection("SPUNTINO MATTINA", "snacks_morning", allSnacks);
+        if (allSnacks.length > 0) processSection("SPUNTINO MATTINA", "snacks_morning", allSnacks, this.genericPlanData.morningSnackTime);
         
         processModular("PRANZO", this.genericPlanData.lunch, "lunch");
         
-        if (allSnacks.length > 0) processSection("MERENDA", "snacks_afternoon", allSnacks);
+        if (allSnacks.length > 0) processSection("MERENDA", "snacks_afternoon", allSnacks, this.genericPlanData.afternoonSnackTime);
         
         processModular("CENA", this.genericPlanData.dinner, "dinner");
 
@@ -1136,6 +1136,8 @@ export class MealPlanStore {
             snacks: [
                 { name: 'Opzione 1', title: 'Frutto', items: [{ ingredientName: 'Mela', fullDescription: '1 Mela', used: false }], done: false, time: '10:30' }
             ],
+            morningSnackTime: '10:30',
+            afternoonSnackTime: '16:30',
             lunch: {
                 carbs: [{ name: 'Riso', items: [{ ingredientName: 'Riso', fullDescription: '80g Riso', used: false }], done: false }],
                 protein: [{ name: 'Pollo', items: [{ ingredientName: 'Pollo', fullDescription: '150g Pollo', used: false }], done: false }],
