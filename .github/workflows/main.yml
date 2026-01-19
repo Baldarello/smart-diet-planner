@@ -31,6 +31,8 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
       GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+      POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
     strategy:
       matrix:
         node-version: [22.x]
