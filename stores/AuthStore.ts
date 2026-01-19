@@ -38,8 +38,11 @@ export class AuthStore {
                     this.status = 'LOGGED_IN';
                 });
                 
-                // Re-identify user on app load if logged in
-                identifyUser(userProfile.id, { email: userProfile.email, name: userProfile.name, loginMode });
+                // Re-identify user on app load if logged in, BUT ONLY if it is a nutritionist.
+                // Patients remain anonymous in analytics.
+                if (loginMode === 'nutritionist') {
+                    identifyUser(userProfile.id, { email: userProfile.email, name: userProfile.name, loginMode });
+                }
 
                 return accessToken;
             } else {
@@ -68,8 +71,11 @@ export class AuthStore {
             this.tokenExpirationTime = tokenExpirationTime;
         });
 
-        // Analytics Identify
-        identifyUser(profile.id, { email: profile.email, name: profile.name, loginMode: this.loginMode });
+        // Analytics Identify: Only identify nutritionists. Patients are anonymous.
+        if (this.loginMode === 'nutritionist') {
+            identifyUser(profile.id, { email: profile.email, name: profile.name, loginMode: this.loginMode });
+        }
+        
         trackEvent('user_logged_in', { mode: this.loginMode });
 
         try {
